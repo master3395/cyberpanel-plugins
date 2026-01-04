@@ -1,0 +1,762 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extraCSS %}
+<style>
+:root {
+    --primary-color: #5865F2;
+    --primary-dark: #4752C4;
+    --success-color: #57F287;
+    --warning-color: #FEE75C;
+    --danger-color: #ED4245;
+    --light-color: #f7fafc;
+    --border-radius: 8px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.settings-container {
+    background: var(--light-color);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+}
+
+.page-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+}
+
+.page-header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2d3748;
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.form-group input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.checkbox-group,
+.radio-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checkbox-group label,
+.radio-group label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: #000;
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: #000;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+    background: #f7fafc;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.table tr:hover {
+    background: #f7fafc;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-enabled {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-disabled {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.alert {
+    padding: 15px 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.alert-danger {
+    background: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #fc8181;
+}
+
+.alert-info {
+    background: #bee3f8;
+    color: #2c5282;
+    border: 1px solid #90cdf4;
+}
+
+.server-usage-config {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f7fafc;
+    border-radius: var(--border-radius);
+    border: 1px solid #e2e8f0;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.threshold-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+#webhookModal {
+    display: none !important;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+#webhookModal.show {
+    display: flex !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#webhookModal .modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    position: relative;
+    margin: 0;
+    pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+    #webhookModal .modal-content {
+        width: 90%;
+        max-width: 90%;
+        padding: 20px;
+        margin: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    #webhookModal .modal-content {
+        width: 95%;
+        max-width: 95%;
+        padding: 15px;
+        margin: 0;
+        max-height: 90vh;
+    }
+}
+
+.modal-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.modal-header h4 {
+    margin: 0;
+    color: #2d3748;
+}
+
+.close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #a0aec0;
+}
+
+.close:hover {
+    color: #2d3748;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="page-header">
+        <h1>🔗 Discord Webhooks</h1>
+        <p>Configure Discord webhook notifications for server events</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Webhook URLs Section -->
+    <div class="card">
+        <h3>Webhook URLs</h3>
+        <p>Add one or more Discord webhook URLs to receive notifications. You can get webhook URLs from Discord Server Settings > Integrations > Webhooks</p>
+        
+        <button class="btn btn-primary" onclick="openAddWebhookModal()">+ Add Webhook</button>
+        
+        {% if webhooks %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for webhook in webhooks %}
+                <tr>
+                    <td><strong>{{ webhook.name }}</strong></td>
+                    <td><code style="font-size: 0.85rem;">{{ webhook.url|truncatechars:50 }}</code></td>
+                    <td>
+                        <span class="status-badge {% if webhook.enabled %}status-enabled{% else %}status-disabled{% endif %}">
+                            {% if webhook.enabled %}Enabled{% else %}Disabled{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-warning" onclick="testWebhook({{ webhook.id }})" title="Test Webhook">Test</button>
+                        <button class="btn btn-primary" onclick="openEditWebhookModal({{ webhook.id }})" title="Edit">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteWebhook({{ webhook.id }})" title="Delete">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info">
+            No webhooks configured. Click "Add Webhook" to add your first Discord webhook URL.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Event Configuration Section -->
+    <div class="card">
+        <h3>Event Configuration</h3>
+        <p>Select which events should trigger Discord notifications</p>
+        
+        <form id="settings-form" method="post" action="{% url 'discordWebhooks:save_settings' %}">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="id_ssh_logins_enabled" name="ssh_logins_enabled" {% if settings.ssh_logins_enabled %}checked{% endif %}>
+                    <label for="id_ssh_logins_enabled">Enable SSH login notifications</label>
+                </div>
+                <small style="color: #718096; margin-left: 30px;">Send notifications when SSH logins occur</small>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="id_security_warnings_enabled" name="security_warnings_enabled" {% if settings.security_warnings_enabled %}checked{% endif %}>
+                    <label for="id_security_warnings_enabled">Enable security warning notifications</label>
+                </div>
+                <small style="color: #718096; margin-left: 30px;">Send notifications for security events (fail2ban bans, firewall blocks, etc.)</small>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="id_server_usage_enabled" name="server_usage_enabled" {% if settings.server_usage_enabled %}checked{% endif %} onchange="toggleServerUsageConfig()">
+                    <label for="id_server_usage_enabled">Enable server usage notifications</label>
+                </div>
+                <small style="color: #718096; margin-left: 30px;">Send notifications for server resource usage</small>
+            </div>
+
+            <!-- Server Usage Configuration -->
+            <div id="server-usage-config" class="server-usage-config" style="display: {% if settings.server_usage_enabled %}block{% else %}none{% endif %};">
+                <h4 style="margin-top: 0;">Server Usage Configuration</h4>
+                
+                <div class="form-group">
+                    <label>Select Metrics to Monitor:</label>
+                    <div class="metrics-grid">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="id_server_usage_cpu" name="server_usage_cpu" {% if settings.server_usage_cpu %}checked{% endif %}>
+                            <label for="id_server_usage_cpu">CPU Usage</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="id_server_usage_memory" name="server_usage_memory" {% if settings.server_usage_memory %}checked{% endif %}>
+                            <label for="id_server_usage_memory">Memory Usage</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="id_server_usage_disk" name="server_usage_disk" {% if settings.server_usage_disk %}checked{% endif %}>
+                            <label for="id_server_usage_disk">Disk Usage</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="id_server_usage_network" name="server_usage_network" {% if settings.server_usage_network %}checked{% endif %}>
+                            <label for="id_server_usage_network">Network Usage</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Notification Mode:</label>
+                    <div class="radio-group">
+                        <input type="radio" id="threshold_mode_true" name="server_usage_threshold_mode" value="1" {% if settings.server_usage_threshold_mode %}checked{% endif %}>
+                        <label for="threshold_mode_true">Threshold-based (only notify when thresholds are exceeded)</label>
+                    </div>
+                    <div class="radio-group">
+                        <input type="radio" id="threshold_mode_false" name="server_usage_threshold_mode" value="0" {% if not settings.server_usage_threshold_mode %}checked{% endif %}>
+                        <label for="threshold_mode_false">All metrics (notify every check interval)</label>
+                    </div>
+                </div>
+                
+                <div id="threshold-inputs" class="threshold-inputs" style="display: {% if settings.server_usage_threshold_mode %}grid{% else %}none{% endif %};">
+                    <div class="form-group">
+                        <label for="id_cpu_threshold">CPU Threshold (%):</label>
+                        <input type="number" id="id_cpu_threshold" name="cpu_threshold" value="{{ settings.cpu_threshold }}" min="0" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_memory_threshold">Memory Threshold (%):</label>
+                        <input type="number" id="id_memory_threshold" name="memory_threshold" value="{{ settings.memory_threshold }}" min="0" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_disk_threshold">Disk Threshold (%):</label>
+                        <input type="number" id="id_disk_threshold" name="disk_threshold" value="{{ settings.disk_threshold }}" min="0" max="100" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_check_interval">Check Interval (minutes):</label>
+                    <input type="number" id="id_check_interval" name="check_interval" value="{{ settings.check_interval }}" min="1" max="60" required>
+                    <small style="color: #718096;">How often to check server usage (minimum: 1 minute)</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+        </form>
+    </div>
+</div>
+
+<!-- Add/Edit Webhook Modal -->
+<div id="webhookModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="close" onclick="closeWebhookModal()">&times;</span>
+            <h4 id="modalTitle">Add Webhook</h4>
+        </div>
+        <form id="webhook-form">
+            {% csrf_token %}
+            <input type="hidden" id="webhook-id" name="webhook_id">
+            <div class="form-group">
+                <label for="webhook-name">Webhook Name:</label>
+                <input type="text" id="webhook-name" name="name" class="form-control" placeholder="e.g., Main Server Alerts" required>
+            </div>
+            <div class="form-group">
+                <label for="webhook-url">Discord Webhook URL:</label>
+                <input type="url" id="webhook-url" name="url" class="form-control" placeholder="https://discord.com/api/webhooks/..." required>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="webhook-enabled" name="enabled" checked>
+                    <label for="webhook-enabled">Enabled</label>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" class="btn" onclick="closeWebhookModal()" style="background: #e2e8f0; margin-right: 10px;">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// CSRF Token helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Toggle server usage config visibility
+function toggleServerUsageConfig() {
+    const enabled = document.getElementById('id_server_usage_enabled').checked;
+    const config = document.getElementById('server-usage-config');
+    const thresholdInputs = document.getElementById('threshold-inputs');
+    const thresholdMode = document.querySelector('input[name="server_usage_threshold_mode"]:checked').value === '1';
+    
+    config.style.display = enabled ? 'block' : 'none';
+    if (thresholdInputs) {
+        thresholdInputs.style.display = (enabled && thresholdMode) ? 'grid' : 'none';
+    }
+}
+
+// Toggle threshold inputs based on mode
+document.querySelectorAll('input[name="server_usage_threshold_mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const thresholdInputs = document.getElementById('threshold-inputs');
+        thresholdInputs.style.display = this.value === '1' ? 'grid' : 'none';
+    });
+});
+
+// Webhook Modal Functions
+function openAddWebhookModal() {
+    document.getElementById('modalTitle').textContent = 'Add Webhook';
+    document.getElementById('webhook-form').reset();
+    document.getElementById('webhook-id').value = '';
+    document.getElementById('webhook-enabled').checked = true;
+    document.getElementById('webhookModal').classList.add('show');
+}
+
+function openEditWebhookModal(webhookId) {
+    fetch(`/plugins/discordWebhooks/webhook/${webhookId}/edit/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('modalTitle').textContent = 'Edit Webhook';
+                document.getElementById('webhook-id').value = data.webhook.id;
+                document.getElementById('webhook-name').value = data.webhook.name;
+                document.getElementById('webhook-url').value = data.webhook.url;
+                document.getElementById('webhook-enabled').checked = data.webhook.enabled;
+                document.getElementById('webhookModal').classList.add('show');
+            } else {
+                showAlert('Error loading webhook: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error loading webhook', 'danger');
+        });
+}
+
+function closeWebhookModal() {
+    document.getElementById('webhookModal').classList.remove('show');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('webhookModal');
+    if (event.target === modal) {
+        closeWebhookModal();
+    }
+}
+
+// Webhook Form Submit
+document.getElementById('webhook-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const webhookId = document.getElementById('webhook-id').value;
+    const formData = new FormData(this);
+    const url = webhookId ? `/plugins/discordWebhooks/webhook/${webhookId}/edit/` : '/plugins/discordWebhooks/webhook/add/';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status, response.statusText);
+        if (!response.ok) {
+            // Try to parse JSON error, but handle non-JSON responses
+            return response.text().then(text => {
+                console.error('Error response:', text);
+                try {
+                    const data = JSON.parse(text);
+                    throw new Error(data.error || data.message || `Server error: ${response.status}`);
+                } catch (parseError) {
+                    // If not JSON, throw error with status code and text
+                    throw new Error(`HTTP ${response.status} ${response.statusText}: ${text.substring(0, 200)}`);
+                }
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data received:', data);
+        if (data.success) {
+            showAlert(data.message || 'Webhook saved successfully', 'success');
+            closeWebhookModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            console.error('Server returned success: false. Data:', data);
+            const errorMsg = data.error || data.error_message || data.errorMessage || 
+                           (data.errors ? (typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors)) : 'Unknown server error');
+            console.error('Error message to display:', errorMsg);
+            showAlert('Error: ' + errorMsg, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error("Catch block triggered - Error:", error);
+        console.error("Error type:", typeof error);
+        let errorMsg = "Unknown error occurred";
+        if (error) {
+            if (typeof error === "string") {
+                errorMsg = error;
+            } else if (error.message) {
+                errorMsg = error.message;
+            } else if (error.toString && typeof error.toString === "function") {
+                errorMsg = error.toString();
+                if (errorMsg === "[object Object]") {
+                    errorMsg = JSON.stringify(error);
+                }
+            } else {
+                errorMsg = String(error);
+            }
+        }
+        console.error("Final error message:", errorMsg);
+        showAlert("Error saving webhook: " + errorMsg, "danger");
+    });
+});
+
+// Test Webhook
+function testWebhook(webhookId) {
+    if (!confirm('Send a test webhook to this URL?')) return;
+    
+    fetch(`/plugins/discordWebhooks/webhook/${webhookId}/test/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error testing webhook', 'danger');
+    });
+}
+
+// Delete Webhook
+function deleteWebhook(webhookId) {
+    if (!confirm('Are you sure you want to delete this webhook?')) return;
+    
+    fetch(`/plugins/discordWebhooks/webhook/${webhookId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error deleting webhook', 'danger');
+    });
+}
+
+// Settings Form Submit
+document.getElementById('settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+        } else {
+            showAlert('Error: ' + (data.error || JSON.stringify(data.errors)), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error saving settings', 'danger');
+    });
+});
+
+// Alert function
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    `;
+    alert.textContent = message;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}
