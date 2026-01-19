@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>PM2 Manager</name>
+    <type>Utility</type>
+    <description>Comprehensive PM2 process manager for CyberPanel with real-time monitoring, node management, and application control. Monitor CPU, memory, and process status with WebSocket support.</description>
+    <version>1.0.0</version>
+    <author>Master3395</author>
+    <url>/plugins/pm2Manager/</url>
+    <settings_url>/plugins/pm2Manager/settings/</settings_url>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
+    <requirements>
+        <software>pm2</software>
+        <software>nodejs</software>
+        <python>3.6+</python>
+    </requirements>
+    <features>
+        <feature>Real-time PM2 process monitoring via WebSockets</feature>
+        <feature>Start, stop, restart, and delete PM2 applications</feature>
+        <feature>Individual node information and statistics</feature>
+        <feature>CPU and memory usage tracking</feature>
+        <feature>Process logs viewing</feature>
+        <feature>Add new PM2 applications</feature>
+        <feature>Cluster mode support</feature>
+    </features>
+</cyberpanelPluginConfig>
