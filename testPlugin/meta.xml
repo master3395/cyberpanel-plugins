@@ -4,13 +4,18 @@
     <type>Utility</type>
     <version>1.0.0</version>
     <description>A comprehensive test plugin for CyberPanel with enable/disable functionality, test button, popup messages, and inline integration</description>
-    <author>CyberPanel Development Team</author>
+    <author>usmannasir</author>
     <website>https://github.com/cyberpanel/testPlugin</website>
     <license>MIT</license>
     <dependencies>
         <python>3.6+</python>
         <django>2.2+</django>
+        <cyberpanel>2.5.5+</cyberpanel>
     </dependencies>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
     <permissions>
         <admin>true</admin>
         <user>false</user>
