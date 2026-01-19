@@ -4,6 +4,11 @@
     <type>Utility</type>
     <description>Send server notifications (SSH logins, security warnings, server usage) to Discord via webhooks</description>
     <version>1.0.0</version>
+    <author>Master3395</author>
     <url>/plugins/discordWebhooks/</url>
     <settings_url>/plugins/discordWebhooks/settings/</settings_url>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
 </cyberpanelPluginConfig>

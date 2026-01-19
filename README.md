@@ -2,7 +2,8 @@
 
 A collection of plugins for CyberPanel web hosting control panel.
 
-**Author:** master3395
+**Author:** master3395  
+**Compatible with:** CyberPanel 2.5.5-dev and higher
 
 ## Available Plugins
 
@@ -203,9 +204,18 @@ pluginName/
 
 ### Requirements
 
+- CyberPanel 2.5.5-dev or higher
 - Python 3.6+
 - Django (as used by CyberPanel)
 - Compatible with CyberPanel plugin system
+
+### CyberPanel 2.5.5-dev Features
+
+All plugins in this repository are compatible with CyberPanel 2.5.5-dev and support:
+- Enhanced plugin management interface
+- GitHub commit date tracking
+- Plugin store with caching
+- Modify Date column in plugin tables
 
 ## Contributing
 
@@ -233,4 +243,5 @@ For issues and questions:
 
 ---
 
-*Last updated: 2026-01-04*
+*Last updated: 2026-01-19*  
+*Compatible with CyberPanel 2.5.5-dev*
