@@ -3,20 +3,40 @@ import subprocess
 import os
 import re
 from datetime import datetime, timedelta
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.utils import timezone
+from functools import wraps
+from plogical.mailUtilities import mailUtilities
+from plogical.httpProc import httpProc
 from .models import Fail2banSettings, SecurityEvent, BannedIP
 from .utils import Fail2banManager
 
-@login_required
+def cyberpanel_login_required(view_func):
+    """
+    Custom decorator that checks for CyberPanel session userID
+    """
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            userID = request.session['userID']
+            # User is authenticated via CyberPanel session
+            return view_func(request, *args, **kwargs)
+        except KeyError:
+            # Not logged in, redirect to login
+            from loginSystem.views import loadLoginPage
+            return redirect(loadLoginPage)
+    return _wrapped_view
+
+@cyberpanel_login_required
 def fail2ban_plugin(request):
     """Main plugin page (required by CyberPanel)"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         status = manager.get_status()
         
@@ -24,25 +44,29 @@ def fail2ban_plugin(request):
             'title': 'Fail2ban Security Manager',
             'status': status,
         }
-        return render(request, 'fail2ban_plugin/dashboard.html', context)
+        proc = httpProc(request, 'fail2ban/dashboard.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Plugin Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def plugin_card(request):
     """Plugin card view with buttons"""
     try:
+        mailUtilities.checkHome()
         context = {
             'title': 'Settings Plugin Card'
         }
-        return render(request, 'fail2ban_plugin/plugin_card.html', context)
+        proc = httpProc(request, 'fail2ban/plugin_card.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Plugin Card Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def dashboard(request):
     """Standalone dashboard page"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         status = manager.get_status()
         
@@ -50,14 +74,16 @@ def dashboard(request):
             'title': 'Fail2ban Dashboard',
             'status': status,
         }
-        return render(request, 'fail2ban_plugin/dashboard.html', context)
+        proc = httpProc(request, 'fail2ban/dashboard.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Dashboard Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def jails_standalone(request):
     """Standalone jails management page"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         jails = manager.get_jails()
         
@@ -65,14 +91,16 @@ def jails_standalone(request):
             'title': 'Jail Management',
             'jails': jails,
         }
-        return render(request, 'fail2ban_plugin/jails_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/jails_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Jails Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def banned_ips_standalone(request):
     """Standalone banned IPs page"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         banned_ips = manager.get_banned_ips()
         
@@ -80,14 +108,16 @@ def banned_ips_standalone(request):
             'title': 'Banned IPs',
             'banned_ips': banned_ips,
         }
-        return render(request, 'fail2ban_plugin/banned_ips_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/banned_ips_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Banned IPs Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def whitelist_standalone(request):
     """Standalone whitelist page"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         whitelist = manager.get_whitelist()
         
@@ -95,14 +125,16 @@ def whitelist_standalone(request):
             'title': 'IP Whitelist Management',
             'whitelist': whitelist,
         }
-        return render(request, 'fail2ban_plugin/whitelist_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/whitelist_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Whitelist Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def blacklist_standalone(request):
     """Standalone blacklist page"""
     try:
+        mailUtilities.checkHome()
         manager = Fail2banManager()
         blacklist = manager.get_blacklist()
         
@@ -110,44 +142,51 @@ def blacklist_standalone(request):
             'title': 'IP Blacklist Management',
             'blacklist': blacklist,
         }
-        return render(request, 'fail2ban_plugin/blacklist_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/blacklist_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Blacklist Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def logs_standalone(request):
     """Standalone logs page"""
     try:
+        mailUtilities.checkHome()
         context = {
             'title': 'Security Logs',
         }
-        return render(request, 'fail2ban_plugin/logs_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/logs_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Logs Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def statistics_standalone(request):
     """Standalone statistics page"""
     try:
+        mailUtilities.checkHome()
         context = {
             'title': 'Security Statistics',
         }
-        return render(request, 'fail2ban_plugin/statistics_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/statistics_standalone.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Statistics Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def settings_standalone(request):
     """Standalone settings page"""
     try:
+        mailUtilities.checkHome()
         context = {
             'title': 'Settings',
         }
-        return render(request, 'fail2ban_plugin/settings_standalone.html', context)
+        proc = httpProc(request, 'fail2ban/settings.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Settings Error: {str(e)}</div>")
 
-@login_required
+@cyberpanel_login_required
 def unified_settings(request):
     """Unified settings view with tabs"""
     try:
@@ -191,7 +230,8 @@ def unified_settings(request):
                 {'id': 'settings', 'name': 'Settings', 'icon': '⚙️'},
             ]
         }
-        return render(request, 'fail2ban_plugin/clean_settings.html', context)
+        proc = httpProc(request, 'fail2ban/clean_settings.html', context, 'admin')
+        return proc.render()
     except Exception as e:
         # Log the error and return a proper error response
         import logging
@@ -209,76 +249,90 @@ def unified_settings(request):
         </div>
         """, status=500)
 
-@login_required
-def dashboard(request):
+@cyberpanel_login_required
+def dashboard_legacy(request):
     """Legacy dashboard view - redirects to unified settings"""
     return unified_settings(request)
 
-@login_required
+@cyberpanel_login_required
 def jails_management(request):
     """Jails management page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Jails Management',
         'active_tab': 'jails'
     }
-    return render(request, 'fail2ban_plugin/jails.html', context)
+    proc = httpProc(request, 'fail2ban/jails.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def banned_ips_management(request):
     """Banned IPs management page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Banned IPs Management',
         'active_tab': 'banned_ips'
     }
-    return render(request, 'fail2ban_plugin/banned_ips.html', context)
+    proc = httpProc(request, 'fail2ban/banned_ips.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def whitelist_management(request):
     """Whitelist management page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Whitelist Management',
         'active_tab': 'whitelist'
     }
-    return render(request, 'fail2ban_plugin/whitelist.html', context)
+    proc = httpProc(request, 'fail2ban/whitelist.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def blacklist_management(request):
     """Blacklist management page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Blacklist Management',
         'active_tab': 'blacklist'
     }
-    return render(request, 'fail2ban_plugin/blacklist.html', context)
+    proc = httpProc(request, 'fail2ban/blacklist.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def settings_management(request):
     """Settings management page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Settings Management',
         'active_tab': 'settings'
     }
-    return render(request, 'fail2ban_plugin/settings.html', context)
+    proc = httpProc(request, 'fail2ban/settings.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def logs_view(request):
     """Logs view page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Security Logs',
         'active_tab': 'logs'
     }
-    return render(request, 'fail2ban_plugin/logs.html', context)
+    proc = httpProc(request, 'fail2ban/logs.html', context, 'admin')
+    return proc.render()
 
-@login_required
+@cyberpanel_login_required
 def statistics_view(request):
     """Statistics view page"""
+    mailUtilities.checkHome()
     context = {
         'title': 'Security Statistics',
         'active_tab': 'statistics'
     }
-    return render(request, 'fail2ban_plugin/statistics.html', context)
+    proc = httpProc(request, 'fail2ban/statistics.html', context, 'admin')
+    return proc.render()
 
 # API Views
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_status(request):
     """Get fail2ban service status"""
@@ -295,7 +349,7 @@ def api_status(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_jails(request):
     """Get all jails information"""
@@ -312,7 +366,7 @@ def api_jails(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_banned_ips(request):
     """Get all banned IPs"""
@@ -329,7 +383,7 @@ def api_banned_ips(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_whitelist(request):
     """Manage whitelist IPs"""
@@ -379,7 +433,7 @@ def api_whitelist(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_blacklist(request):
     """Manage blacklist IPs"""
@@ -429,7 +483,7 @@ def api_blacklist(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["POST"])
 def api_ban_ip(request):
     """Ban an IP address"""
@@ -467,7 +521,7 @@ def api_ban_ip(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["POST"])
 def api_unban_ip(request):
     """Unban an IP address"""
@@ -505,7 +559,7 @@ def api_unban_ip(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["POST"])
 def api_restart(request):
     """Restart fail2ban service"""
@@ -533,7 +587,7 @@ def api_restart(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_logs(request):
     """Get fail2ban logs"""
@@ -550,7 +604,7 @@ def api_logs(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET", "POST"])
 def api_settings(request):
     """Get or update fail2ban settings"""
@@ -592,7 +646,7 @@ def api_settings(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_statistics(request):
     """Get security statistics"""
@@ -637,7 +691,7 @@ def api_statistics(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["POST"])
 def api_toggle_plugin(request):
     """Toggle plugin on/off"""
@@ -683,7 +737,7 @@ def api_toggle_plugin(request):
             'error': str(e)
         }, status=500)
 
-@login_required
+@cyberpanel_login_required
 @require_http_methods(["POST"])
 def api_restart_litespeed(request):
     """Restart LiteSpeed service"""
