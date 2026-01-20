@@ -44,6 +44,10 @@ def discord_webhooks_plugin(request):
 def settings_view(request):
     """Main settings page"""
     try:
+        from plogical.mailUtilities import mailUtilities
+        from plogical.httpProc import httpProc
+        
+        mailUtilities.checkHome()
         webhooks = DiscordWebhook.objects.all().order_by('name')
         settings = WebhookSettings.get_settings()
         
@@ -55,7 +59,8 @@ def settings_view(request):
             'settings_form': WebhookSettingsForm(instance=settings)
         }
         
-        return render(request, 'discordWebhooks/settings.html', context)
+        proc = httpProc(request, 'discordWebhooks/settings.html', context, 'admin')
+        return proc.render()
         
     except Exception as e:
         logging.writeToFile(f"Discord Webhooks settings error: {str(e)}")

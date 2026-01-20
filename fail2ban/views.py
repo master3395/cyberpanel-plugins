@@ -605,12 +605,31 @@ def api_logs(request):
         }, status=500)
 
 @cyberpanel_login_required
+@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def api_settings(request):
     """Get or update fail2ban settings"""
     try:
+        # Get Administrator from CyberPanel session
+        from loginSystem.models import Administrator
+        from django.contrib.auth.models import User
+        userID = request.session['userID']
+        admin = Administrator.objects.get(pk=userID)
+        
+        # Get or create Django User for this Administrator
+        # CyberPanel uses Administrator model, but our settings model uses User
+        # Create a User if it doesn't exist (one-to-one mapping)
+        user, user_created = User.objects.get_or_create(
+            username=admin.userName,
+            defaults={
+                'email': admin.email if hasattr(admin, 'email') else '',
+                'first_name': admin.firstName if hasattr(admin, 'firstName') else '',
+                'last_name': admin.lastName if hasattr(admin, 'lastName') else '',
+            }
+        )
+        
         if request.method == 'GET':
-            settings, created = Fail2banSettings.objects.get_or_create(user=request.user)
+            settings, created = Fail2banSettings.objects.get_or_create(user=user)
             return JsonResponse({
                 'success': True,
                 'data': {
@@ -625,7 +644,7 @@ def api_settings(request):
         
         elif request.method == 'POST':
             data = json.loads(request.body)
-            settings, created = Fail2banSettings.objects.get_or_create(user=request.user)
+            settings, created = Fail2banSettings.objects.get_or_create(user=user)
             
             settings.email_notifications = data.get('email_notifications', settings.email_notifications)
             settings.auto_ban_threshold = data.get('auto_ban_threshold', settings.auto_ban_threshold)
