@@ -16,10 +16,10 @@ A collection of plugins for CyberPanel web hosting control panel.
 
 | Plugin | Type | Pricing | Author | Description |
 |--------|------|---------|--------|-------------|
-| [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | master3395 | Basic test plugin for CyberPanel plugin system |
-| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Utility | 🟢 Free | master3395 | Send server notifications to Discord |
-| [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
-| [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
+| [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
+| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Utility | 🟢 Free | Master3395 | Send server notifications to Discord |
+| [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | Master3395 | Manage and monitor fail2ban settings |
+| [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | Master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 
 ## Plugin Pricing
