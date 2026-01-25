@@ -21,6 +21,18 @@ Badges appear in:
 - Table View (next to version)
 - CyberPanel Plugin Store (separate "Pricing" column)
 
+## Plugin Pricing
+
+Plugins can be either **Free** or **Paid**:
+
+- **Free Plugins**: Available to all users, no subscription required
+- **Paid Plugins**: Require a Patreon subscription to a specific tier to use
+
+Paid plugins will display:
+- A "Paid" badge (yellow) in Grid, Table, and Store views
+- A subscription warning with a link to the Patreon membership page
+- Installation is allowed, but functionality requires an active subscription
+
 ## Available Plugins
 
 ### 1. Test Plugin
@@ -116,6 +128,43 @@ Manage and monitor fail2ban security settings through CyberPanel.
 - Appropriate system permissions
 
 **Author:** master3395
+
+---
+
+### 4. Premium Plugin Example
+
+An example paid plugin demonstrating the premium plugin system with Patreon subscription integration.
+
+**Version:** 1.0.0  
+**Type:** Utility  
+**Description:** An example paid plugin that requires Patreon subscription to "CyberPanel Paid Plugin" tier. Users can install it but cannot run it without subscription.
+
+**Features:**
+
+* Premium plugin example
+* Patreon subscription integration
+* Subscription verification
+* Remote API verification for security
+* Example of paid plugin structure
+
+**Installation:**
+
+1. Download the plugin ZIP file
+2. Upload via CyberPanel Plugin Manager
+3. Install and activate
+4. Subscribe to "CyberPanel Paid Plugin" tier on Patreon to use
+
+**URL:** `/plugins/premiumPlugin/`  
+**Settings URL:** `/plugins/premiumPlugin/settings/`
+
+**Requirements:**
+
+* Patreon subscription to "CyberPanel Paid Plugin" tier
+* Active internet connection for subscription verification
+
+**Author:** master3395
+
+**Pricing:** Paid - Requires Patreon subscription
 
 ---
 
