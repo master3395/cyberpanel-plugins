@@ -21,6 +21,8 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | Master3395 | Manage and monitor fail2ban settings |
 | [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | Master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
+| [Example Plugin](docs/plugins/examplePlugin.md) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
+| [Email Marketing](docs/plugins/emailMarketing.md) | Utility | 🟢 Free | master3395 | Email marketing plugin for CyberPanel |
 
 ## Plugin Pricing
 
