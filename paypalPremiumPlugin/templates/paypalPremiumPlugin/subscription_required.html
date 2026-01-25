@@ -1,0 +1,140 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Payment Required - CyberPanel" %}{% endblock %}
+
+{% block header_scripts %}
+<style>
+    .payment-required-container {
+        padding: 40px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .payment-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .premium-icon {
+        font-size: 64px;
+        color: #0070ba;
+        margin-bottom: 20px;
+    }
+    
+    .payment-card h1 {
+        color: #2f3640;
+        margin-bottom: 15px;
+    }
+    
+    .payment-card p {
+        color: #64748b;
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+    
+    .paypal-button {
+        display: inline-block;
+        background: #0070ba;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        margin: 10px;
+    }
+    
+    .paypal-button:hover {
+        background: #003087;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 112, 186, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .paypal-me-button {
+        background: linear-gradient(135deg, #0070ba 0%, #003087 100%);
+    }
+    
+    .paypal-payment-link-button {
+        background: linear-gradient(135deg, #009cde 0%, #0070ba 100%);
+    }
+    
+    .info-box {
+        background: #f8f9ff;
+        border-left: 4px solid #0070ba;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 30px;
+        text-align: left;
+    }
+    
+    .info-box h3 {
+        margin-top: 0;
+        color: #2f3640;
+    }
+    
+    .info-box ul {
+        color: #64748b;
+        line-height: 1.8;
+    }
+    
+    .payment-buttons-wrapper {
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-required-container">
+    <div class="payment-card">
+        <div class="premium-icon">
+            <i class="fab fa-paypal"></i>
+        </div>
+        <h1>{% trans "PayPal Premium Plugin Access Required" %}</h1>
+        <p>
+            {% trans "This plugin requires PayPal payment to access premium features." %}
+        </p>
+        <p>
+            {% trans "You can install this plugin, but you need to complete payment to run it." %}
+        </p>
+        
+        <div class="payment-buttons-wrapper">
+            {% if paypal_me_url %}
+            <a href="{{ paypal_me_url }}" target="_blank" class="paypal-button paypal-me-button">
+                <i class="fab fa-paypal"></i> {% trans "Pay with PayPal.me" %}
+            </a>
+            {% endif %}
+            {% if paypal_payment_link %}
+            <a href="{{ paypal_payment_link }}" target="_blank" class="paypal-button paypal-payment-link-button">
+                <i class="fab fa-paypal"></i> {% trans "Pay with Payment Link" %}
+            </a>
+            {% else %}
+            <a href="{{ paypal_me_url|default:'https://paypal.me/KimBS?locale.x=en_US&country.x=NO' }}" target="_blank" class="paypal-button paypal-me-button">
+                <i class="fab fa-paypal"></i> {% trans "Pay with PayPal" %}
+            </a>
+            {% endif %}
+        </div>
+        
+        <div class="info-box">
+            <h3>{% trans "How it works:" %}</h3>
+            <ul>
+                <li>{% trans "Install the plugin (already done)" %}</li>
+                <li>{% trans "Complete payment via PayPal.me or PayPal Payment Link" %}</li>
+                <li>{% trans "Payment will be verified on our server" %}</li>
+                <li>{% trans "The plugin will automatically unlock and become functional" %}</li>
+            </ul>
+        </div>
+        
+        <p style="margin-top: 30px; color: #94a3b8; font-size: 14px;">
+            {% trans "Already paid? Payment verification may take a few minutes. Please refresh the page after payment." %}
+        </p>
+    </div>
+</div>
+{% endblock %}
