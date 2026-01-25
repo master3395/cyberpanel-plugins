@@ -1,0 +1,115 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Subscription Required - CyberPanel" %}{% endblock %}
+
+{% block header_scripts %}
+<style>
+    .subscription-required-container {
+        padding: 40px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .subscription-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .premium-icon {
+        font-size: 64px;
+        color: #667eea;
+        margin-bottom: 20px;
+    }
+    
+    .subscription-card h1 {
+        color: #2f3640;
+        margin-bottom: 15px;
+    }
+    
+    .subscription-card p {
+        color: #64748b;
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+    
+    .patreon-button {
+        display: inline-block;
+        background: #FF424D;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+    }
+    
+    .patreon-button:hover {
+        background: #E62E37;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 66, 77, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .info-box {
+        background: #f8f9ff;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 30px;
+        text-align: left;
+    }
+    
+    .info-box h3 {
+        margin-top: 0;
+        color: #2f3640;
+    }
+    
+    .info-box ul {
+        color: #64748b;
+        line-height: 1.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-required-container">
+    <div class="subscription-card">
+        <div class="premium-icon">
+            <i class="fas fa-crown"></i>
+        </div>
+        <h1>{% trans "Premium Plugin Access Required" %}</h1>
+        <p>
+            {% trans "This plugin requires an active Patreon subscription to" %} <strong>"{{ patreon_tier }}"</strong>.
+        </p>
+        <p>
+            {% trans "You can install this plugin, but you need to subscribe to Patreon to run it." %}
+        </p>
+        
+        <a href="{{ patreon_url }}" target="_blank" class="patreon-button">
+            <i class="fab fa-patreon"></i> {% trans "Subscribe on Patreon" %}
+        </a>
+        
+        <div class="info-box">
+            <h3>{% trans "How it works:" %}</h3>
+            <ul>
+                <li>{% trans "Install the plugin (already done)" %}</li>
+                <li>{% trans "Subscribe to the Patreon tier: " %}<strong>{{ patreon_tier }}</strong></li>
+                <li>{% trans "Authorize CyberPanel to check your Patreon membership" %}</li>
+                <li>{% trans "The plugin will automatically unlock and become functional" %}</li>
+            </ul>
+        </div>
+        
+        <p style="margin-top: 30px; color: #94a3b8; font-size: 14px;">
+            {% trans "Already subscribed? Make sure you've authorized CyberPanel to check your Patreon membership." %}
+        </p>
+    </div>
+</div>
+{% endblock %}
