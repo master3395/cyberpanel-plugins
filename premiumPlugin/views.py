@@ -178,43 +178,75 @@ def check_remote_membership(user_email, user_ip=''):
         }
 
 @cyberpanel_login_required
-@remote_verification_required
 def main_view(request):
     """
     Main view for premium plugin
-    Only accessible with Patreon subscription (verified remotely)
+    Shows plugin information and features if subscribed, or subscription required message if not
     """
     mailUtilities.checkHome()
+    
+    # Get user email for verification
+    user_email = getattr(request.user, 'email', None) if hasattr(request, 'user') and request.user else None
+    if not user_email:
+        user_email = request.session.get('email', '') or getattr(request.user, 'username', '')
+    
+    # Check membership status (but don't block access)
+    verification_result = check_remote_membership(user_email, request.META.get('REMOTE_ADDR', ''))
+    has_access = verification_result.get('has_access', False)
+    
+    # Determine plugin status
+    plugin_status = 'Active' if has_access else 'Subscription Required'
     
     context = {
         'plugin_name': 'Premium Plugin Example',
         'version': PLUGIN_VERSION,
-        'description': 'This is an example paid plugin. You have access because you are subscribed to Patreon!',
+        'status': plugin_status,
+        'has_access': has_access,
+        'description': 'This is an example paid plugin that requires Patreon subscription.' if not has_access else 'This is an example paid plugin. You have access because you are subscribed to Patreon!',
+        'patreon_tier': verification_result.get('patreon_tier', 'CyberPanel Paid Plugin'),
+        'patreon_url': verification_result.get('patreon_url', 'https://www.patreon.com/membership/27789984'),
         'features': [
             'Premium Feature 1',
             'Premium Feature 2',
             'Premium Feature 3',
             'Advanced Configuration',
             'Priority Support'
-        ]
+        ] if has_access else []
     }
     
     proc = httpProc(request, 'premiumPlugin/index.html', context, 'admin')
     return proc.render()
 
 @cyberpanel_login_required
-@remote_verification_required
 def settings_view(request):
     """
     Settings page for premium plugin
-    Only accessible with Patreon subscription (verified remotely)
+    Shows settings but disables them if user doesn't have Patreon subscription
     """
     mailUtilities.checkHome()
+    
+    # Get user email for verification
+    user_email = getattr(request.user, 'email', None) if hasattr(request, 'user') and request.user else None
+    if not user_email:
+        user_email = request.session.get('email', '') or getattr(request.user, 'username', '')
+    
+    # Check membership status (but don't block access)
+    verification_result = check_remote_membership(user_email, request.META.get('REMOTE_ADDR', ''))
+    has_access = verification_result.get('has_access', False)
+    
+    # Determine plugin status
+    plugin_status = 'Active' if has_access else 'Subscription Required'
     
     context = {
         'plugin_name': 'Premium Plugin Example',
         'version': PLUGIN_VERSION,
-        'description': 'Configure your premium plugin settings'
+        'plugin_status': plugin_status,
+        'status': plugin_status,  # Keep both for compatibility
+        'description': 'Configure your premium plugin settings',
+        'has_access': has_access,
+        'patreon_tier': verification_result.get('patreon_tier', 'CyberPanel Paid Plugin'),
+        'patreon_url': verification_result.get('patreon_url', 'https://www.patreon.com/membership/27789984'),
+        'verification_message': verification_result.get('message', '')
     }
     
     proc = httpProc(request, 'premiumPlugin/settings.html', context, 'admin')
