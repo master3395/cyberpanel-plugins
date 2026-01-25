@@ -5,6 +5,22 @@ A collection of plugins for CyberPanel web hosting control panel.
 **Author:** master3395  
 **Compatible with:** CyberPanel 2.5.5-dev and higher
 
+## Plugin Pricing
+
+Plugins in this repository can be either **Free** or **Paid**:
+
+- **Free Plugins**: Available to all users, no subscription required
+- **Paid Plugins**: Require Patreon subscription to "CyberPanel Paid Plugin" tier
+
+All plugins display their pricing status with badges:
+- 🟢 **FREE** - Green badge for free plugins
+- 🟡 **PAID** - Yellow badge for paid plugins
+
+Badges appear in:
+- Grid View (next to version)
+- Table View (next to version)
+- CyberPanel Plugin Store (separate "Pricing" column)
+
 ## Available Plugins
 
 ### 1. Test Plugin
@@ -190,6 +206,8 @@ pluginName/
 
 ### meta.xml Format
 
+**Basic Plugin (Free):**
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <cyberpanelPluginConfig>
@@ -201,6 +219,35 @@ pluginName/
     <settings_url>/plugins/pluginName/settings/</settings_url>
 </cyberpanelPluginConfig>
 ```
+
+**Premium Plugin (Paid):**
+
+To create a paid plugin that requires Patreon subscription, add these fields:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>Premium Plugin Name</name>
+    <type>Utility</type>
+    <description>Plugin description</description>
+    <version>1.0.0</version>
+    <url>/plugins/pluginName/</url>
+    <settings_url>/plugins/pluginName/settings/</settings_url>
+    <paid>true</paid>
+    <patreon_tier>CyberPanel Paid Plugin</patreon_tier>
+    <patreon_url>https://www.patreon.com/membership/27789984</patreon_url>
+</cyberpanelPluginConfig>
+```
+
+**Premium Plugin Fields:**
+- `<paid>true</paid>` - Marks the plugin as paid
+- `<patreon_tier>CyberPanel Paid Plugin</patreon_tier>` - The Patreon tier name users must subscribe to
+- `<patreon_url>https://www.patreon.com/membership/27789984</patreon_url>` - Direct link to the Patreon membership page
+
+**Visual Indicators:**
+- Free plugins show a green "FREE" badge in Grid View, Table View, and Plugin Store
+- Paid plugins show a yellow "PAID" badge in all views
+- Paid plugins display a subscription warning with a "Subscribe on Patreon" button
 
 ### Requirements
 
@@ -216,6 +263,9 @@ All plugins in this repository are compatible with CyberPanel 2.5.5-dev and supp
 - GitHub commit date tracking
 - Plugin store with caching
 - Modify Date column in plugin tables
+- **Premium/Paid plugin support with Patreon integration**
+- Free/Paid badges in all views (Grid, Table, Store)
+- Subscription verification and access control
 
 ## Contributing
 
