@@ -178,8 +178,18 @@ def settings_standalone(request):
     """Standalone settings page"""
     try:
         mailUtilities.checkHome()
+        # Get basic status information
+        manager = Fail2banManager()
+        status = manager.get_status()
+        
         context = {
             'title': 'Settings',
+            'plugin_name': 'Fail2ban Security Manager',
+            'version': '1.0.0',
+            'status': 'Active',
+            'plugin_status': 'Active',
+            'description': 'Advanced fail2ban management with real-time monitoring and comprehensive security features',
+            'status_info': status,
         }
         proc = httpProc(request, 'fail2ban/settings.html', context, 'admin')
         return proc.render()
@@ -217,6 +227,9 @@ def unified_settings(request):
         
         context = {
             'title': 'Settings',
+            'plugin_name': 'Fail2ban Security Manager',
+            'version': '1.0.0',
+            'plugin_status': 'Active',
             'active_tab': active_tab,
             'status': status,
             'tabs': [
@@ -619,14 +632,18 @@ def api_settings(request):
         # Get or create Django User for this Administrator
         # CyberPanel uses Administrator model, but our settings model uses User
         # Create a User if it doesn't exist (one-to-one mapping)
-        user, user_created = User.objects.get_or_create(
-            username=admin.userName,
-            defaults={
-                'email': admin.email if hasattr(admin, 'email') else '',
-                'first_name': admin.firstName if hasattr(admin, 'firstName') else '',
-                'last_name': admin.lastName if hasattr(admin, 'lastName') else '',
-            }
-        )
+        # Use select_related to avoid triggering reverse relationships that might cause errors
+        try:
+            user = User.objects.get(username=admin.userName)
+        except User.DoesNotExist:
+            # Create user without triggering signals that might access other plugin tables
+            user = User(
+                username=admin.userName,
+                email=admin.email if hasattr(admin, 'email') else '',
+                first_name=admin.firstName if hasattr(admin, 'firstName') else '',
+                last_name=admin.lastName if hasattr(admin, 'lastName') else '',
+            )
+            user.save()
         
         if request.method == 'GET':
             settings, created = Fail2banSettings.objects.get_or_create(user=user)
@@ -644,7 +661,10 @@ def api_settings(request):
         
         elif request.method == 'POST':
             data = json.loads(request.body)
-            settings, created = Fail2banSettings.objects.get_or_create(user=user)
+            try:
+                settings = Fail2banSettings.objects.get(user=user)
+            except Fail2banSettings.DoesNotExist:
+                settings = Fail2banSettings.objects.create(user=user)
             
             settings.email_notifications = data.get('email_notifications', settings.email_notifications)
             settings.auto_ban_threshold = data.get('auto_ban_threshold', settings.auto_ban_threshold)

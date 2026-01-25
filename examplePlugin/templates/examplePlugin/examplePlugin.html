@@ -1,0 +1,95 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+{% block header_scripts %}
+    <style>
+        .exampleBody {
+            font-weight: bold;
+        }
+        
+        /* Plugin Information Section - Ensure visibility */
+        .plugin-info-section {
+            background: #d1ecf1 !important;
+            border: 1px solid #bee5eb !important;
+            border-radius: 8px !important;
+            padding: 15px 20px !important;
+            margin-bottom: 25px !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        
+        .plugin-info-section ul {
+            list-style: none !important;
+            padding-left: 0 !important;
+            margin-top: 10px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        .plugin-info-section li {
+            margin-bottom: 8px;
+        }
+        
+        .plugin-info-section li:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+{% endblock header_scripts %}
+{% block title %}Example plugin - CyberPanel{% endblock %}
+{% block content %}
+    {% load static %}
+    {% get_current_language as LANGUAGE_CODE %}
+    <!-- Current language: {{ LANGUAGE_CODE }} -->
+    <div class="container" id="examplePluginApp">
+
+        <!-- Plugin Information Section - Always Visible -->
+        <div class="plugin-info-section" style="background: #d1ecf1 !important; border: 1px solid #bee5eb !important; border-radius: 8px !important; padding: 15px 20px !important; margin-bottom: 25px !important; display: block !important; visibility: visible !important; opacity: 1 !important;">
+            <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+            <strong style="color: #0c5460; font-weight: 600;">{% trans "Plugin Information" %}</strong>
+            <ul style="list-style: none !important; padding-left: 0 !important; margin-top: 10px !important; margin-bottom: 0 !important;">
+                <li style="margin-bottom: 8px;"><strong>{% trans "Name" %}:</strong> {{ plugin_name|default:"Example Plugin" }}</li>
+                <li style="margin-bottom: 8px;"><strong>{% trans "Version" %}:</strong> {{ version|default:"1.0.0" }}</li>
+                <li style="margin-bottom: 0;">
+                    <strong>{% trans "Status" %}:</strong> 
+                    <span class="badge badge-success" style="background: #28a745 !important; color: white !important; padding: 4px 10px !important; border-radius: 4px !important; font-size: 12px !important; font-weight: 600 !important; display: inline-block !important;">{{ status|default:"Active" }}</span>
+                </li>
+            </ul>
+        </div>
+
+        <div id="page-title">
+            <h2 id="domainNamePage">{% trans "Example Plugin Page" %}</h2>
+            <p>{% trans "Example Plugin Info" %}</p>
+        </div>
+
+        <div class="panel">
+            <div class="panel-heading container-fluid">
+                <div class="col-xs-4"><h3 class="panel-title">{% trans "examplePlugin" %}</h3></div>
+            </div>
+            <div class="panel-body">
+                <div class="example-box-wrapper">
+                    <p class="exampleBody">[[ pluginBody ]]</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+{% endblock %}
+
+{% block footer_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    {#    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>#}
+    <script src="{% static 'examplePlugin/examplePlugin.js' %}"></script>
+    <script>
+        let examplePluginApp = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#examplePluginApp',
+            data: function () {
+                return {
+                    pluginBody: "Example Plugin Body leveraging templated imported Vue.js",
+                }
+            },
+            methods: {},
+        });
+    </script>
+{% endblock %}

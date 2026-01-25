@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+from functools import wraps
 import json
 from .utils import (
     get_pm2_list, get_pm2_info, get_pm2_logs,
@@ -13,16 +14,39 @@ from .utils import (
     format_pm2_process
 )
 
+def cyberpanel_login_required(view_func):
+    """
+    Custom decorator that checks for CyberPanel session userID
+    """
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            userID = request.session['userID']
+            # User is authenticated via CyberPanel session
+            return view_func(request, *args, **kwargs)
+        except KeyError:
+            # Not logged in, redirect to login
+            from loginSystem.views import loadLoginPage
+            return redirect(loadLoginPage)
+    return _wrapped_view
+
+@cyberpanel_login_required
 def dashboard(request):
     """Main PM2 Manager dashboard"""
     mailUtilities.checkHome()
     proc = httpProc(request, 'pm2Manager/dashboard.html', {}, 'admin')
     return proc.render()
 
+@cyberpanel_login_required
 def settings(request):
     """PM2 Manager settings page"""
     mailUtilities.checkHome()
-    proc = httpProc(request, 'pm2Manager/settings.html', {}, 'admin')
+    context = {
+        'plugin_name': 'PM2 Manager',
+        'version': '1.0.0',
+        'status': 'Active'
+    }
+    proc = httpProc(request, 'pm2Manager/settings.html', context, 'admin')
     return proc.render()
 
 def node_detail(request, app_name):

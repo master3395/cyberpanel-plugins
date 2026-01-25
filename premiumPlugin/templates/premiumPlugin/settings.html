@@ -30,6 +30,162 @@
         padding: 30px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    
+    .subscription-warning {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .subscription-warning-content {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .subscription-warning-title {
+        font-weight: 600;
+        color: #856404;
+        margin-bottom: 5px;
+        font-size: 16px;
+    }
+    
+    .subscription-warning-text {
+        color: #856404;
+        font-size: 14px;
+        margin: 0;
+    }
+    
+    .subscription-warning-button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        white-space: nowrap;
+    }
+    
+    .subscription-warning-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .settings-disabled {
+        opacity: 0.6;
+        pointer-events: none;
+        position: relative;
+    }
+    
+    .settings-disabled::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.7);
+        z-index: 1;
+        border-radius: 8px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2f3640;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #5856d6;
+        box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.1);
+    }
+    
+    .form-control:disabled {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #5856d6 0%, #4a90e2 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(88, 86, 214, 0.4);
+    }
+    
+    .btn-primary:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    /* Plugin Information Section - Ensure visibility */
+    .plugin-info-section {
+        background: #d1ecf1 !important;
+        border: 1px solid #bee5eb !important;
+        border-radius: 8px !important;
+        padding: 15px 20px !important;
+        margin-bottom: 25px !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 10 !important;
+    }
+    
+    .plugin-info-section ul {
+        list-style: none !important;
+        padding-left: 0 !important;
+        margin-top: 10px !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .plugin-info-section li {
+        margin-bottom: 8px;
+    }
+    
+    .plugin-info-section li:last-child {
+        margin-bottom: 0;
+    }
 </style>
 {% endblock %}
 
@@ -38,21 +194,69 @@
     <div class="settings-form">
         <span class="premium-badge">{% trans "Premium Plugin" %}</span>
         <h1>{% trans "Premium Plugin Settings" %}</h1>
+        
+        <!-- Plugin Information Section - Always Visible -->
+        <div class="plugin-info-section" style="background: #d1ecf1 !important; border: 1px solid #bee5eb !important; border-radius: 8px !important; padding: 15px 20px !important; margin-bottom: 25px !important; display: block !important; visibility: visible !important; opacity: 1 !important;">
+            <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+            <strong style="color: #0c5460; font-weight: 600;">{% trans "Plugin Information" %}</strong>
+            <ul style="list-style: none !important; padding-left: 0 !important; margin-top: 10px !important; margin-bottom: 0 !important;">
+                <li style="margin-bottom: 8px;"><strong>{% trans "Name" %}:</strong> {{ plugin_name|default:"Premium Plugin Example" }}</li>
+                <li style="margin-bottom: 8px;"><strong>{% trans "Version" %}:</strong> {{ version|default:"1.0.0" }}</li>
+                <li style="margin-bottom: 0;">
+                    <strong>{% trans "Status" %}:</strong> 
+                    <span class="badge" style="background: {% if has_access %}#28a745{% else %}#6c757d{% endif %} !important; color: white !important; padding: 4px 10px !important; border-radius: 4px !important; font-size: 12px !important; font-weight: 600 !important; display: inline-block !important;">
+                        {{ plugin_status|default:status|default:"Active" }}
+                    </span>
+                </li>
+            </ul>
+        </div>
+        
         <p>{{ description }}</p>
         
-        <form method="post">
+        {% if not has_access %}
+        <div class="subscription-warning">
+            <div class="subscription-warning-content">
+                <div class="subscription-warning-title">
+                    <i class="fas fa-lock"></i> {% trans "Patreon Subscription Required" %}
+                </div>
+                <p class="subscription-warning-text">
+                    {% trans "Paid Plugin: Requires Patreon subscription to" %} "{{ patreon_tier }}". 
+                    {% trans "Settings are visible but disabled until you subscribe." %}
+                </p>
+            </div>
+            <a href="{{ patreon_url }}" target="_blank" class="subscription-warning-button">
+                <i class="fab fa-patreon"></i> {% trans "Subscribe on Patreon" %}
+            </a>
+        </div>
+        {% endif %}
+        
+        <form method="post" {% if not has_access %}onsubmit="event.preventDefault(); return false;"{% endif %}>
             {% csrf_token %}
-            <div class="form-group">
+            <div class="form-group {% if not has_access %}settings-disabled{% endif %}">
                 <label>{% trans "Setting 1" %}</label>
-                <input type="text" class="form-control" name="setting1" value="">
+                <input type="text" class="form-control" name="setting1" value="" {% if not has_access %}disabled{% endif %} placeholder="{% trans 'Enter setting value' %}">
             </div>
             
-            <div class="form-group">
+            <div class="form-group {% if not has_access %}settings-disabled{% endif %}">
                 <label>{% trans "Setting 2" %}</label>
-                <input type="text" class="form-control" name="setting2" value="">
+                <input type="text" class="form-control" name="setting2" value="" {% if not has_access %}disabled{% endif %} placeholder="{% trans 'Enter setting value' %}">
             </div>
             
-            <button type="submit" class="btn btn-primary">{% trans "Save Settings" %}</button>
+            <div class="form-group {% if not has_access %}settings-disabled{% endif %}">
+                <label>{% trans "Setting 3 (Advanced)" %}</label>
+                <textarea class="form-control" name="setting3" rows="4" {% if not has_access %}disabled{% endif %} placeholder="{% trans 'Enter advanced configuration' %}"></textarea>
+            </div>
+            
+            <div class="form-group {% if not has_access %}settings-disabled{% endif %}">
+                <label>
+                    <input type="checkbox" name="enable_feature" {% if not has_access %}disabled{% endif %}>
+                    {% trans "Enable Premium Feature" %}
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" {% if not has_access %}disabled{% endif %}>
+                <i class="fas fa-save"></i> {% trans "Save Settings" %}
+            </button>
         </form>
     </div>
 </div>

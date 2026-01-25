@@ -23,6 +23,60 @@
     box-sizing: border-box;
 }
 
+/* Plugin Information Section - Override fail2ban-plugin CSS reset */
+.fail2ban-plugin .plugin-info-section {
+    all: unset !important;
+    display: block !important;
+    background: #d1ecf1 !important;
+    border: 1px solid #bee5eb !important;
+    border-radius: 8px !important;
+    padding: 15px 20px !important;
+    margin-bottom: 25px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    line-height: 1.5 !important;
+    color: #333 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.fail2ban-plugin .plugin-info-section * {
+    all: unset !important;
+    display: revert !important;
+    box-sizing: border-box !important;
+}
+
+.fail2ban-plugin .plugin-info-section strong {
+    font-weight: 600;
+}
+
+.fail2ban-plugin .plugin-info-section ul {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+}
+
+.fail2ban-plugin .plugin-info-section li {
+    margin-bottom: 8px !important;
+    display: list-item !important;
+}
+
+.fail2ban-plugin .plugin-info-section li:last-child {
+    margin-bottom: 0 !important;
+}
+
+.fail2ban-plugin .plugin-info-section .badge {
+    background: #28a745 !important;
+    color: white !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+}
+
 /* CSS Variables */
 .fail2ban-plugin {
     --primary: #667eea;
@@ -414,6 +468,20 @@
 
 {% block content %}
 <div class="fail2ban-plugin">
+    <!-- Plugin Information Section - Always Visible -->
+    <div class="plugin-info-section">
+        <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+        <strong style="color: #0c5460; font-weight: 600;">Plugin Information</strong>
+        <ul>
+            <li><strong>Name:</strong> {{ plugin_name|default:"Fail2ban Security Manager" }}</li>
+            <li><strong>Version:</strong> {{ version|default:"1.0.0" }}</li>
+            <li>
+                <strong>Status:</strong> 
+                <span class="badge">{{ plugin_status|default:"Active" }}</span>
+            </li>
+        </ul>
+    </div>
+    
     <!-- Header -->
     <div class="header">
         <div>

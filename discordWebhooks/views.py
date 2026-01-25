@@ -53,6 +53,9 @@ def settings_view(request):
         
         context = {
             'title': 'Discord Webhooks Settings',
+            'plugin_name': 'Discord Webhooks',
+            'version': '1.0.0',
+            'status': 'Active',
             'webhooks': webhooks,
             'settings': settings,
             'webhook_form': DiscordWebhookForm(),

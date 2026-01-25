@@ -3,9 +3,72 @@
 {% load static %}
 {% block title %}{% trans "PM2 Manager Settings - CyberPanel" %}{% endblock %}
 
+{% block header_scripts %}
+<style>
+    /* Plugin Information Section - Ensure visibility */
+    .plugin-info-section {
+        background: #d1ecf1 !important;
+        border: 1px solid #bee5eb !important;
+        border-radius: 8px !important;
+        padding: 15px 20px !important;
+        margin-bottom: 25px !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 10 !important;
+    }
+    
+    .plugin-info-section ul {
+        list-style: none !important;
+        padding-left: 0 !important;
+        margin-top: 10px !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .plugin-info-section li {
+        margin-bottom: 8px;
+    }
+    
+    .plugin-info-section li:last-child {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock header_scripts %}
+
 {% block content %}
 <div style="padding: 20px;">
     <h1>{% trans "PM2 Manager Settings" %}</h1>
-    <p>{% trans "Settings page for PM2 Manager plugin" %}</p>
+    
+    <!-- Plugin Information Section - Always Visible -->
+    <div class="plugin-info-section" style="background: #d1ecf1 !important; border: 1px solid #bee5eb !important; border-radius: 8px !important; padding: 15px 20px !important; margin-bottom: 25px !important; display: block !important; visibility: visible !important; opacity: 1 !important;">
+        <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+        <strong style="color: #0c5460; font-weight: 600;">{% trans "Plugin Information" %}</strong>
+        <ul style="list-style: none !important; padding-left: 0 !important; margin-top: 10px !important; margin-bottom: 0 !important;">
+            <li style="margin-bottom: 8px;"><strong>{% trans "Name" %}:</strong> {{ plugin_name|default:"PM2 Manager" }}</li>
+            <li style="margin-bottom: 8px;"><strong>{% trans "Version" %}:</strong> {{ version|default:"1.0.0" }}</li>
+            <li style="margin-bottom: 0;">
+                <strong>{% trans "Status" %}:</strong> 
+                <span class="badge badge-success" style="background: #28a745 !important; color: white !important; padding: 4px 10px !important; border-radius: 4px !important; font-size: 12px !important; font-weight: 600 !important; display: inline-block !important;">{{ status|default:"Active" }}</span>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px;">
+        <h3>{% trans "PM2 Manager Configuration" %}</h3>
+        <p>{% trans "PM2 Manager allows you to monitor and manage Node.js applications running with PM2." %}</p>
+        <p><strong>{% trans "Features:" %}</strong></p>
+        <ul>
+            <li>{% trans "Real-time process monitoring" %}</li>
+            <li>{% trans "Start, stop, and restart applications" %}</li>
+            <li>{% trans "View logs and statistics" %}</li>
+            <li>{% trans "Manage multiple PM2 processes" %}</li>
+        </ul>
+        <p style="margin-top: 15px;">
+            <a href="/plugins/pm2Manager/" class="btn btn-primary" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+                {% trans "Go to PM2 Manager Dashboard" %}
+            </a>
+        </p>
+    </div>
 </div>
 {% endblock %}
