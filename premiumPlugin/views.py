@@ -18,7 +18,7 @@ import json
 
 # Remote verification server (YOUR server, not user's server)
 REMOTE_VERIFICATION_URL = 'https://api.newstargeted.com/api/verify-patreon-membership'
-PLUGIN_NAME = 'premiumPlugin'
+PLUGIN_NAME = 'premiumPlugin'  # Patreon Premium Plugin Example
 PLUGIN_VERSION = '1.0.0'
 
 def cyberpanel_login_required(view_func):
@@ -63,7 +63,7 @@ def remote_verification_required(view_func):
         if not verification_result.get('has_access', False):
             # User doesn't have subscription - show subscription required page
             context = {
-                'plugin_name': 'Premium Plugin Example',
+                'plugin_name': 'Patreon Premium Plugin Example',
                 'is_paid': True,
                 'patreon_tier': verification_result.get('patreon_tier', 'CyberPanel Paid Plugin'),
                 'patreon_url': verification_result.get('patreon_url', 'https://www.patreon.com/c/newstargeted/membership'),
@@ -198,7 +198,7 @@ def main_view(request):
     plugin_status = 'Active' if has_access else 'Subscription Required'
     
     context = {
-        'plugin_name': 'Premium Plugin Example',
+        'plugin_name': 'Patreon Premium Plugin Example',
         'version': PLUGIN_VERSION,
         'status': plugin_status,
         'has_access': has_access,
@@ -238,7 +238,7 @@ def settings_view(request):
     plugin_status = 'Active' if has_access else 'Subscription Required'
     
     context = {
-        'plugin_name': 'Premium Plugin Example',
+        'plugin_name': 'Patreon Premium Plugin Example',
         'version': PLUGIN_VERSION,
         'plugin_status': plugin_status,
         'status': plugin_status,  # Keep both for compatibility
@@ -260,7 +260,7 @@ def api_status_view(request):
     Only accessible with Patreon subscription (verified remotely)
     """
     return JsonResponse({
-        'plugin_name': 'Premium Plugin Example',
+        'plugin_name': 'Patreon Premium Plugin Example',
         'version': PLUGIN_VERSION,
         'status': 'active',
         'subscription': 'active',
