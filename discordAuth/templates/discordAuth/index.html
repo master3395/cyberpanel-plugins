@@ -1,0 +1,82 @@
+{% extends "baseTemplate/baseTemplate.html" %}
+{% load static %}
+
+{% block title %}Discord Authentication{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="fab fa-discord"></i> Discord Authentication
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4>Plugin Status</h4>
+                                <p>
+                                    <strong>Version:</strong> {{ version }}<br>
+                                    <strong>Status:</strong> 
+                                    {% if enabled %}
+                                        <span class="label label-success">Enabled</span>
+                                    {% else %}
+                                        <span class="label label-danger">Disabled</span>
+                                    {% endif %}
+                                </p>
+                                
+                                <hr>
+                                
+                                <h4>Your Discord Account</h4>
+                                {% if has_discord %}
+                                    <div class="alert alert-success">
+                                        <i class="fab fa-discord"></i> 
+                                        <strong>Discord Account Linked:</strong><br>
+                                        <strong>Username:</strong> {{ discord_account.discord_username }}#{{ discord_account.discord_discriminator }}<br>
+                                        <strong>Discord ID:</strong> {{ discord_account.discord_id }}<br>
+                                        <strong>Linked:</strong> {{ discord_account.linked_at|date:"Y-m-d H:i" }}<br>
+                                        <strong>Last Used:</strong> {{ discord_account.last_used|date:"Y-m-d H:i" }}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i> 
+                                        No Discord account is currently linked to your CyberPanel account.
+                                        <br><br>
+                                        To link your Discord account, log out and use the "Login with Discord" button on the login page.
+                                    </div>
+                                {% endif %}
+                                
+                                <hr>
+                                
+                                <h4>About Discord Authentication</h4>
+                                <p>
+                                    Discord Authentication allows you to log in to CyberPanel using your Discord account.
+                                    This provides a secure and convenient way to access your control panel without
+                                    needing to remember a separate password.
+                                </p>
+                                
+                                <h5>Features:</h5>
+                                <ul>
+                                    <li>Secure OAuth2 authentication via Discord</li>
+                                    <li>Account linking to existing CyberPanel accounts</li>
+                                    <li>Automatic user creation (if enabled by admin)</li>
+                                    <li>Single sign-on experience</li>
+                                </ul>
+                                
+                                <div class="text-center" style="margin-top: 30px;">
+                                    <a href="/plugins/discordAuth/settings/" class="btn btn-primary">
+                                        <i class="fa fa-cog"></i> Configure Settings
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
