@@ -1048,9 +1048,107 @@
 let currentTab = '{{ active_tab|default:"overview" }}';
 let pluginEnabled = true;
 
+// Utility functions - defined first to ensure they're available
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+    
+    const container = document.querySelector('.fail2ban-plugin-container');
+    if (container) {
+        container.insertBefore(alert, container.firstChild);
+        
+        setTimeout(() => {
+            alert.remove();
+        }, 5000);
+    }
+}
+
+function showAddWhitelistModal() {
+    const modal = document.getElementById('addWhitelistModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    } else {
+        console.error('addWhitelistModal element not found');
+    }
+}
+
+function showAddBlacklistModal() {
+    const modal = document.getElementById('addBlacklistModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    } else {
+        console.error('addBlacklistModal element not found');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Refresh functions - must be in global scope for onclick handlers
+function refreshJails() {
+    if (typeof loadJailsData === 'function') {
+        loadJailsData();
+    } else {
+        console.error('loadJailsData function not found');
+    }
+}
+
+function refreshBannedIPs() {
+    if (typeof loadBannedIPsData === 'function') {
+        loadBannedIPsData();
+    } else {
+        console.error('loadBannedIPsData function not found');
+    }
+}
+
+function refreshLogs() {
+    if (typeof loadLogsData === 'function') {
+        loadLogsData();
+    } else {
+        console.error('loadLogsData function not found');
+    }
+}
+
+function refreshStatistics() {
+    if (typeof loadStatisticsData === 'function') {
+        loadStatisticsData();
+    } else {
+        console.error('loadStatisticsData function not found');
+    }
+}
+
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
     initializeTabs();
+    
+    // Check URL hash for tab navigation (e.g., #settings)
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+        // Wait a bit for tabs to initialize, then switch
+        setTimeout(function() {
+            switchTab(hash);
+        }, 100);
+    }
     
     // Load data for the active tab
     switch(currentTab) {
@@ -1080,10 +1178,21 @@ document.addEventListener('DOMContentLoaded', function() {
             break;
     }
     
-    // Set up form handlers
-    document.getElementById('settingsForm').addEventListener('submit', saveSettings);
-    document.getElementById('addWhitelistForm').addEventListener('submit', addToWhitelist);
-    document.getElementById('addBlacklistForm').addEventListener('submit', addToBlacklist);
+    // Set up form handlers (check if elements exist first)
+    const settingsForm = document.getElementById('settingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', saveSettings);
+    }
+    
+    const addWhitelistForm = document.getElementById('addWhitelistForm');
+    if (addWhitelistForm) {
+        addWhitelistForm.addEventListener('submit', addToWhitelist);
+    }
+    
+    const addBlacklistForm = document.getElementById('addBlacklistForm');
+    if (addBlacklistForm) {
+        addBlacklistForm.addEventListener('submit', addToBlacklist);
+    }
     
     // Plugin toggle is handled by onclick attribute in HTML
 });
@@ -1093,27 +1202,72 @@ function initializeTabs() {
     const tabLinks = document.querySelectorAll('.tab-link');
     const tabContents = document.querySelectorAll('.tab-content');
     
+    console.log(`Found ${tabLinks.length} tab links and ${tabContents.length} tab contents`);
+    
     tabLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const tabId = this.getAttribute('data-tab');
-            switchTab(tabId);
+            console.log(`Tab clicked: ${tabId}`);
+            if (tabId) {
+                switchTab(tabId);
+            } else {
+                console.warn('Tab link has no data-tab attribute:', this);
+            }
         });
+    });
+    
+    // Also handle hash changes
+    window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+            switchTab(hash);
+        }
     });
 }
 
 function switchTab(tabId) {
+    // Update URL hash without triggering page reload
+    if (history.pushState) {
+        history.pushState(null, null, '#' + tabId);
+    } else {
+        window.location.hash = '#' + tabId;
+    }
+    
     // Update active tab link
     document.querySelectorAll('.tab-link').forEach(link => {
         link.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    const activeLink = document.querySelector(`[data-tab="${tabId}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
     
     // Update active tab content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    document.getElementById(tabId).classList.add('active');
+    const activeContent = document.getElementById(tabId);
+    if (activeContent) {
+        activeContent.classList.add('active');
+    } else {
+        console.warn(`Tab content with id "${tabId}" not found`);
+        // Try alternative ID format (with dashes instead of underscores)
+        const altId = tabId.replace(/_/g, '-');
+        const altContent = document.getElementById(altId);
+        if (altContent) {
+            altContent.classList.add('active');
+            console.log(`Found tab content with alternative ID: ${altId}`);
+        } else {
+            // Try reverse (dashes to underscores)
+            const altId2 = tabId.replace(/-/g, '_');
+            const altContent2 = document.getElementById(altId2);
+            if (altContent2) {
+                altContent2.classList.add('active');
+                console.log(`Found tab content with alternative ID: ${altId2}`);
+            }
+        }
+    }
     
     currentTab = tabId;
     
@@ -1122,27 +1276,27 @@ function switchTab(tabId) {
         case 'overview':
             loadOverviewData();
             break;
-            case 'jails':
+        case 'jails':
             loadJailsData();
-                break;
-            case 'banned-ips':
+            break;
+        case 'banned-ips':
             loadBannedIPsData();
-                break;
-            case 'whitelist':
+            break;
+        case 'whitelist':
             loadWhitelistData();
-                break;
-            case 'blacklist':
+            break;
+        case 'blacklist':
             loadBlacklistData();
-                break;
-            case 'logs':
+            break;
+        case 'logs':
             loadLogsData();
-                break;
-            case 'statistics':
+            break;
+        case 'statistics':
             loadStatisticsData();
-                break;
-            case 'settings':
+            break;
+        case 'settings':
             loadSettings();
-                break;
+            break;
     }
 }
 
@@ -1150,123 +1304,284 @@ function switchTab(tabId) {
 async function loadOverviewData() {
     try {
         const response = await fetch('/plugins/fail2ban/api/status/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            document.getElementById('serviceStatus').textContent = data.data.status || 'Active';
-            document.getElementById('activeJails').textContent = data.data.active_jails || '0';
-            document.getElementById('bannedIPs').textContent = data.data.banned_ips || '0';
-            document.getElementById('serviceUptime').textContent = data.data.uptime || 'N/A';
+            const statusEl = document.getElementById('serviceStatus');
+            const jailsEl = document.getElementById('activeJails');
+            const ipsEl = document.getElementById('bannedIPs');
+            const uptimeEl = document.getElementById('serviceUptime');
+            
+            // Update status
+            if (statusEl) {
+                statusEl.textContent = data.data.running ? 'Active' : 'Inactive';
+            }
+            
+            // Update active jails count
+            if (jailsEl) {
+                const jails = data.data.jails || [];
+                const totalJails = data.data.total_jails || 0;
+                jailsEl.textContent = jails.length;
+                // Update the label too
+                const jailsLabel = jailsEl.nextElementSibling;
+                if (jailsLabel && jailsLabel.classList.contains('label')) {
+                    jailsLabel.textContent = `out of ${totalJails} total jails`;
+                }
+            }
+            
+            // Get banned IPs count
+            try {
+                const bannedResponse = await fetch('/plugins/fail2ban/api/banned-ips/');
+                if (bannedResponse.ok) {
+                    const bannedData = await bannedResponse.json();
+                    if (bannedData.success && ipsEl) {
+                        const bannedIPs = bannedData.data || [];
+                        ipsEl.textContent = bannedIPs.length;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load banned IPs count:', e);
+                if (ipsEl) ipsEl.textContent = '0';
+            }
+            
+            // Uptime - try to get from system
+            if (uptimeEl) {
+                // Try to get fail2ban uptime
+                try {
+                    const uptimeResponse = await fetch('/plugins/fail2ban/api/status/');
+                    if (uptimeResponse.ok) {
+                        const uptimeData = await uptimeResponse.json();
+                        // If API provides uptime, use it, otherwise show N/A
+                        uptimeEl.textContent = uptimeData.data.uptime || 'N/A';
+                    } else {
+                        uptimeEl.textContent = 'N/A';
+                    }
+                } catch (e) {
+                    uptimeEl.textContent = 'N/A';
+                }
+            }
+            
+            // Load recent activity
+            loadRecentActivity();
+        } else {
+            console.error('API returned error:', data.error);
         }
     } catch (error) {
         console.error('Error loading overview data:', error);
     }
 }
 
+async function loadRecentActivity() {
+    const recentActivityEl = document.getElementById('recentActivity');
+    if (!recentActivityEl) return;
+    
+    try {
+        const response = await fetch('/plugins/fail2ban/api/logs/?limit=10');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            let html = '<table class="table"><thead><tr><th>Time</th><th>Event</th><th>IP</th><th>Jail</th></tr></thead><tbody>';
+            data.data.slice(0, 10).forEach(log => {
+                html += `<tr>
+                    <td>${new Date(log.timestamp || log.created_at).toLocaleString()}</td>
+                    <td>${log.event_type || log.type || 'N/A'}</td>
+                    <td>${log.ip_address || log.ip || 'N/A'}</td>
+                    <td>${log.jail_name || log.jail || 'N/A'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            recentActivityEl.innerHTML = html;
+        } else {
+            recentActivityEl.innerHTML = '<div class="alert alert-info">No recent activity</div>';
+        }
+    } catch (error) {
+        console.error('Error loading recent activity:', error);
+        recentActivityEl.innerHTML = '<div class="alert alert-warning">Could not load recent activity</div>';
+    }
+}
+
 async function loadJailsData() {
     const content = document.getElementById('jailsContent');
+    if (!content) {
+        console.error('jailsContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading jails...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/jails/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayJails(data.data);
+            if (typeof displayJails === 'function') {
+                displayJails(data.data);
             } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading jails: ' + data.error + '</div>';
+                content.innerHTML = '<div class="alert alert-info">Jails loaded successfully. Display function not available.</div>';
+            }
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Error loading jails: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading jails:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading jails: ' + error.message + '</div>';
     }
 }
 
 async function loadBannedIPsData() {
     const content = document.getElementById('bannedIPsContent');
+    if (!content) {
+        console.error('bannedIPsContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading banned IPs...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/banned-ips/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayBannedIPs(data.data);
+            if (typeof displayBannedIPs === 'function') {
+                displayBannedIPs(data.data);
             } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading banned IPs: ' + data.error + '</div>';
+                content.innerHTML = '<div class="alert alert-info">Banned IPs loaded successfully. Display function not available.</div>';
+            }
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Error loading banned IPs: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading banned IPs:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading banned IPs: ' + error.message + '</div>';
     }
 }
 
 async function loadWhitelistData() {
     const content = document.getElementById('whitelistContent');
+    if (!content) {
+        console.error('whitelistContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading whitelist...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/whitelist/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayWhitelist(data.data);
+            if (typeof displayWhitelist === 'function') {
+                displayWhitelist(data.data);
             } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading whitelist: ' + data.error + '</div>';
+                content.innerHTML = '<div class="alert alert-info">Whitelist loaded successfully. Display function not available.</div>';
+            }
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Error loading whitelist: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading whitelist:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading whitelist: ' + error.message + '</div>';
     }
 }
 
 async function loadBlacklistData() {
     const content = document.getElementById('blacklistContent');
+    if (!content) {
+        console.error('blacklistContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading blacklist...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/blacklist/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayBlacklist(data.data);
+            if (typeof displayBlacklist === 'function') {
+                displayBlacklist(data.data);
             } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading blacklist: ' + data.error + '</div>';
+                content.innerHTML = '<div class="alert alert-info">Blacklist loaded successfully. Display function not available.</div>';
+            }
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Error loading blacklist: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading blacklist:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading blacklist: ' + error.message + '</div>';
     }
 }
 
 async function loadLogsData() {
     const content = document.getElementById('logsContent');
+    if (!content) {
+        console.error('logsContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading logs...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/logs/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayLogs(data.data);
+            if (typeof displayLogs === 'function') {
+                displayLogs(data.data);
             } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading logs: ' + data.error + '</div>';
+                content.innerHTML = '<div class="alert alert-info">Logs loaded successfully. Display function not available.</div>';
+            }
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Error loading logs: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading logs:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading logs: ' + error.message + '</div>';
     }
 }
 
 async function loadStatisticsData() {
     const content = document.getElementById('statisticsContent');
+    if (!content) {
+        console.error('statisticsContent element not found');
+        return;
+    }
     content.innerHTML = '<div class="spinner"></div>Loading statistics...';
     
     try {
         const response = await fetch('/plugins/fail2ban/api/statistics/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            displayStatistics(data.data);
+            if (typeof displayStatistics === 'function') {
+                displayStatistics(data.data);
+            } else {
+                content.innerHTML = '<div class="alert alert-info">Statistics loaded successfully. Display function not available.</div>';
+            }
         } else {
-            content.innerHTML = '<div class="alert alert-danger">Error loading statistics: ' + data.error + '</div>';
+            content.innerHTML = '<div class="alert alert-danger">Error loading statistics: ' + (data.error || 'Unknown error') + '</div>';
         }
     } catch (error) {
+        console.error('Error loading statistics:', error);
         content.innerHTML = '<div class="alert alert-danger">Error loading statistics: ' + error.message + '</div>';
     }
 }
@@ -1274,13 +1589,23 @@ async function loadStatisticsData() {
 async function loadSettings() {
     try {
         const response = await fetch('/plugins/fail2ban/api/settings/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.success) {
-            document.getElementById('emailNotifications').checked = data.data.email_notifications;
-            document.getElementById('autoBanThreshold').value = data.data.auto_ban_threshold;
-            document.getElementById('banDuration').value = data.data.ban_duration;
-            document.getElementById('enabledJails').value = data.data.enabled_jails;
+            const emailNotifications = document.getElementById('emailNotifications');
+            const autoBanThreshold = document.getElementById('autoBanThreshold');
+            const banDuration = document.getElementById('banDuration');
+            const enabledJails = document.getElementById('enabledJails');
+            
+            if (emailNotifications) emailNotifications.checked = data.data.email_notifications || false;
+            if (autoBanThreshold) autoBanThreshold.value = data.data.auto_ban_threshold || 5;
+            if (banDuration) banDuration.value = data.data.ban_duration || 3600;
+            if (enabledJails) enabledJails.value = data.data.enabled_jails || 'sshd,openlitespeed,cyberpanel';
+        } else {
+            console.error('Error loading settings:', data.error);
         }
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -1296,15 +1621,18 @@ function displayJails(jails) {
         return;
     }
     
-    let html = '<table class="table"><thead><tr><th>Jail Name</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    let html = '<table class="table"><thead><tr><th>Jail Name</th><th>Status</th><th>Failed Attempts</th><th>Banned IPs</th><th>Actions</th></tr></thead><tbody>';
     
     jails.forEach(jail => {
+        const status = jail.enabled !== false ? 'active' : 'inactive';
         html += `<tr>
-            <td>${jail.name}</td>
-            <td><span class="badge ${jail.status === 'active' ? 'success' : 'warning'}">${jail.status}</span></td>
+            <td><strong>${jail.name || 'N/A'}</strong></td>
+            <td><span class="badge ${status === 'active' ? 'success' : 'warning'}">${status}</span></td>
+            <td>${jail.failed_attempts || 0}</td>
+            <td>${jail.banned_ips || 0}</td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="toggleJail('${jail.name}')">
-                    ${jail.status === 'active' ? 'Disable' : 'Enable'}
+                <button class="btn btn-sm btn-primary" onclick="refreshJails()" title="Refresh jail status">
+                    🔄 Refresh
                 </button>
             </td>
         </tr>`;
@@ -1341,22 +1669,43 @@ function displayBannedIPs(ips) {
     content.innerHTML = html;
 }
 
-function displayWhitelist(ips) {
+function displayWhitelist(data) {
     const content = document.getElementById('whitelistContent');
     
-    if (!ips || ips.length === 0) {
+    // Handle new API structure: {config_ips: [], db_ips: []}
+    const configIPs = data.config_ips || [];
+    const dbIPs = data.db_ips || [];
+    
+    // Combine both sources
+    const allIPs = [];
+    configIPs.forEach(ip => {
+        allIPs.push({ip: ip, source: 'config', added_at: 'N/A'});
+    });
+    dbIPs.forEach(item => {
+        if (!allIPs.find(i => i.ip === item.ip_address)) {
+            allIPs.push({
+                ip: item.ip_address,
+                source: 'database',
+                added_at: item.added_at || 'N/A',
+                description: item.description || ''
+            });
+        }
+    });
+    
+    if (allIPs.length === 0) {
         content.innerHTML = '<div class="alert alert-info">No whitelisted IPs</div>';
         return;
     }
     
-    let html = '<table class="table"><thead><tr><th>IP Address</th><th>Added At</th><th>Actions</th></tr></thead><tbody>';
+    let html = '<table class="table"><thead><tr><th>IP Address</th><th>Source</th><th>Added At</th><th>Actions</th></tr></thead><tbody>';
     
-    ips.forEach(ip => {
+    allIPs.forEach(item => {
         html += `<tr>
-            <td>${ip.ip}</td>
-            <td>${ip.added_at || 'N/A'}</td>
+            <td>${item.ip}</td>
+            <td><span class="badge ${item.source === 'database' ? 'info' : 'secondary'}">${item.source}</span></td>
+            <td>${item.added_at || 'N/A'}</td>
             <td>
-                <button class="btn btn-sm btn-danger" onclick="removeFromWhitelist('${ip.ip}')">
+                <button class="btn btn-sm btn-danger" onclick="removeFromWhitelist('${item.ip}')">
                     Remove
                 </button>
             </td>
@@ -1367,22 +1716,43 @@ function displayWhitelist(ips) {
     content.innerHTML = html;
 }
 
-function displayBlacklist(ips) {
+function displayBlacklist(data) {
     const content = document.getElementById('blacklistContent');
     
-    if (!ips || ips.length === 0) {
+    // Handle new API structure: {config_ips: [], db_ips: []}
+    const configIPs = data.config_ips || [];
+    const dbIPs = data.db_ips || [];
+    
+    // Combine both sources
+    const allIPs = [];
+    configIPs.forEach(ip => {
+        allIPs.push({ip: ip, source: 'firewall', added_at: 'N/A'});
+    });
+    dbIPs.forEach(item => {
+        if (!allIPs.find(i => i.ip === item.ip_address)) {
+            allIPs.push({
+                ip: item.ip_address,
+                source: 'database',
+                added_at: item.added_at || 'N/A',
+                description: item.description || ''
+            });
+        }
+    });
+    
+    if (allIPs.length === 0) {
         content.innerHTML = '<div class="alert alert-info">No blacklisted IPs</div>';
         return;
     }
     
-    let html = '<table class="table"><thead><tr><th>IP Address</th><th>Added At</th><th>Actions</th></tr></thead><tbody>';
+    let html = '<table class="table"><thead><tr><th>IP Address</th><th>Source</th><th>Added At</th><th>Actions</th></tr></thead><tbody>';
     
-    ips.forEach(ip => {
+    allIPs.forEach(item => {
         html += `<tr>
-            <td>${ip.ip}</td>
-            <td>${ip.added_at || 'N/A'}</td>
+            <td>${item.ip}</td>
+            <td><span class="badge ${item.source === 'database' ? 'info' : 'secondary'}">${item.source}</span></td>
+            <td>${item.added_at || 'N/A'}</td>
             <td>
-                <button class="btn btn-sm btn-danger" onclick="removeFromBlacklist('${ip.ip}')">
+                <button class="btn btn-sm btn-danger" onclick="removeFromBlacklist('${item.ip}')">
                     Remove
                 </button>
             </td>
@@ -1401,28 +1771,39 @@ function displayLogs(logs) {
         return;
     }
     
-    let html = '<table class="table"><thead><tr><th>Timestamp</th><th>Level</th><th>Message</th></tr></thead><tbody>';
+    let html = '<div style="max-height: 600px; overflow-y: auto;"><table class="table"><thead><tr><th>Timestamp</th><th>Level</th><th>Message</th></tr></thead><tbody>';
     
     logs.forEach(log => {
+        const timestamp = log.timestamp || 'N/A';
+        const level = log.level || 'info';
+        const message = log.message || log || 'N/A';
         html += `<tr>
-            <td>${log.timestamp || 'N/A'}</td>
-            <td><span class="badge ${log.level === 'error' ? 'danger' : 'info'}">${log.level}</span></td>
-            <td>${log.message}</td>
+            <td style="white-space: nowrap;">${timestamp}</td>
+            <td><span class="badge ${level === 'error' ? 'danger' : level === 'warning' ? 'warning' : 'info'}">${level}</span></td>
+            <td style="word-break: break-word;">${escapeHtml(message)}</td>
         </tr>`;
     });
     
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     content.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function displayStatistics(stats) {
     const content = document.getElementById('statisticsContent');
     
     let html = '<div class="status-cards">';
-    html += `<div class="status-card"><h3>Total Events</h3><p class="value">${stats.total_events || 0}</p></div>`;
-    html += `<div class="status-card"><h3>Banned IPs</h3><p class="value">${stats.banned_ips || 0}</p></div>`;
-    html += `<div class="status-card"><h3>Currently Banned</h3><p class="value">${stats.currently_banned || 0}</p></div>`;
-    html += `<div class="status-card"><h3>Attacks Detected</h3><p class="value">${stats.attacks_detected || 0}</p></div>`;
+    html += `<div class="status-card"><h3>Total Events</h3><p class="value">${stats.total_events || 0}</p><p class="label">Last 30 days</p></div>`;
+    html += `<div class="status-card"><h3>Total Bans</h3><p class="value">${stats.total_bans || 0}</p><p class="label">Last 30 days</p></div>`;
+    html += `<div class="status-card"><h3>Currently Banned</h3><p class="value">${stats.currently_banned || 0}</p><p class="label">Active bans</p></div>`;
+    html += `<div class="status-card"><h3>Attacks Detected</h3><p class="value">${stats.total_attacks || 0}</p><p class="label">Last 30 days</p></div>`;
+    html += `<div class="status-card"><h3>Whitelisted IPs</h3><p class="value">${stats.whitelisted_ips || 0}</p><p class="label">Active whitelist</p></div>`;
+    html += `<div class="status-card"><h3>Blacklisted IPs</h3><p class="value">${stats.blacklisted_ips || 0}</p><p class="label">Active blacklist</p></div>`;
     html += '</div>';
     
     content.innerHTML = html;
@@ -1581,62 +1962,92 @@ async function togglePlugin() {
     }
 }
 
-// Utility functions
-function showAlert(message, type) {
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
-    alert.textContent = message;
-    
-    const container = document.querySelector('.fail2ban-plugin-container');
-    container.insertBefore(alert, container.firstChild);
-    
-    setTimeout(() => {
-        alert.remove();
-    }, 5000);
-}
+// These utility functions are now defined at the top of the script block
 
-function showAddWhitelistModal() {
-    document.getElementById('addWhitelistModal').style.display = 'flex';
-}
-
-function showAddBlacklistModal() {
-    document.getElementById('addBlacklistModal').style.display = 'flex';
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+// IP Management functions
+async function removeFromWhitelist(ip) {
+    if (!confirm(`Are you sure you want to remove ${ip} from the whitelist?`)) {
+        return;
     }
-    return cookieValue;
+    
+    try {
+        const response = await fetch('/plugins/fail2ban/api/whitelist/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ip: ip })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('IP removed from whitelist successfully!', 'success');
+            loadWhitelistData();
+        } else {
+            showAlert('Error removing IP from whitelist: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error removing IP from whitelist: ' + error.message, 'danger');
+    }
 }
 
-// Refresh functions
-function refreshJails() {
-    loadJailsData();
+async function removeFromBlacklist(ip) {
+    if (!confirm(`Are you sure you want to remove ${ip} from the blacklist?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/plugins/fail2ban/api/blacklist/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ip: ip })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('IP removed from blacklist successfully!', 'success');
+            loadBlacklistData();
+        } else {
+            showAlert('Error removing IP from blacklist: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error removing IP from blacklist: ' + error.message, 'danger');
+    }
 }
 
-function refreshBannedIPs() {
-    loadBannedIPsData();
-}
-
-function refreshLogs() {
-    loadLogsData();
-}
-
-function refreshStatistics() {
-    loadStatisticsData();
+async function unbanIP(ip, jail) {
+    if (!confirm(`Are you sure you want to unban ${ip} from ${jail}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/plugins/fail2ban/api/unban-ip/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ip: ip, jail: jail })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('IP unbanned successfully!', 'success');
+            loadBannedIPsData();
+            loadOverviewData(); // Refresh overview stats
+        } else {
+            showAlert('Error unbanning IP: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error unbanning IP: ' + error.message, 'danger');
+    }
 }
 
 // Service control functions
