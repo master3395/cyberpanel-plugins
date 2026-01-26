@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+    <name>Google Tag Manager</name>
+    <type>Utility</type>
+    <version>1.0.0</version>
+    <description>Easily add Google Tag Manager (GTM) container IDs to your domains. Configure GTM for each domain and get code snippets to add to your websites.</description>
+    <author>master3395</author>
+    <website>https://github.com/master3395/cyberpanel-plugins</website>
+    <license>MIT</license>
+    <dependencies>
+        <python>3.6+</python>
+        <django>2.2+</django>
+    </dependencies>
+    <permissions>
+        <admin>true</admin>
+        <user>true</user>
+    </permissions>
+    <settings>
+        <enable_toggle>true</enable_toggle>
+        <test_button>false</test_button>
+        <popup_messages>true</popup_messages>
+        <inline_integration>true</inline_integration>
+    </settings>
+    <url>/plugins/googleTagManager/</url>
+    <settings_url>/plugins/googleTagManager/settings/</settings_url>
+</plugin>

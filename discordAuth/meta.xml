@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+    <name>Discord Authentication</name>
+    <type>Security</type>
+    <version>1.0.0</version>
+    <description>Enable Discord OAuth2 authentication for CyberPanel. Users can log in to CyberPanel using their Discord account. Supports account linking and automatic user creation.</description>
+    <author>master3395</author>
+    <website>https://github.com/master3395/cyberpanel-plugins</website>
+    <license>MIT</license>
+    <dependencies>
+        <python>3.6+</python>
+        <django>2.2+</django>
+        <cyberpanel>2.5.5+</cyberpanel>
+    </dependencies>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
+    <permissions>
+        <admin>true</admin>
+        <user>false</user>
+    </permissions>
+    <url>/plugins/discordAuth/</url>
+    <settings_url>/plugins/discordAuth/settings/</settings_url>
+</plugin>

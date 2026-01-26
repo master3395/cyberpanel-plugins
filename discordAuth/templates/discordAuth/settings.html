@@ -1,0 +1,172 @@
+{% extends "baseTemplate/baseTemplate.html" %}
+{% load static %}
+
+{% block title %}Discord Authentication Settings{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="fa fa-cog"></i> Discord Authentication Settings
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i>
+                            <strong>Setup Instructions:</strong><br>
+                            1. Go to <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a><br>
+                            2. Create a new application or select an existing one<br>
+                            3. Go to the "OAuth2" section<br>
+                            4. Add a redirect URI: <code>{{ suggested_redirect_uri }}</code><br>
+                            5. Copy your Client ID and Client Secret<br>
+                            6. Paste them in the form below and save
+                        </div>
+                        
+                        <form id="discordSettingsForm">
+                            <div class="form-group">
+                                <label for="client_id">Discord Client ID *</label>
+                                <input type="text" class="form-control" id="client_id" 
+                                       name="client_id" value="{{ config.client_id }}" 
+                                       placeholder="Enter your Discord Client ID" required>
+                                <small class="form-text text-muted">
+                                    Your Discord application's Client ID
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="client_secret">Discord Client Secret *</label>
+                                <input type="password" class="form-control" id="client_secret" 
+                                       name="client_secret" value="{{ config.client_secret }}" 
+                                       placeholder="Enter your Discord Client Secret" required>
+                                <small class="form-text text-muted">
+                                    Your Discord application's Client Secret (keep this secure!)
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="redirect_uri">Redirect URI</label>
+                                <input type="url" class="form-control" id="redirect_uri" 
+                                       name="redirect_uri" value="{{ config.redirect_uri }}" 
+                                       placeholder="{{ suggested_redirect_uri }}">
+                                <small class="form-text text-muted">
+                                    OAuth2 redirect URI (defaults to: {{ suggested_redirect_uri }})
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="scope">OAuth Scope</label>
+                                <input type="text" class="form-control" id="scope" 
+                                       name="scope" value="{{ config.scope }}" 
+                                       placeholder="identify email">
+                                <small class="form-text text-muted">
+                                    OAuth2 scopes (default: "identify email")
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="enabled" name="enabled" 
+                                               {% if config.enabled %}checked{% endif %}>
+                                        Enable Discord Authentication
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="auto_create_users" name="auto_create_users" 
+                                               {% if config.auto_create_users %}checked{% endif %}>
+                                        Automatically create new CyberPanel accounts for Discord users
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">
+                                    If enabled, new Discord users will automatically get a CyberPanel account.
+                                    If disabled, only existing CyberPanel accounts can link their Discord account.
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="default_acl">Default ACL for New Users</label>
+                                <input type="text" class="form-control" id="default_acl" 
+                                       name="default_acl" value="{{ config.default_acl }}" 
+                                       placeholder="user">
+                                <small class="form-text text-muted">
+                                    ACL name to assign to automatically created users (default: "user")
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-save"></i> Save Settings
+                                </button>
+                                <a href="/plugins/discordAuth/" class="btn btn-default">
+                                    <i class="fa fa-arrow-left"></i> Back
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('discordSettingsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        client_id: document.getElementById('client_id').value,
+        client_secret: document.getElementById('client_secret').value,
+        redirect_uri: document.getElementById('redirect_uri').value,
+        scope: document.getElementById('scope').value,
+        enabled: document.getElementById('enabled').checked,
+        auto_create_users: document.getElementById('auto_create_users').checked,
+        default_acl: document.getElementById('default_acl').value
+    };
+    
+    fetch('/plugins/discordAuth/settings/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            alert('Settings saved successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error_message || 'Failed to save settings'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving settings');
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+            }
+        }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,360 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+{% load gtm_tags %}
+
+{% block title %}
+    Google Tag Manager Settings - {% trans "CyberPanel" %}
+{% endblock %}
+
+{% block header_scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cog"></i>
+                        {% trans "Google Tag Manager Settings" %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>{% trans "Error" %}:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-info">
+                        <h4><i class="icon fa fa-info"></i> {% trans "How to Use" %}</h4>
+                        <ol>
+                            <li>{% trans "Get your Google Tag Manager container ID from" %} <a href="https://tagmanager.google.com/" target="_blank">tagmanager.google.com</a></li>
+                            <li>{% trans "Enter your GTM container ID (format: GTM-XXXXXXX) for each domain below" %}</li>
+                            <li>{% trans "Click 'Save' to store the configuration" %}</li>
+                            <li>{% trans "Use the 'View Code' button to get the code snippets to add to your website" %}</li>
+                        </ol>
+                    </div>
+                    
+                    <!-- Domains Configuration -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-list"></i>
+                                {% trans "Configure GTM for Domains" %}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            {% if domains %}
+                                {% for domain_info in domains %}
+                                <div class="card mb-3" id="domain-{{ domain_info.domain|slugify }}">
+                                    <div class="card-header">
+                                        <h4 class="card-title mb-0">
+                                            <i class="fas fa-globe"></i> {{ domain_info.domain }}
+                                            {% if domain_info.type == 'main' %}
+                                                <span class="badge badge-primary">{% trans "Main" %}</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">{% trans "Child" %}</span>
+                                            {% endif %}
+                                        </h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <form class="gtm-form" data-domain="{{ domain_info.domain }}">
+                                            <div class="form-group">
+                                                <label for="gtm-{{ domain_info.domain|slugify }}">
+                                                    <i class="fas fa-tag"></i> {% trans "GTM Container ID" %}
+                                                </label>
+                                                <input 
+                                                    type="text" 
+                                                    class="form-control gtm-container-id" 
+                                                    id="gtm-{{ domain_info.domain|slugify }}"
+                                                    placeholder="GTM-XXXXXXX"
+                                                    value="{% if gtm_settings|get_item:domain_info.domain %}{{ gtm_settings|get_item:domain_info.domain.container_id }}{% endif %}"
+                                                    pattern="GTM-[A-Z0-9]+"
+                                                    data-domain="{{ domain_info.domain }}"
+                                                >
+                                                <small class="form-text text-muted">
+                                                    {% trans "Enter your Google Tag Manager container ID (e.g., GTM-XXXXXXX)" %}
+                                                </small>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <div class="custom-control custom-switch">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        class="custom-control-input gtm-enabled" 
+                                                        id="enabled-{{ domain_info.domain|slugify }}"
+                                                        data-domain="{{ domain_info.domain }}"
+                                                        {% if gtm_settings|get_item:domain_info.domain and gtm_settings|get_item:domain_info.domain.enabled %}checked{% endif %}
+                                                    >
+                                                    <label class="custom-control-label" for="enabled-{{ domain_info.domain|slugify }}">
+                                                        {% trans "Enable GTM for this domain" %}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="btn-group">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save"></i> {% trans "Save" %}
+                                                </button>
+                                                {% if gtm_settings|get_item:domain_info.domain %}
+                                                    <button type="button" class="btn btn-info" onclick="viewGTMCode('{{ domain_info.domain }}')">
+                                                        <i class="fas fa-code"></i> {% trans "View Code" %}
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger" onclick="deleteGTM('{{ domain_info.domain }}')">
+                                                        <i class="fas fa-trash"></i> {% trans "Delete" %}
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="alert alert-success mt-2" style="display: none;" id="success-{{ domain_info.domain|slugify }}">
+                                                <i class="fas fa-check"></i> <span class="success-message"></span>
+                                            </div>
+                                            
+                                            <div class="alert alert-danger mt-2" style="display: none;" id="error-{{ domain_info.domain|slugify }}">
+                                                <i class="fas fa-exclamation-triangle"></i> <span class="error-message"></span>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {% trans "No domains found. Please create a website first." %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GTM Code Modal -->
+<div class="modal fade" id="gtmCodeModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <i class="fas fa-code"></i> {% trans "GTM Code Snippets" %}
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="gtmCodeContent">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p>{% trans "Loading code snippets..." %}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('.gtm-form').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var domain = form.data('domain');
+        var containerId = form.find('.gtm-container-id').val().trim().toUpperCase();
+        var enabled = form.find('.gtm-enabled').is(':checked');
+        
+        // Validate container ID
+        if (!containerId) {
+            showError(domain, '{% trans "GTM Container ID is required" %}');
+            return;
+        }
+        
+        // Add GTM- prefix if missing
+        if (!containerId.startsWith('GTM-')) {
+            containerId = 'GTM-' + containerId;
+            form.find('.gtm-container-id').val(containerId);
+        }
+        
+        // Validate format
+        if (!/^GTM-[A-Z0-9]+$/.test(containerId)) {
+            showError(domain, '{% trans "Invalid GTM container ID format. Must be GTM-XXXXXXX" %}');
+            return;
+        }
+        
+        // Save GTM settings
+        $.ajax({
+            url: '/plugins/googleTagManager/api/save/',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                domain: domain,
+                container_id: containerId
+            }),
+            success: function(data) {
+                if (data.success) {
+                    showSuccess(domain, data.message);
+                    // Update enabled status
+                    updateEnabledStatus(domain, enabled);
+                } else {
+                    showError(domain, data.error || '{% trans "Error saving GTM settings" %}');
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = '{% trans "Error saving GTM settings" %}';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                showError(domain, errorMsg);
+            }
+        });
+    });
+    
+    // Handle enable/disable toggle
+    $('.gtm-enabled').on('change', function() {
+        var domain = $(this).data('domain');
+        var enabled = $(this).is(':checked');
+        updateEnabledStatus(domain, enabled);
+    });
+});
+
+function updateEnabledStatus(domain, enabled) {
+    $.ajax({
+        url: '/plugins/googleTagManager/api/toggle/',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            domain: domain,
+            enabled: enabled
+        }),
+        success: function(data) {
+            if (data.success) {
+                var domainSlug = domain.replace(/\./g, '-');
+                showSuccess(domain, data.message);
+            } else {
+                showError(domain, data.error || '{% trans "Error updating status" %}');
+            }
+        },
+        error: function(xhr) {
+            var errorMsg = '{% trans "Error updating status" %}';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            showError(domain, errorMsg);
+        }
+    });
+}
+
+function showSuccess(domain, message) {
+    var domainSlug = domain.replace(/\./g, '-');
+    var alert = $('#success-' + domainSlug);
+    alert.find('.success-message').text(message);
+    alert.slideDown();
+    $('#error-' + domainSlug).slideUp();
+    setTimeout(function() {
+        alert.slideUp();
+    }, 3000);
+}
+
+function showError(domain, message) {
+    var domainSlug = domain.replace(/\./g, '-');
+    var alert = $('#error-' + domainSlug);
+    alert.find('.error-message').text(message);
+    alert.slideDown();
+    $('#success-' + domainSlug).slideUp();
+}
+
+function viewGTMCode(domain) {
+    $('#gtmCodeModal').modal('show');
+    $('#gtmCodeContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p>{% trans "Loading code snippets..." %}</p></div>');
+    
+    $.get('/plugins/googleTagManager/api/code/' + domain + '/')
+        .done(function(data) {
+            if (data.success) {
+                var html = '<div class="alert alert-info">';
+                html += '<h5><i class="fas fa-info-circle"></i> {% trans "Instructions" %}</h5>';
+                html += '<p><strong>{% trans "Step 1" %}:</strong> ' + data.instructions.head + '</p>';
+                html += '<p><strong>{% trans "Step 2" %}:</strong> ' + data.instructions.body + '</p>';
+                html += '</div>';
+                
+                html += '<div class="form-group">';
+                html += '<label><strong>{% trans "Code for &lt;head&gt; section" %}:</strong></label>';
+                html += '<textarea class="form-control" rows="5" readonly style="font-family: monospace; font-size: 12px;">' + escapeHtml(data.code.head) + '</textarea>';
+                html += '<button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard(this.previousElementSibling)"><i class="fas fa-copy"></i> {% trans "Copy" %}</button>';
+                html += '</div>';
+                
+                html += '<div class="form-group">';
+                html += '<label><strong>{% trans "Code for &lt;body&gt; section" %}:</strong></label>';
+                html += '<textarea class="form-control" rows="3" readonly style="font-family: monospace; font-size: 12px;">' + escapeHtml(data.code.body) + '</textarea>';
+                html += '<button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard(this.previousElementSibling)"><i class="fas fa-copy"></i> {% trans "Copy" %}</button>';
+                html += '</div>';
+                
+                $('#gtmCodeContent').html(html);
+            } else {
+                $('#gtmCodeContent').html('<div class="alert alert-danger">' + escapeHtml(data.error) + '</div>');
+            }
+        })
+        .fail(function() {
+            $('#gtmCodeContent').html('<div class="alert alert-danger">{% trans "Error loading code snippets" %}</div>');
+        });
+}
+
+function deleteGTM(domain) {
+    if (!confirm('{% trans "Are you sure you want to delete GTM settings for" %} ' + domain + '?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/plugins/googleTagManager/api/delete/',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            domain: domain
+        }),
+        success: function(data) {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        },
+        error: function(xhr) {
+            var errorMsg = '{% trans "Error deleting GTM settings" %}';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            alert(errorMsg);
+        }
+    });
+}
+
+function copyToClipboard(textarea) {
+    textarea.select();
+    document.execCommand('copy');
+    $(textarea).next().html('<i class="fas fa-check"></i> {% trans "Copied!" %}');
+    setTimeout(function() {
+        $(textarea).next().html('<i class="fas fa-copy"></i> {% trans "Copy" %}');
+    }, 2000);
+}
+
+function escapeHtml(text) {
+    var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+</script>
+{% endblock %}
