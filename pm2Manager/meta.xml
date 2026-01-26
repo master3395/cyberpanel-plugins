@@ -24,5 +24,9 @@
         <feature>Process logs viewing</feature>
         <feature>Add new PM2 applications</feature>
         <feature>Cluster mode support</feature>
+        <feature>Memory limit configuration with automatic restart</feature>
+        <feature>Auto restart toggle (enable/disable)</feature>
+        <feature>Working directory (CWD) configuration</feature>
+        <feature>Custom interpreter selection</feature>
     </features>
 </cyberpanelPluginConfig>
