@@ -1,7 +1,7 @@
 # PM2 Manager Plugin for CyberPanel
 
 **Author:** Master3395  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Compatible with:** CyberPanel 2.5.5-dev and higher
 
 ## Description
@@ -18,6 +18,10 @@ PM2 Manager is a comprehensive process management plugin for CyberPanel that pro
 - **Cluster Mode Support**: Manage applications running in cluster mode
 - **Log Viewing**: View real-time and historical logs for each application
 - **Statistics Dashboard**: Overview of all PM2 applications with aggregate statistics
+- **Memory Limit Configuration**: Set memory limits with automatic restart when exceeded
+- **Auto Restart Control**: Enable/disable automatic restart on crash
+- **Working Directory Configuration**: Specify custom working directory for processes
+- **Interpreter Selection**: Choose custom interpreter (node, python, ruby, etc.)
 
 ## Requirements
 
@@ -56,11 +60,15 @@ The main dashboard shows:
 
 1. Click **Add App** button
 2. Fill in the form:
-   - **Application Name**: Unique name for your app
-   - **Script Path**: Full path to your Node.js script
+   - **Application Name**: Unique name for your app (required)
+   - **Script Path**: Full path to your script (required)
    - **Arguments**: Optional command-line arguments
    - **Instances**: Number of instances (for cluster mode)
    - **Execution Mode**: Fork or Cluster
+   - **Memory Limit**: Optional memory limit (e.g., "500M", "1G") - app will restart if exceeded
+   - **Auto Restart**: Enable or disable automatic restart on crash
+   - **Working Directory (CWD)**: Optional custom working directory path
+   - **Interpreter**: Optional interpreter (e.g., "node", "python", "ruby")
 3. Click **Add App**
 
 ### Managing Applications
@@ -135,4 +143,5 @@ MIT License
 ---
 
 **Author:** Master3395  
-**Last Updated:** 2026-01-19
+**Last Updated:** 2026-01-27  
+**Latest Version:** 1.1.0

@@ -3,7 +3,7 @@
     <name>PM2 Manager</name>
     <type>Utility</type>
     <description>Comprehensive PM2 process manager for CyberPanel with real-time monitoring, node management, and application control. Monitor CPU, memory, and process status with WebSocket support.</description>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <author>Master3395</author>
     <url>/plugins/pm2Manager/</url>
     <settings_url>/plugins/pm2Manager/settings/</settings_url>

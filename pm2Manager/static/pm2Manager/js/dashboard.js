@@ -293,7 +293,11 @@ function handleAddApp(e) {
         script_path: formData.get('script_path'),
         args: formData.get('args') || '',
         instances: parseInt(formData.get('instances')) || 1,
-        exec_mode: formData.get('exec_mode') || 'fork'
+        exec_mode: formData.get('exec_mode') || 'fork',
+        max_memory_restart: formData.get('max_memory_restart') || '',
+        autorestart: formData.get('autorestart') || 'true',
+        cwd: formData.get('cwd') || '',
+        interpreter: formData.get('interpreter') || ''
     };
     
     fetch('/plugins/pm2Manager/api/add/', {
