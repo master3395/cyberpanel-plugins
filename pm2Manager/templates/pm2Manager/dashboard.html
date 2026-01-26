@@ -356,6 +356,29 @@
                     <option value="cluster">Cluster</option>
                 </select>
             </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600;">{% trans "Memory Limit" %}</label>
+                <input type="text" name="max_memory_restart" placeholder="e.g., 500M, 1G (optional)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <small style="color: #64748b; font-size: 12px;">{% trans "Restart app when memory exceeds this limit (e.g., 500M, 1G)" %}</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600;">{% trans "Auto Restart" %}</label>
+                <select name="autorestart" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="true">{% trans "Enabled" %}</option>
+                    <option value="false">{% trans "Disabled" %}</option>
+                </select>
+                <small style="color: #64748b; font-size: 12px;">{% trans "Automatically restart app on crash" %}</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600;">{% trans "Working Directory (CWD)" %}</label>
+                <input type="text" name="cwd" placeholder="/path/to/working/directory (optional)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <small style="color: #64748b; font-size: 12px;">{% trans "Current working directory for the process" %}</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600;">{% trans "Interpreter" %}</label>
+                <input type="text" name="interpreter" placeholder="e.g., node, python, ruby (optional)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <small style="color: #64748b; font-size: 12px;">{% trans "Interpreter to use (default: node)" %}</small>
+            </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" onclick="closeAddAppModal()" style="padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">{% trans "Cancel" %}</button>
                 <button type="submit" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">{% trans "Add App" %}</button>

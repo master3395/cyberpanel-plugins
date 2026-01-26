@@ -155,7 +155,8 @@ def delete_pm2_app(app_name):
     """Delete a PM2 app"""
     return _run_pm2_command(f"delete {shlex.quote(app_name)}")
 
-def add_pm2_app(name, script_path, args=None, instances=1, exec_mode='fork', env_vars=None):
+def add_pm2_app(name, script_path, args=None, instances=1, exec_mode='fork', env_vars=None, 
+                max_memory_restart=None, autorestart=True, cwd=None, interpreter=None):
     """
     Add a new PM2 application
     
@@ -166,6 +167,10 @@ def add_pm2_app(name, script_path, args=None, instances=1, exec_mode='fork', env
         instances: Number of instances (for cluster mode)
         exec_mode: 'fork' or 'cluster'
         env_vars: Dictionary of environment variables
+        max_memory_restart: Memory limit before restart (e.g., "500M", "1G")
+        autorestart: Enable auto restart on crash (default: True)
+        cwd: Current working directory path
+        interpreter: Interpreter to use (e.g., "node", "python", "ruby")
     """
     if not os.path.exists(script_path):
         return {
@@ -182,6 +187,27 @@ def add_pm2_app(name, script_path, args=None, instances=1, exec_mode='fork', env
         cmd_parts.append("--exec-mode cluster")
     else:
         cmd_parts.append(f"--exec-mode {exec_mode}")
+    
+    # Memory limit
+    if max_memory_restart:
+        cmd_parts.append(f"--max-memory-restart {shlex.quote(str(max_memory_restart))}")
+    
+    # Auto restart
+    if not autorestart:
+        cmd_parts.append("--no-autorestart")
+    
+    # Current working directory
+    if cwd:
+        if not os.path.isdir(cwd):
+            return {
+                'success': False,
+                'error': f'Working directory not found: {cwd}'
+            }
+        cmd_parts.append(f"--cwd {shlex.quote(cwd)}")
+    
+    # Interpreter
+    if interpreter:
+        cmd_parts.append(f"--interpreter {shlex.quote(interpreter)}")
     
     if args:
         cmd_parts.append(f"-- {args}")

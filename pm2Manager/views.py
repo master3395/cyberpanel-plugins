@@ -244,13 +244,27 @@ def api_add_app(request):
         exec_mode = data.get('exec_mode', 'fork')
         env_vars = data.get('env_vars', {})
         
+        # New parameters
+        max_memory_restart = data.get('max_memory_restart', '').strip() or None
+        autorestart = data.get('autorestart', True)
+        if isinstance(autorestart, str):
+            autorestart = autorestart.lower() in ('true', '1', 'yes', 'on')
+        cwd = data.get('cwd', '').strip() or None
+        interpreter = data.get('interpreter', '').strip() or None
+        
         if not name or not script_path:
             return JsonResponse({
                 'success': False,
                 'error': 'Name and script_path are required'
             }, status=400)
         
-        result = add_pm2_app(name, script_path, args, instances, exec_mode, env_vars)
+        result = add_pm2_app(
+            name, script_path, args, instances, exec_mode, env_vars,
+            max_memory_restart=max_memory_restart,
+            autorestart=autorestart,
+            cwd=cwd,
+            interpreter=interpreter
+        )
         
         if result['success']:
             return JsonResponse({
