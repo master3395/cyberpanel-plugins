@@ -17,12 +17,15 @@ A collection of plugins for CyberPanel web hosting control panel.
 | Plugin | Type | Pricing | Author | Description |
 |--------|------|---------|--------|-------------|
 | [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
-| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Utility | 🟢 Free | Master3395 | Send server notifications to Discord |
-| [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | Master3395 | Manage and monitor fail2ban settings |
-| [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | Master3395 | Manage PM2 Node.js process manager |
+| [Example Plugin](examplePlugin/) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
+| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Utility | 🟢 Free | master3395 | Send server notifications to Discord |
+| [Discord Authentication](discordAuth/) | Security | 🟢 Free | master3395 | Discord OAuth2 login for CyberPanel |
+| [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
+| [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
+| [Google Tag Manager](googleTagManager/) | Utility | 🟢 Free | master3395 | Configure GTM container IDs per domain |
+| [Email Marketing](emailMarketing/) | Utility | 🟢 Free | usmannasir | Email marketing plugin for CyberPanel |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
-| [Example Plugin](docs/plugins/examplePlugin.md) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
-| [Email Marketing](docs/plugins/emailMarketing.md) | Utility | 🟢 Free | master3395 | Email marketing plugin for CyberPanel |
+| [PayPal Premium Plugin Example](paypalPremiumPlugin/) | Utility | 🟡 Paid | master3395 | Example paid plugin with PayPal payment integration |
 
 ## Plugin Pricing
 
