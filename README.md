@@ -78,5 +78,5 @@ These plugins are provided as-is for use with CyberPanel.
 ---
 
 **Author:** master3395  
-_Last updated: 2026-01-25_  
+_Last updated: 2026-01-27_  
 _Compatible with CyberPanel 2.5.5-dev and higher_
