@@ -51,6 +51,7 @@
                         <div class="card-body">
                             {% if domains %}
                                 {% for domain_info in domains %}
+                                {% with gtm_settings|get_item:domain_info.domain as domain_gtm %}
                                 <div class="card mb-3" id="domain-{{ domain_info.domain|slugify }}">
                                     <div class="card-header">
                                         <h4 class="card-title mb-0">
@@ -73,7 +74,7 @@
                                                     class="form-control gtm-container-id" 
                                                     id="gtm-{{ domain_info.domain|slugify }}"
                                                     placeholder="GTM-XXXXXXX"
-                                                    value="{% if gtm_settings|get_item:domain_info.domain %}{{ gtm_settings|get_item:domain_info.domain.container_id }}{% endif %}"
+                                                    value="{% if domain_gtm %}{{ domain_gtm.container_id }}{% endif %}"
                                                     pattern="GTM-[A-Z0-9]+"
                                                     data-domain="{{ domain_info.domain }}"
                                                 >
@@ -89,7 +90,7 @@
                                                         class="custom-control-input gtm-enabled" 
                                                         id="enabled-{{ domain_info.domain|slugify }}"
                                                         data-domain="{{ domain_info.domain }}"
-                                                        {% if gtm_settings|get_item:domain_info.domain and gtm_settings|get_item:domain_info.domain.enabled %}checked{% endif %}
+                                                        {% if domain_gtm and domain_gtm.enabled %}checked{% endif %}
                                                     >
                                                     <label class="custom-control-label" for="enabled-{{ domain_info.domain|slugify }}">
                                                         {% trans "Enable GTM for this domain" %}
@@ -101,7 +102,7 @@
                                                 <button type="submit" class="btn btn-primary">
                                                     <i class="fas fa-save"></i> {% trans "Save" %}
                                                 </button>
-                                                {% if gtm_settings|get_item:domain_info.domain %}
+                                                {% if domain_gtm %}
                                                     <button type="button" class="btn btn-info" onclick="viewGTMCode('{{ domain_info.domain }}')">
                                                         <i class="fas fa-code"></i> {% trans "View Code" %}
                                                     </button>
@@ -121,6 +122,7 @@
                                         </form>
                                     </div>
                                 </div>
+                                {% endwith %}
                                 {% endfor %}
                             {% else %}
                                 <div class="alert alert-warning">

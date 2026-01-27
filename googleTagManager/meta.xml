@@ -2,7 +2,7 @@
 <plugin>
     <name>Google Tag Manager</name>
     <type>Utility</type>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <description>Easily add Google Tag Manager (GTM) container IDs to your domains. Configure GTM for each domain and get code snippets to add to your websites.</description>
     <author>master3395</author>
     <website>https://github.com/master3395/cyberpanel-plugins</website>
