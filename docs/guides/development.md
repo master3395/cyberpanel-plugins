@@ -23,6 +23,18 @@ pluginName/
 
 ## meta.xml Format
 
+### Valid Categories (type field)
+
+- **Utility** - General-purpose tools
+- **Security** - Security, auth, fail2ban
+- **Backup** - Backups, snapshots
+- **Performance** - Performance tuning, caching
+- **Monitoring** - Health checks, metrics, alerts
+- **Integration** - Webhooks, Discord, third-party APIs
+- **Email** - Email marketing, deliverability
+- **Development** - Dev tools, PM2, staging
+- **Analytics** - Stats, GTM, reporting
+
 ### Free Plugin Example
 
 ```xml

@@ -17,13 +17,13 @@ A collection of plugins for CyberPanel web hosting control panel.
 | Plugin | Type | Pricing | Author | Description |
 |--------|------|---------|--------|-------------|
 | [Discord Authentication](discordAuth/) | Security | 🟢 Free | master3395 | Discord OAuth2 login for CyberPanel |
-| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Utility | 🟢 Free | master3395 | Send server notifications to Discord |
-| [Email Marketing](emailMarketing/) | Utility | 🟢 Free | usmannasir | Email marketing plugin for CyberPanel |
+| [Discord Webhooks](docs/plugins/discordWebhooks.md) | Integration | 🟢 Free | master3395 | Send server notifications to Discord |
+| [Email Marketing](emailMarketing/) | Email | 🟢 Free | usmannasir | Email marketing plugin for CyberPanel |
 | [Example Plugin](examplePlugin/) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
 | [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
-| [Google Tag Manager](googleTagManager/) | Utility | 🟢 Free | master3395 | Configure GTM container IDs per domain |
+| [Google Tag Manager](googleTagManager/) | Analytics | 🟢 Free | master3395 | Configure GTM container IDs per domain |
 | [PayPal Premium Plugin Example](paypalPremiumPlugin/) | Utility | 🟡 Paid | master3395 | Example paid plugin with PayPal payment integration |
-| [PM2 Manager](docs/plugins/pm2Manager.md) | Utility | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
+| [PM2 Manager](docs/plugins/pm2Manager.md) | Development | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
 
