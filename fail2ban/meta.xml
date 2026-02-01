@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin>
     <name>Fail2ban Security Manager</name>
-    <type>security</type>
-    <version>1.0.1</version>
+    <type>Security</type>
+    <version>1.0.2</version>
     <description>Advanced fail2ban management plugin for CyberPanel with modern UI, real-time monitoring, and comprehensive security features.</description>
     <author>Master3395</author>
     <website>https://newstargeted.com</website>
