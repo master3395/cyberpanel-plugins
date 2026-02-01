@@ -3,7 +3,7 @@
     <name>Discord Webhooks</name>
     <type>Utility</type>
     <description>Send server notifications (SSH logins, security warnings, server usage) to Discord via webhooks</description>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <author>Master3395</author>
     <url>/plugins/discordWebhooks/</url>
     <settings_url>/plugins/discordWebhooks/settings/</settings_url>

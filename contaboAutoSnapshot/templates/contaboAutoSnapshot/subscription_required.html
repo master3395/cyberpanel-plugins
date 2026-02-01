@@ -1,0 +1,416 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Payment Required - Auto Snapshot for Contabo" %}{% endblock %}
+
+{% block header_scripts %}
+<style>
+    .subscription-required-container {
+        padding: 40px 20px;
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .subscription-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .premium-icon {
+        font-size: 64px;
+        color: #FF6B35;
+        margin-bottom: 20px;
+    }
+    
+    .subscription-card h1 {
+        color: #2f3640;
+        margin-bottom: 15px;
+    }
+    
+    .subscription-card p {
+        color: #64748b;
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+    
+    .payment-methods {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 30px 0;
+    }
+    
+    .payment-method-card {
+        flex: 1;
+        min-width: 250px;
+        max-width: 350px;
+        background: #f8f9ff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+    }
+    
+    .payment-method-card.patreon {
+        border-color: #FF424D;
+    }
+    
+    .payment-method-card.paypal {
+        border-color: #0070ba;
+    }
+    
+    .payment-method-card h3 {
+        margin-top: 0;
+        color: #2f3640;
+        font-size: 1.3rem;
+    }
+    
+    .payment-method-card p {
+        color: #64748b;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    .patreon-button {
+        display: inline-block;
+        background: #FF424D;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .patreon-button:hover {
+        background: #E62E37;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 66, 77, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .paypal-button {
+        display: inline-block;
+        background: #0070ba;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+    }
+    
+    .paypal-button:hover {
+        background: #003087;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 112, 186, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .paypal-me-button {
+        background: linear-gradient(135deg, #0070ba 0%, #003087 100%);
+    }
+    
+    .paypal-payment-link-button {
+        background: linear-gradient(135deg, #009cde 0%, #0070ba 100%);
+    }
+    
+    .info-box {
+        background: #f8f9ff;
+        border-left: 4px solid #FF6B35;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 30px;
+        text-align: left;
+    }
+    
+    .info-box h3 {
+        margin-top: 0;
+        color: #2f3640;
+    }
+    
+    .info-box ul {
+        color: #64748b;
+        line-height: 1.8;
+    }
+    
+    .payment-method-selector {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 30px;
+        text-align: left;
+    }
+    
+    .payment-method-selector strong {
+        color: #856404;
+    }
+    
+    .payment-method-selector p {
+        margin: 5px 0 0 0;
+        color: #856404;
+        font-size: 14px;
+    }
+    
+    @media (max-width: 768px) {
+        .payment-methods {
+            flex-direction: column;
+        }
+        
+        .payment-method-card {
+            max-width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-required-container">
+    <div class="subscription-card">
+        <div class="premium-icon">
+            <i class="fas fa-crown"></i>
+        </div>
+        <h1>{% trans "Premium Plugin Access Required" %}</h1>
+        <p>
+            {% trans "This plugin requires payment or subscription to access premium features." %}
+        </p>
+        <p>
+            {% trans "You can install this plugin, but you need to complete payment or subscribe to use it." %}
+        </p>
+        
+        <!-- Activation Key Section -->
+        <div style="background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%); border: 2px solid #17a2b8; border-radius: 12px; padding: 25px; margin: 30px 0; text-align: left;">
+            <h3 style="color: #17a2b8; margin-top: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-key"></i> {% trans "Activate Premium Access" %}
+            </h3>
+            <p style="color: #495057; margin-bottom: 20px;">
+                {% trans "If you received an activation key from the admin, enter it below to activate your premium access." %}
+            </p>
+            
+            <div id="activation-message" style="display: none; margin-bottom: 15px; padding: 12px; border-radius: 6px;"></div>
+            
+            <form id="activation-key-form" style="display: flex; gap: 10px; align-items: flex-end; max-width: 600px;">
+                <div style="flex: 1; margin-bottom: 0;">
+                    <label for="activation-key-input" style="font-weight: 600; margin-bottom: 8px; display: block; color: #2d3748;">
+                        <i class="fas fa-key"></i> {% trans "Activation Key" %}
+                    </label>
+                    <input 
+                        type="text" 
+                        id="activation-key-input" 
+                        name="activation_key" 
+                        placeholder="CONTABOAUTOSNAPSHOT-XXXX-XXXX-XXXX" 
+                        style="width: 100%; padding: 12px; border: 2px solid #17a2b8; border-radius: 6px; font-size: 1rem; font-family: monospace; text-transform: uppercase;"
+                        required
+                    />
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        {% trans "Enter the activation key provided by the admin" %}
+                    </small>
+                </div>
+                <div style="margin-bottom: 0;">
+                    <button 
+                        type="submit" 
+                        style="background: #17a2b8; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 1rem; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.3s;"
+                        id="activate-btn"
+                    >
+                        <i class="fas fa-check-circle"></i> {% trans "Activate" %}
+                    </button>
+                </div>
+            </form>
+            
+            <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <strong><i class="fas fa-info-circle"></i> {% trans "Note" %}:</strong>
+                <p style="margin: 5px 0 0 0; color: #856404;">
+                    {% trans "Activation keys are generated when an admin grants you access. If you don't have a key, you can still use Patreon or PayPal to get access." %}
+                </p>
+            </div>
+        </div>
+        
+        {% if payment_method == 'both' %}
+        <div class="payment-method-selector">
+            <strong>{% trans "Current Payment Method:" %}</strong> {% trans "Check Both (Patreon or PayPal)" %}
+            <p>{% trans "You can choose either payment method. Access will be granted if either is valid." %}</p>
+        </div>
+        {% elif payment_method == 'patreon' %}
+        <div class="payment-method-selector">
+            <strong>{% trans "Current Payment Method:" %}</strong> {% trans "Patreon Subscription Only" %}
+            <p>{% trans "Only Patreon subscription will be checked. Change this in plugin settings if you prefer PayPal." %}</p>
+        </div>
+        {% elif payment_method == 'paypal' %}
+        <div class="payment-method-selector">
+            <strong>{% trans "Current Payment Method:" %}</strong> {% trans "PayPal Payment Only" %}
+            <p>{% trans "Only PayPal payment will be checked. Change this in plugin settings if you prefer Patreon." %}</p>
+        </div>
+        {% endif %}
+        
+        <div class="payment-methods">
+            <!-- Patreon Option -->
+            <div class="payment-method-card patreon">
+                <h3><i class="fab fa-patreon"></i> {% trans "Patreon Subscription" %}</h3>
+                <p>{% trans "Subscribe to" %} <strong>"{{ patreon_tier }}"</strong> {% trans "tier on Patreon" %}</p>
+                <a href="{{ patreon_url }}" target="_blank" class="patreon-button">
+                    <i class="fab fa-patreon"></i> {% trans "Subscribe on Patreon" %}
+                </a>
+            </div>
+            
+            <!-- PayPal Option -->
+            <div class="payment-method-card paypal">
+                <h3><i class="fab fa-paypal"></i> {% trans "PayPal Payment" %}</h3>
+                <p>{% trans "Complete one-time payment via PayPal" %}</p>
+                {% if paypal_payment_link %}
+                <a href="{{ paypal_payment_link }}" target="_blank" class="paypal-button paypal-payment-link-button">
+                    <i class="fab fa-paypal"></i> {% trans "Pay with Payment Link" %}
+                </a>
+                {% endif %}
+                {% if paypal_me_url %}
+                <a href="{{ paypal_me_url }}" target="_blank" class="paypal-button paypal-me-button">
+                    <i class="fab fa-paypal"></i> {% trans "Pay with PayPal.me" %}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>{% trans "How it works:" %}</h3>
+            <ul>
+                <li>{% trans "Install the plugin (already done)" %}</li>
+                {% if payment_method == 'both' %}
+                <li>{% trans "Choose either Patreon subscription or PayPal payment" %}</li>
+                <li>{% trans "Complete payment/subscription via your preferred method" %}</li>
+                {% elif payment_method == 'patreon' %}
+                <li>{% trans "Subscribe to the Patreon tier: " %}<strong>{{ patreon_tier }}</strong></li>
+                <li>{% trans "Authorize CyberPanel to check your Patreon membership" %}</li>
+                {% else %}
+                <li>{% trans "Complete payment via PayPal.me or PayPal Payment Link" %}</li>
+                <li>{% trans "Payment will be verified on our server" %}</li>
+                {% endif %}
+                <li>{% trans "The plugin will automatically unlock and become functional" %}</li>
+            </ul>
+        </div>
+        
+        <p style="margin-top: 30px; color: #94a3b8; font-size: 14px;">
+            {% if payment_method == 'both' %}
+            {% trans "Already subscribed or paid? Verification may take a few minutes. Please refresh the page after payment/subscription." %}
+            {% elif payment_method == 'patreon' %}
+            {% trans "Already subscribed? Make sure you've authorized CyberPanel to check your Patreon membership." %}
+            {% else %}
+            {% trans "Already paid? Payment verification may take a few minutes. Please refresh the page after payment." %}
+            {% endif %}
+        </p>
+        
+        {% if error %}
+        <div style="background: #fee; border: 1px solid #fcc; border-radius: 8px; padding: 15px; margin-top: 20px; color: #c33;">
+            <strong>{% trans "Error:" %}</strong> {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Activation Key Form Handler
+document.addEventListener('DOMContentLoaded', function() {
+    const activationForm = document.getElementById('activation-key-form');
+    const activationInput = document.getElementById('activation-key-input');
+    const activateBtn = document.getElementById('activate-btn');
+    const activationMessage = document.getElementById('activation-message');
+    
+    if (activationForm) {
+        activationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const activationKey = activationInput.value.trim().toUpperCase();
+            
+            if (!activationKey) {
+                showActivationMessage('Please enter an activation key', 'error');
+                return;
+            }
+            
+            // Disable button
+            activateBtn.disabled = true;
+            activateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Activating...';
+            
+            try {
+                const response = await fetch('/plugins/contaboAutoSnapshot/activate-key/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        activation_key: activationKey
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.has_access) {
+                    showActivationMessage('✅ ' + data.message + ' Access activated successfully!', 'success');
+                    activationInput.value = '';
+                    
+                    // Reload page after 2 seconds to refresh access status
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showActivationMessage('❌ ' + (data.message || 'Invalid activation key'), 'error');
+                }
+            } catch (error) {
+                showActivationMessage('❌ Error: ' + error.message, 'error');
+            } finally {
+                activateBtn.disabled = false;
+                activateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+            }
+        });
+    }
+    
+    function showActivationMessage(message, type) {
+        activationMessage.textContent = message;
+        activationMessage.style.display = 'block';
+        
+        if (type === 'success') {
+            activationMessage.style.background = '#d4edda';
+            activationMessage.style.border = '1px solid #c3e6cb';
+            activationMessage.style.color = '#155724';
+        } else {
+            activationMessage.style.background = '#f8d7da';
+            activationMessage.style.border = '1px solid #f5c6cb';
+            activationMessage.style.color = '#721c24';
+        }
+        
+        // Auto-hide after 5 seconds
+        setTimeout(function() {
+            activationMessage.style.display = 'none';
+        }, 5000);
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

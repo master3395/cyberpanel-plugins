@@ -2,7 +2,7 @@
 <plugin>
     <name>Test Plugin</name>
     <type>Utility</type>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <description>A comprehensive test plugin for CyberPanel with enable/disable functionality, test button, popup messages, and inline integration</description>
     <author>usmannasir</author>
     <website>https://github.com/cyberpanel/testPlugin</website>

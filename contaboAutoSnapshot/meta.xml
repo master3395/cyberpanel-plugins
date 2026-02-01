@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>Auto Snapshot for Contabo</name>
+    <type>Backup</type>
+    <description>Automatically create snapshots for Contabo VPS instances on a schedule. Configure snapshot schedules, retention policies, and monitor snapshot creation history.</description>
+    <version>1.0.1</version>
+    <author>master3395</author>
+    <url>/plugins/contaboAutoSnapshot/</url>
+    <settings_url>/plugins/contaboAutoSnapshot/settings/</settings_url>
+    <paid>true</paid>
+    <patreon_tier>CyberPanel Paid Plugin</patreon_tier>
+    <patreon_url>https://www.patreon.com/membership/27789984</patreon_url>
+    <paypal_me_url>https://paypal.me/KimBS?locale.x=en_US&amp;country.x=NO</paypal_me_url>
+    <paypal_payment_link></paypal_payment_link>
+</cyberpanelPluginConfig>

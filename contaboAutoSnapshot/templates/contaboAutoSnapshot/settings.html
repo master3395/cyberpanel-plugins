@@ -1,0 +1,949 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extraCSS %}
+<style>
+:root {
+    --primary-color: #FF6B35;
+    --primary-dark: #E55A2B;
+    --success-color: #57F287;
+    --warning-color: #FEE75C;
+    --danger-color: #ED4245;
+    --light-color: #f7fafc;
+    --border-radius: 8px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.settings-container {
+    background: var(--light-color);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+}
+
+.page-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+}
+
+.page-header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2d3748;
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: #000;
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: #000;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+    background: #f7fafc;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.table tr:hover {
+    background: #f7fafc;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-enabled {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-disabled {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.status-pending {
+    background: #feebc8;
+    color: #7c2d12;
+}
+
+.status-completed {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-failed {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.alert {
+    padding: 15px 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.alert-danger {
+    background: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #fc8181;
+}
+
+.alert-info {
+    background: #bee3f8;
+    color: #2c5282;
+    border: 1px solid #90cdf4;
+}
+
+.plugin-info-section {
+    background: #d1ecf1 !important;
+    border: 1px solid #bee5eb !important;
+    border-radius: 8px !important;
+    padding: 15px 20px !important;
+    margin-bottom: 25px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.plugin-info-section ul {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+}
+
+.plugin-info-section li {
+    margin-bottom: 8px;
+}
+
+.plugin-info-section li:last-child {
+    margin-bottom: 0;
+}
+
+#scheduleModal, #snapshotModal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+#scheduleModal.show, #snapshotModal.show {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.modal-header h4 {
+    margin: 0;
+    color: #2d3748;
+}
+
+.close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #a0aec0;
+}
+
+.close:hover {
+    color: #2d3748;
+}
+
+.cron-help {
+    background: #f7fafc;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="page-header">
+        <h1>📸 Auto Snapshot for Contabo</h1>
+        <p>Automatically create snapshots for your Contabo VPS instances on a schedule</p>
+    </div>
+
+    <!-- Plugin Information Section -->
+    <div class="plugin-info-section">
+        <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+        <strong style="color: #0c5460; font-weight: 600;">{% trans "Plugin Information" %}</strong>
+        <ul>
+            <li><strong>{% trans "Name" %}:</strong> {{ plugin_name|default:"Auto Snapshot for Contabo" }}</li>
+            <li><strong>{% trans "Version" %}:</strong> {{ version|default:"1.0.0" }}</li>
+            <li>
+                <strong>{% trans "Status" %}:</strong> 
+                <span class="badge badge-success" style="background: #28a745 !important; color: white !important; padding: 4px 10px !important; border-radius: 4px !important; font-size: 12px !important; font-weight: 600 !important; display: inline-block !important;">{{ status|default:"Active" }}</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Activation Key Section -->
+    <div class="card" style="border: 2px solid #17a2b8; background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);">
+        <h3 style="color: #17a2b8;">
+            <i class="fas fa-key"></i> {% trans "Activate Premium Access" %}
+        </h3>
+        <p style="color: #495057; margin-bottom: 20px;">
+            {% trans "If you received an activation key from the admin, enter it below to activate your premium access." %}
+        </p>
+        
+        <div id="activation-message" style="display: none; margin-bottom: 15px; padding: 12px; border-radius: 6px;"></div>
+        
+        <form id="activation-key-form" style="display: flex; gap: 10px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label for="activation-key-input" style="font-weight: 600; margin-bottom: 8px;">
+                    <i class="fas fa-key"></i> {% trans "Activation Key" %}
+                </label>
+                <input 
+                    type="text" 
+                    id="activation-key-input" 
+                    name="activation_key" 
+                    placeholder="CONTABOAUTOSNAPSHOT-XXXX-XXXX-XXXX" 
+                    style="width: 100%; padding: 12px; border: 2px solid #17a2b8; border-radius: 6px; font-size: 1rem; font-family: monospace; text-transform: uppercase;"
+                    required
+                />
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                    {% trans "Enter the activation key provided by the admin" %}
+                </small>
+            </div>
+            <div style="margin-bottom: 0;">
+                <button 
+                    type="submit" 
+                    class="btn btn-info" 
+                    style="padding: 12px 24px; font-size: 1rem; font-weight: 600; white-space: nowrap;"
+                    id="activate-btn"
+                >
+                    <i class="fas fa-check-circle"></i> {% trans "Activate" %}
+                </button>
+            </div>
+        </form>
+        
+        <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <strong><i class="fas fa-info-circle"></i> {% trans "Note" %}:</strong>
+            <p style="margin: 5px 0 0 0; color: #856404;">
+                {% trans "Activation keys are generated when an admin grants you access. If you don't have a key, you can still use Patreon or PayPal to get access." %}
+            </p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Auto Backup Settings Section -->
+    <div class="card" style="border: 2px solid var(--primary-color);">
+        <h3 style="color: var(--primary-color);">⚙️ Auto Backup Settings</h3>
+        <p>Control automatic snapshot creation globally. You can enable/disable auto backups and set limits based on your Contabo plan.</p>
+        
+        <form id="auto-backup-config-form" method="post" action="{% url 'contaboAutoSnapshot:save_config' %}">
+            {% csrf_token %}
+            <div class="form-group" style="background: #f7fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <div class="checkbox-group" style="margin-bottom: 15px;">
+                    {{ config_form.auto_backup_enabled }}
+                    <label for="id_auto_backup_enabled" style="font-size: 1.1rem; font-weight: 600;">
+                        Enable Automatic Snapshots
+                    </label>
+                </div>
+                <small style="color: #718096; margin-left: 30px; display: block;">
+                    When enabled, all active schedules will run automatically. When disabled, all schedules are paused regardless of their individual settings.
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_max_snapshots_per_vps">
+                    <strong>Maximum Snapshots Per VPS:</strong>
+                </label>
+                {{ config_form.max_snapshots_per_vps }}
+                <small style="color: #718096; display: block; margin-top: 5px;">
+                    Set this based on your Contabo plan limits. Check your plan at <a href="https://my.contabo.com" target="_blank">my.contabo.com</a>. 
+                    This is a global limit that applies to all schedules. Individual schedule retention counts cannot exceed this value.
+                </small>
+            </div>
+            
+            <div class="form-group" style="background: #e6f3ff; padding: 20px; border-radius: 8px; border: 2px solid #0070ba; margin-top: 20px;">
+                <label for="id_payment_method">
+                    <strong>💳 Payment Method Preference:</strong>
+                </label>
+                {{ config_form.payment_method }}
+                <small style="color: #718096; display: block; margin-top: 5px;">
+                    <strong>Choose how to verify your premium access:</strong><br>
+                    • <strong>Patreon Subscription:</strong> Only check Patreon membership<br>
+                    • <strong>PayPal Payment:</strong> Only check PayPal payment<br>
+                    • <strong>Check Both:</strong> Grant access if either Patreon or PayPal is valid (recommended)
+                </small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">💾 Save Auto Backup Settings</button>
+        </form>
+    </div>
+
+    <!-- API Configuration Section -->
+    <div class="card">
+        <h3>Contabo API Configuration</h3>
+        <p>Configure your Contabo API credentials to enable snapshot creation. Get your API credentials from <a href="https://my.contabo.com/api" target="_blank">Contabo API Settings</a>.</p>
+        
+        <form id="config-form" method="post" action="{% url 'contaboAutoSnapshot:test_connection' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_api_client_id">API Client ID:</label>
+                {{ config_form.api_client_id }}
+            </div>
+            <div class="form-group">
+                <label for="id_api_client_secret">API Client Secret:</label>
+                {{ config_form.api_client_secret }}
+            </div>
+            <div class="form-group">
+                <label for="id_api_key">API Key:</label>
+                {{ config_form.api_key }}
+            </div>
+            <div class="form-group">
+                <label for="id_api_secret">API Secret:</label>
+                {{ config_form.api_secret }}
+            </div>
+            <div class="form-group">
+                <label for="id_api_base_url">API Base URL:</label>
+                {{ config_form.api_base_url }}
+            </div>
+            <button type="submit" class="btn btn-primary">🔌 Test Connection & Save</button>
+        </form>
+    </div>
+
+    <!-- Snapshot Schedules Section -->
+    <div class="card">
+        <h3>📅 Snapshot Schedules</h3>
+        <p>Configure how often to create snapshots for each VPS. You can set different schedules for different VPS instances.</p>
+        
+        {% if not config.auto_backup_enabled %}
+        <div class="alert alert-warning" style="background: #feebc8; color: #7c2d12; border: 1px solid #fbd38d; margin-bottom: 20px;">
+            <strong>⚠️ Auto Backup is Disabled:</strong> All schedules are paused. Enable auto backup in the settings above to activate schedules.
+        </div>
+        {% endif %}
+        
+        <button class="btn btn-primary" onclick="openAddScheduleModal()">+ Add Schedule</button>
+        
+        {% if schedules %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>VPS ID</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th>Last Run</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr>
+                    <td><strong>{{ schedule.name }}</strong></td>
+                    <td><code>{{ schedule.vps_id }}</code></td>
+                    <td>{{ schedule.get_schedule_type_display }}{% if schedule.cron_expression %}<br><small style="color: #718096;">{{ schedule.cron_expression }}</small>{% endif %}</td>
+                    <td>
+                        <span class="status-badge {% if schedule.enabled %}status-enabled{% else %}status-disabled{% endif %}">
+                            {% if schedule.enabled %}Enabled{% else %}Disabled{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if schedule.last_run %}
+                            {{ schedule.last_run|date:"Y-m-d H:i" }}
+                        {% else %}
+                            <span style="color: #a0aec0;">Never</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-warning" onclick="toggleSchedule({{ schedule.id }})" title="Toggle">
+                            {% if schedule.enabled %}Disable{% else %}Enable{% endif %}
+                        </button>
+                        <button class="btn btn-primary" onclick="openEditScheduleModal({{ schedule.id }})" title="Edit">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteSchedule({{ schedule.id }})" title="Delete">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info">
+            No schedules configured. Click "Add Schedule" to create your first automatic snapshot schedule.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Manual Snapshot Section -->
+    <div class="card">
+        <h3>Create Manual Snapshot</h3>
+        <p>Create a snapshot immediately without waiting for a schedule</p>
+        
+        <form id="manual-snapshot-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_vps_id">VPS Instance ID:</label>
+                {{ manual_snapshot_form.vps_id }}
+            </div>
+            <div class="form-group">
+                <label for="id_snapshot_name">Snapshot Name:</label>
+                {{ manual_snapshot_form.snapshot_name }}
+            </div>
+            <div class="form-group">
+                <label for="id_description">Description (optional):</label>
+                {{ manual_snapshot_form.description }}
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    {{ manual_snapshot_form.include_ram }}
+                    <label for="id_include_ram">Include RAM state in snapshot</label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">📸 Create Snapshot</button>
+        </form>
+    </div>
+
+    <!-- Recent Snapshots Section -->
+    <div class="card">
+        <h3>Recent Snapshots</h3>
+        <p><a href="{% url 'contaboAutoSnapshot:snapshot_history' %}">View all snapshots →</a></p>
+        
+        {% if recent_snapshots %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Snapshot Name</th>
+                    <th>VPS ID</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for snapshot in recent_snapshots %}
+                <tr>
+                    <td><strong>{{ snapshot.snapshot_name }}</strong></td>
+                    <td><code>{{ snapshot.vps_id }}</code></td>
+                    <td>
+                        <span class="status-badge status-{{ snapshot.status }}">
+                            {{ snapshot.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ snapshot.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info">
+            No snapshots created yet. Create a manual snapshot or wait for a scheduled snapshot.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add/Edit Schedule Modal -->
+<div id="scheduleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="close" onclick="closeScheduleModal()">&times;</span>
+            <h4 id="scheduleModalTitle">Add Schedule</h4>
+        </div>
+        <form id="schedule-form">
+            {% csrf_token %}
+            <input type="hidden" id="schedule-id" name="schedule_id">
+            <div class="form-group">
+                <label for="schedule-name">Schedule Name:</label>
+                <input type="text" id="schedule-name" name="name" class="form-control" placeholder="e.g., Daily Backup for VPS-123" required>
+            </div>
+            <div class="form-group">
+                <label for="schedule-vps-id">VPS Instance ID:</label>
+                <input type="text" id="schedule-vps-id" name="vps_id" class="form-control" placeholder="Your Contabo VPS Instance ID" required>
+            </div>
+            <div class="form-group">
+                <label for="schedule-type">Schedule Type:</label>
+                <select id="schedule-type" name="schedule_type" class="form-control" onchange="toggleCronExpression()">
+                    <option value="hourly">Hourly</option>
+                    <option value="daily" selected>Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom Cron</option>
+                </select>
+            </div>
+            <div class="form-group" id="cron-expression-group" style="display: none;">
+                <label for="schedule-cron">Cron Expression:</label>
+                <input type="text" id="schedule-cron" name="cron_expression" class="form-control" placeholder="0 2 * * * (daily at 2 AM)">
+                <div class="cron-help">
+                    Format: minute hour day month weekday<br>
+                    Example: 0 2 * * * = Daily at 2 AM
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="schedule-prefix">Snapshot Name Prefix:</label>
+                <input type="text" id="schedule-prefix" name="snapshot_name_prefix" class="form-control" value="auto-snapshot" required>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="schedule-include-ram" name="include_ram">
+                    <label for="schedule-include-ram">Include RAM state in snapshot</label>
+                </div>
+            </div>
+            <div class="form-group" style="background: #f7fafc; padding: 15px; border-radius: 8px;">
+                <label for="schedule-retention">
+                    <strong>Number of Snapshots to Keep:</strong>
+                </label>
+                <input type="number" id="schedule-retention" name="retention_count" class="form-control" value="5" min="0" max="{{ config.max_snapshots_per_vps|default:100 }}">
+                <small style="color: #718096; display: block; margin-top: 5px;">
+                    <strong>Important:</strong> This is the number of snapshots to keep for <strong>this specific schedule</strong>. 
+                    The global limit ({{ config.max_snapshots_per_vps }} snapshots per VPS) will also apply. 
+                    Set to 0 to keep all snapshots (not recommended - may exceed your Contabo plan limits).
+                </small>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="schedule-auto-delete" name="auto_delete_old" checked>
+                    <label for="schedule-auto-delete">Automatically delete old snapshots</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="schedule-enabled" name="enabled" checked>
+                    <label for="schedule-enabled">Enabled</label>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" class="btn" onclick="closeScheduleModal()" style="background: #e2e8f0; margin-right: 10px;">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// CSRF Token helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Toggle cron expression field
+function toggleCronExpression() {
+    const scheduleType = document.getElementById('schedule-type').value;
+    const cronGroup = document.getElementById('cron-expression-group');
+    cronGroup.style.display = (scheduleType === 'custom') ? 'block' : 'none';
+}
+
+// Schedule Modal Functions
+function openAddScheduleModal() {
+    document.getElementById('scheduleModalTitle').textContent = 'Add Schedule';
+    document.getElementById('schedule-form').reset();
+    document.getElementById('schedule-id').value = '';
+    document.getElementById('schedule-enabled').checked = true;
+    document.getElementById('schedule-auto-delete').checked = true;
+    // Set max retention based on global limit
+    const maxSnapshots = {{ config.max_snapshots_per_vps|default:10 }};
+    document.getElementById('schedule-retention').setAttribute('max', maxSnapshots);
+    document.getElementById('schedule-retention').value = Math.min(5, maxSnapshots);
+    toggleCronExpression();
+    document.getElementById('scheduleModal').classList.add('show');
+}
+
+function openEditScheduleModal(scheduleId) {
+    fetch(`/plugins/contaboAutoSnapshot/schedule/${scheduleId}/edit/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const s = data.schedule;
+                document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
+                document.getElementById('schedule-id').value = s.id;
+                document.getElementById('schedule-name').value = s.name;
+                document.getElementById('schedule-vps-id').value = s.vps_id;
+                document.getElementById('schedule-type').value = s.schedule_type;
+                document.getElementById('schedule-cron').value = s.cron_expression || '';
+                document.getElementById('schedule-prefix').value = s.snapshot_name_prefix;
+                document.getElementById('schedule-include-ram').checked = s.include_ram;
+                document.getElementById('schedule-retention').value = s.retention_count;
+                document.getElementById('schedule-auto-delete').checked = s.auto_delete_old;
+                document.getElementById('schedule-enabled').checked = s.enabled;
+                // Update max attribute based on global limit
+                const maxSnapshots = {{ config.max_snapshots_per_vps|default:10 }};
+                document.getElementById('schedule-retention').setAttribute('max', maxSnapshots);
+                toggleCronExpression();
+                document.getElementById('scheduleModal').classList.add('show');
+            } else {
+                showAlert('Error loading schedule: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error loading schedule', 'danger');
+        });
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModal').classList.remove('show');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('scheduleModal');
+    if (event.target === modal) {
+        closeScheduleModal();
+    }
+}
+
+// Schedule Form Submit
+document.getElementById('schedule-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const scheduleId = document.getElementById('schedule-id').value;
+    const formData = new FormData(this);
+    const url = scheduleId ? `/plugins/contaboAutoSnapshot/schedule/${scheduleId}/edit/` : '/plugins/contaboAutoSnapshot/schedule/add/';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            closeScheduleModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + (data.error || JSON.stringify(data.errors)), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error saving schedule', 'danger');
+    });
+});
+
+// Manual Snapshot Form Submit
+document.getElementById('manual-snapshot-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/plugins/contaboAutoSnapshot/snapshot/create/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            this.reset();
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showAlert('Error: ' + (data.error || JSON.stringify(data.errors)), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error creating snapshot', 'danger');
+    });
+});
+
+// Auto Backup Config Form Submit
+document.getElementById('auto-backup-config-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + (data.error || JSON.stringify(data.errors)), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error saving auto backup settings', 'danger');
+    });
+});
+
+// Config Form Submit (API credentials)
+document.getElementById('config-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+        } else {
+            showAlert('Error: ' + data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error testing connection', 'danger');
+    });
+});
+
+// Toggle Schedule
+function toggleSchedule(scheduleId) {
+    fetch(`/plugins/contaboAutoSnapshot/schedule/${scheduleId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error toggling schedule', 'danger');
+    });
+}
+
+// Delete Schedule
+function deleteSchedule(scheduleId) {
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    
+    fetch(`/plugins/contaboAutoSnapshot/schedule/${scheduleId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error deleting schedule', 'danger');
+    });
+}
+
+// Alert function
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    `;
+    alert.textContent = message;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

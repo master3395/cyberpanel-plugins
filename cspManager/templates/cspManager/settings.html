@@ -1,0 +1,213 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}CSP Manager Settings - {% trans "CyberPanel" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-shield-alt"></i>
+                        {% trans "Content Security Policy Manager Settings" %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if success_message %}
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle"></i> {{ success_message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    {% if error_message %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'cspManager:settings' %}">
+                        {% csrf_token %}
+                        
+                        <!-- Global Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="mb-0"><i class="fas fa-cog"></i> {% trans "Global Settings" %}</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        {{ form.csp_enabled }}
+                                        <label class="form-check-label" for="{{ form.csp_enabled.id_for_label }}">
+                                            <strong>{% trans "Enable CSP Globally" %}</strong>
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            {% trans "When disabled, CSP headers will not be set on any pages." %}
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        {{ form.apply_to_core }}
+                                        <label class="form-check-label" for="{{ form.apply_to_core.id_for_label }}">
+                                            <strong>{% trans "Apply CSP to Core CyberPanel Pages" %}</strong>
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            {% trans "Apply CSP to login, dashboard, and other core CyberPanel pages." %}
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        {{ form.apply_to_plugins }}
+                                        <label class="form-check-label" for="{{ form.apply_to_plugins.id_for_label }}">
+                                            <strong>{% trans "Apply CSP to Plugin Routes" %}</strong>
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            {% trans "Apply CSP to all plugin pages (/plugins/*)." %}
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        {{ form.permissive_plugin_csp }}
+                                        <label class="form-check-label" for="{{ form.permissive_plugin_csp.id_for_label }}">
+                                            <strong>{% trans "Use Permissive CSP for Plugins" %}</strong>
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            {% trans "When enabled, plugins get very permissive CSP (allows all HTTPS/HTTP resources). When disabled, plugins use the same CSP as core pages." %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Allowed Resources -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="mb-0"><i class="fas fa-check-circle"></i> {% trans "Allowed Resources" %}</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_google_analytics }}
+                                                <label class="form-check-label" for="{{ form.allow_google_analytics.id_for_label }}">
+                                                    <strong>{% trans "Google Analytics" %}</strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_google_tag_manager }}
+                                                <label class="form-check-label" for="{{ form.allow_google_tag_manager.id_for_label }}">
+                                                    <strong>{% trans "Google Tag Manager" %}</strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_discord_auth }}
+                                                <label class="form-check-label" for="{{ form.allow_discord_auth.id_for_label }}">
+                                                    <strong>{% trans "Discord Auth" %}</strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_angularjs }}
+                                                <label class="form-check-label" for="{{ form.allow_angularjs.id_for_label }}">
+                                                    <strong>{% trans "AngularJS" %}</strong> (code.angularjs.org)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_jquery }}
+                                                <label class="form-check-label" for="{{ form.allow_jquery.id_for_label }}">
+                                                    <strong>{% trans "jQuery" %}</strong> (code.jquery.com)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="form-check">
+                                                {{ form.allow_cdn_resources }}
+                                                <label class="form-check-label" for="{{ form.allow_cdn_resources.id_for_label }}">
+                                                    <strong>{% trans "CDN Resources" %}</strong> (jsDelivr, Cloudflare, etc.)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Save Button -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> {% trans "Save Settings" %}
+                            </button>
+                            <a href="{% url 'cspManager:settings' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-undo"></i> {% trans "Reset" %}
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <!-- Current Status -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-success text-white">
+                            <h4 class="mb-0"><i class="fas fa-info-circle"></i> {% trans "Current Status" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>{% trans "CSP Status" %}:</strong> 
+                                {% if config.csp_enabled %}
+                                    <span class="badge badge-success">{% trans "Enabled" %}</span>
+                                {% else %}
+                                    <span class="badge badge-danger">{% trans "Disabled" %}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>{% trans "Applied To" %}:</strong>
+                                {% if config.apply_to_core %}
+                                    <span class="badge badge-primary">{% trans "Core Pages" %}</span>
+                                {% endif %}
+                                {% if config.apply_to_plugins %}
+                                    <span class="badge badge-info">{% trans "Plugins" %}</span>
+                                {% endif %}
+                                {% if not config.apply_to_core and not config.apply_to_plugins %}
+                                    <span class="badge badge-warning">{% trans "None" %}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>{% trans "Plugin CSP Mode" %}:</strong>
+                                {% if config.permissive_plugin_csp %}
+                                    <span class="badge badge-warning">{% trans "Permissive" %}</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{% trans "Standard" %}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
