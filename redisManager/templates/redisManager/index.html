@@ -1,0 +1,296 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Redis Manager - {% trans "CyberPanel" %}{% endblock %}
+
+{% block content %}
+<style>
+.plugin-pricing-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.plugin-pricing-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+</style>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-database"></i> {% trans "Redis Manager" %}
+                        {% if not is_paid %}<span class="plugin-pricing-badge free">{% trans "Free" %}</span>{% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if not installed %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {% trans "Redis is not installed. Install it from" %}
+                        <a href="{% url 'manageApplications' %}">{% trans "Manage Services" %}</a>.
+                    </div>
+                    {% else %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">{% trans "Status" %}</h5>
+                                    <p class="mb-0">
+                                        <span class="badge {% if status_key == 'running' %}badge-success{% elif status_key == 'stopped' %}badge-danger{% else %}badge-secondary{% endif %}">
+                                            {{ status_msg }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">{% trans "Actions" %}</h5>
+                                    <button type="button" class="btn btn-success btn-sm redis-action" data-action="start" data-confirm="{% trans 'Start Redis service?' %}">{% trans "Start" %}</button>
+                                    <button type="button" class="btn btn-warning btn-sm redis-action" data-action="stop" data-confirm="{% trans 'Stop Redis service?' %}">{% trans "Stop" %}</button>
+                                    <button type="button" class="btn btn-info btn-sm redis-action" data-action="restart" data-confirm="{% trans 'Restart Redis service?' %}">{% trans "Restart" %}</button>
+                                    <button type="button" class="btn btn-danger btn-sm" id="redis-flush-btn" data-confirm="{% trans 'Flush all Redis keys? This cannot be undone.' %}">{% trans "Flush All" %}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="redis-message" class="alert d-none"></div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">{% trans "Redis INFO" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if info_error %}
+                            <p class="text-danger">{{ info_error }}</p>
+                            {% endif %}
+                            <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow: auto;">{{ info_text }}</pre>
+                        </div>
+                    </div>
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-cog"></i> {% trans "Redis Settings" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if redis_config_error %}
+                            <div class="alert alert-warning">{{ redis_config_error }}</div>
+                            <div class="form-group mt-3">
+                                <label for="redis-config-path-input">{% trans "Config file path" %}</label>
+                                <div class="input-group">
+                                    <input type="text" id="redis-config-path-input" class="form-control" value="{{ redis_custom_config_path }}" placeholder="/etc/redis/redis.conf" style="max-width: 400px;">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary" id="redis-detect-path-btn">{% trans "Auto-detect" %}</button>
+                                        <button type="button" class="btn btn-primary" id="redis-save-path-btn">{% trans "Save path" %}</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">{% trans "Enter the full path to redis.conf, or click Auto-detect to try systemd and common paths." %}</small>
+                            </div>
+                            {% else %}
+                            {% if redis_config_read_warning %}
+                            <div class="alert alert-warning mb-2">
+                                {{ redis_config_read_warning }}
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-warning btn-sm" id="redis-fix-permissions-btn">{% trans "Fix permissions" %}</button>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if redis_config_path %}
+                            <p class="text-muted small mb-3">{% trans "Config file:" %} <code>{{ redis_config_path }}</code></p>
+                            {% endif %}
+                            {% endif %}
+                            {% if redis_config %}
+                            <form id="redis-settings-form">
+                                {% for key, item in redis_config.items %}
+                                <div class="form-group">
+                                    <label for="redis-setting-{{ key }}">{{ item.label }}</label>
+                                    {% if item.type == 'select' %}
+                                    <select class="form-control" id="redis-setting-{{ key }}" name="{{ key }}">
+                                        {% for opt in item.options %}
+                                        <option value="{{ opt }}" {% if item.value == opt %}selected{% endif %}>{{ opt }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% elif item.type == 'password' %}
+                                    <input type="password" class="form-control" id="redis-setting-{{ key }}" name="{{ key }}" value="{{ item.value }}" placeholder="{% trans 'Leave empty for no password' %}" autocomplete="off">
+                                    {% else %}
+                                    <input type="{{ item.type }}" class="form-control" id="redis-setting-{{ key }}" name="{{ key }}" value="{{ item.value }}" placeholder="{{ item.default }}">
+                                    {% endif %}
+                                    {% if item.help %}
+                                    <small class="form-text text-muted">{{ item.help }}</small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                <div class="form-group mb-0">
+                                    <button type="submit" class="btn btn-primary" id="redis-settings-save">{% trans "Save Settings" %}</button>
+                                    <button type="button" class="btn btn-secondary" id="redis-settings-default">{% trans "Load Default" %}</button>
+                                    <span class="ml-2 text-muted small align-middle">{% trans "Restart Redis for changes to take effect." %}</span>
+                                </div>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var redisConfigDefaults = (function() {
+        try {
+            var el = document.getElementById('redis-config-defaults');
+            if (el && el.textContent) return JSON.parse(el.textContent);
+        } catch (e) {}
+        try {
+            return JSON.parse("{{ redis_config_defaults_json|escapejs }}");
+        } catch (e) { return {}; }
+    })();
+    var base = (window.location.pathname || '').replace(/\/?$/, '') + '/';
+    var controlUrl = '{% url "redisManager:api_control" %}';
+    function resolveApiUrl(path) {
+        if (controlUrl && controlUrl.indexOf('/') !== -1)
+            return controlUrl.replace(/api\/control\/?$/, path.replace(/^\//, ''));
+        return base + path.replace(/^\//, '');
+    }
+    var apiUrls = {
+        control: resolveApiUrl('api/control/'),
+        flush: resolveApiUrl('api/flush/'),
+        saveConfig: resolveApiUrl('api/save-config/'),
+        saveConfigPath: resolveApiUrl('api/save-config-path/'),
+        detectConfig: resolveApiUrl('api/detect-config/'),
+        fixPermissions: resolveApiUrl('api/fix-permissions/')
+    };
+    var msgEl = document.getElementById('redis-message');
+    function showMsg(text, isError) {
+        if (!msgEl) return;
+        msgEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+        msgEl.classList.add(isError ? 'alert-danger' : 'alert-success');
+        msgEl.textContent = text;
+    }
+    document.querySelectorAll('.redis-action').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var action = this.getAttribute('data-action');
+            var msg = this.getAttribute('data-confirm') || ('Confirm ' + action + '?');
+            if (!confirm(msg)) return;
+            fetch(apiUrls.control, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ action: action })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                showMsg(d.message || (d.error || 'Done'), !d.success);
+                if (d.success) setTimeout(function() { location.reload(); }, 1500);
+            }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
+        });
+    });
+    var flushBtn = document.getElementById('redis-flush-btn');
+    if (flushBtn) {
+        flushBtn.addEventListener('click', function() {
+            var msg = flushBtn.getAttribute('data-confirm') || '{% trans "Flush all Redis keys? This cannot be undone." %}';
+            if (!confirm(msg)) return;
+            fetch(apiUrls.flush, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({})
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                showMsg(d.message || (d.error || 'Done'), !d.success);
+                if (d.success) setTimeout(function() { location.reload(); }, 1500);
+            }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
+        });
+    }
+    var settingsForm = document.getElementById('redis-settings-form');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!confirm('{% trans "Save Redis settings? Restart Redis for changes to take effect." %}')) return;
+            var formData = new FormData(settingsForm);
+            var payload = {};
+            formData.forEach(function(value, key) { payload[key] = value; });
+            var saveBtn = document.getElementById('redis-settings-save');
+            if (saveBtn) saveBtn.disabled = true;
+            fetch(apiUrls.saveConfig, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                showMsg(d.message || (d.error || 'Done'), !d.success);
+                if (saveBtn) saveBtn.disabled = false;
+                if (d.success) setTimeout(function() { location.reload(); }, 1500);
+            }).catch(function(e) {
+                showMsg(e.message || 'Request failed', true);
+                if (saveBtn) saveBtn.disabled = false;
+            });
+        });
+    }
+    var fixPermBtn = document.getElementById('redis-fix-permissions-btn');
+    if (fixPermBtn) {
+        fixPermBtn.addEventListener('click', function() {
+            if (!confirm('{% trans "Set config file to readable (chmod 644)? This requires panel to run as root." %}')) return;
+            fixPermBtn.disabled = true;
+            fetch(apiUrls.fixPermissions, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({})
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                fixPermBtn.disabled = false;
+                showMsg(d.message || (d.error || 'Done'), !d.success);
+                if (d.success) setTimeout(function() { location.reload(); }, 1500);
+            }).catch(function(e) {
+                fixPermBtn.disabled = false;
+                showMsg(e.message || 'Request failed', true);
+            });
+        });
+    }
+    var defaultBtn = document.getElementById('redis-settings-default');
+    if (defaultBtn && settingsForm) {
+        defaultBtn.addEventListener('click', function() {
+            if (!confirm('{% trans "Reset all Redis settings to default values? You can then edit and save." %}')) return;
+            Object.keys(redisConfigDefaults).forEach(function(key) {
+                var el = document.getElementById('redis-setting-' + key);
+                if (el) el.value = redisConfigDefaults[key] !== undefined && redisConfigDefaults[key] !== null ? String(redisConfigDefaults[key]) : '';
+            });
+            showMsg('{% trans "Defaults loaded. Click Save Settings to apply." %}', false);
+        });
+    }
+    var configPathInput = document.getElementById('redis-config-path-input');
+    var savePathBtn = document.getElementById('redis-save-path-btn');
+    var detectPathBtn = document.getElementById('redis-detect-path-btn');
+    if (savePathBtn && configPathInput) {
+        savePathBtn.addEventListener('click', function() {
+            var path = configPathInput.value.trim();
+            savePathBtn.disabled = true;
+            fetch(apiUrls.saveConfigPath, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ path: path })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                showMsg(d.message || (d.error || 'Done'), !d.success);
+                savePathBtn.disabled = false;
+                if (d.success) setTimeout(function() { location.reload(); }, 1500);
+            }).catch(function(e) {
+                showMsg(e.message || 'Request failed', true);
+                savePathBtn.disabled = false;
+            });
+        });
+    }
+    if (detectPathBtn && configPathInput) {
+        detectPathBtn.addEventListener('click', function() {
+            detectPathBtn.disabled = true;
+            fetch(apiUrls.detectConfig).then(function(r) {
+                var ct = r.headers.get('content-type') || '';
+                if (r.status === 404 && ct.indexOf('application/json') === -1) {
+                    return Promise.reject(new Error('API returned 404. On the server run: fix-redis-manager-on-server.sh (see to-do/REDIS-MANAGER-404-FIX.md).'));
+                }
+                return r.json();
+            }).then(function(d) {
+                detectPathBtn.disabled = false;
+                if (d && d.success && d.path) {
+                    configPathInput.value = d.path;
+                    showMsg('{% trans "Path detected. Click Save path to use it." %}', false);
+                } else {
+                    showMsg((d && d.error) || '{% trans "Could not detect config path." %}', true);
+                }
+            }).catch(function(e) {
+                detectPathBtn.disabled = false;
+                showMsg(e && e.message ? e.message : 'Request failed', true);
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

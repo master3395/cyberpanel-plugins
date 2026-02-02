@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>Redis Manager</name>
+    <type>Utility</type>
+    <description>Manage Redis server: view status, start/stop/restart, view INFO stats, flush cache, edit config, load defaults, fix permissions. Free plugin. Compatible with CyberPanel 2.5.5-dev.</description>
+    <version>1.1.0</version>
+    <author>master3395</author>
+    <url>/plugins/redisManager/</url>
+    <settings_url>/plugins/redisManager/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>

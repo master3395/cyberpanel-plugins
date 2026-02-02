@@ -26,8 +26,10 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
 | [Google Tag Manager](googleTagManager/) | Analytics | 🟢 Free | master3395 | Configure GTM container IDs per domain |
 | [PayPal Premium Plugin Example](paypalPremiumPlugin/) | Utility | 🟡 Paid | master3395 | Example paid plugin with PayPal payment integration |
+| [Memcache Manager](memcacheManager/) | Utility | 🟢 Free | master3395 | Manage Memcached/LSMCD: status, stats, flush, config |
 | [PM2 Manager](docs/plugins/pm2Manager.md) | Development | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
+| [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |
 | [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
 
 ## Plugin Pricing

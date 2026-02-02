@@ -5,6 +5,16 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-02-02] - Redis Manager & Memcache Manager 1.1.0 (CyberPanel 2.5.5-dev)
+
+### Added
+- **Redis Manager** (1.0.0 → 1.1.0): Confirmations on all Actions (Start, Stop, Restart, Flush All) and Save Settings; Load Default button to restore Redis config defaults; Fix permissions button and API when config file is unreadable; auto-detect config path (Redis INFO, process, systemd, find); deploy script and fix-permissions script.
+- **Memcache Manager** (1.0.0 → 1.1.0): Version bump for CyberPanel 2.5.5-dev compatibility.
+- **README**: Added Redis Manager and Memcache Manager to Available Plugins table.
+
+### Changed
+- **Redis Manager**: Settings form and Load Default always visible (including when config path not yet set); editable config defaults passed to template for reset.
+
 ## [2026-02-02] - Repository v1.2.0
 
 ### Changed

@@ -1,0 +1,206 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+{% block title %}Memcache Manager - {% trans "CyberPanel" %}{% endblock %}
+{% block content %}
+<style>
+.plugin-pricing-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.plugin-pricing-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.stat-card{transition:transform .2s,box-shadow .2s}.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.stat-value{font-size:1.8rem;font-weight:700;color:#2c3e50}.stat-label{font-size:.85rem;color:#6c757d;text-transform:uppercase;letter-spacing:.5px}
+.chart-container{position:relative;height:200px}.service-badge{font-size:.7rem;padding:2px 6px;margin-left:8px}.action-btn{min-width:80px}
+.config-item{padding:8px 12px;border-bottom:1px solid #e9ecef}.config-item:last-child{border-bottom:none}
+.config-label{font-weight:600;color:#495057}.config-value{color:#6c757d;font-family:monospace}
+.refresh-spinner{display:none}.refreshing .refresh-spinner{display:inline-block}.refreshing .refresh-icon{display:none}
+</style>
+<div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="card">
+<div class="card-header">
+    <h3 class="card-title"><i class="fas fa-memory"></i> {% trans "Memcache Manager" %}
+        {% if service_type %}<span class="badge badge-info service-badge">{{ service_display }}</span>{% endif %}
+        {% if not is_paid %}<span class="plugin-pricing-badge free">{% trans "Free" %}</span>{% endif %}
+    </h3>
+    <div class="card-tools">
+        <button type="button" class="btn btn-tool" id="refresh-stats-btn" title="{% trans 'Refresh Stats' %}">
+            <i class="fas fa-sync-alt refresh-icon"></i><i class="fas fa-spinner fa-spin refresh-spinner"></i>
+        </button>
+    </div>
+</div>
+<div class="card-body">
+{% if not installed %}
+<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> {% trans "Memcache is not installed. Install Memcached or LSMCD from" %} <a href="{% url 'manageApplications' %}">{% trans "Manage Services" %}</a>.</div>
+{% else %}
+<div id="memcache-message" class="alert d-none"></div>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-light stat-card h-100"><div class="card-body text-center">
+            <h5 class="card-title">{% trans "Service Status" %}</h5>
+            <div class="mb-3">
+                <span id="status-badge" class="badge badge-lg p-2 {% if status_key == 'running' %}badge-success{% elif status_key == 'stopped' %}badge-danger{% else %}badge-secondary{% endif %}" style="font-size:1rem">
+                    <i class="fas {% if status_key == 'running' %}fa-check-circle{% elif status_key == 'stopped' %}fa-times-circle{% else %}fa-question-circle{% endif %}"></i>
+                    <span id="status-text">{{ status_msg }}</span>
+                </span>
+            </div>
+            {% if connection_ok %}<small class="text-success"><i class="fas fa-plug"></i> {% trans "Connected" %}</small>{% endif %}
+        </div></div>
+    </div>
+    <div class="col-md-8">
+        <div class="card bg-light stat-card h-100"><div class="card-body">
+            <h5 class="card-title">{% trans "Service Actions" %}</h5>
+            <div class="btn-group-vertical btn-group-sm d-md-none mb-2">
+                <button type="button" class="btn btn-success action-btn memcache-action" data-action="start"><i class="fas fa-play"></i> {% trans "Start" %}</button>
+                <button type="button" class="btn btn-warning action-btn memcache-action" data-action="stop"><i class="fas fa-stop"></i> {% trans "Stop" %}</button>
+                <button type="button" class="btn btn-info action-btn memcache-action" data-action="restart"><i class="fas fa-redo"></i> {% trans "Restart" %}</button>
+            </div>
+            <div class="d-none d-md-block">
+                <button type="button" class="btn btn-success btn-sm action-btn memcache-action" data-action="start"><i class="fas fa-play"></i> {% trans "Start" %}</button>
+                <button type="button" class="btn btn-warning btn-sm action-btn memcache-action" data-action="stop"><i class="fas fa-stop"></i> {% trans "Stop" %}</button>
+                <button type="button" class="btn btn-info btn-sm action-btn memcache-action" data-action="restart"><i class="fas fa-redo"></i> {% trans "Restart" %}</button>
+                <button type="button" class="btn btn-danger btn-sm action-btn" id="memcache-flush-btn"><i class="fas fa-trash-alt"></i> {% trans "Flush All" %}</button>
+            </div>
+            <hr class="my-2"><small class="text-muted">{% trans "Boot Options:" %}</small>
+            <button type="button" class="btn btn-outline-success btn-xs memcache-action" data-action="enable"><i class="fas fa-check"></i> {% trans "Enable" %}</button>
+            <button type="button" class="btn btn-outline-secondary btn-xs memcache-action" data-action="disable"><i class="fas fa-ban"></i> {% trans "Disable" %}</button>
+        </div></div>
+    </div>
+</div>
+{% if status_key == 'running' and stats_data %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-hdd"></i> {% trans "Memory Usage" %}</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="memoryChart"></canvas></div>
+                <div class="text-center mt-2">
+                    <span class="stat-value" id="memory-used">{{ stats_data.bytes|default:0|floatformat:0 }}</span>
+                    <span class="text-muted">/</span><span id="memory-total">{{ stats_data.limit_maxbytes|default:0|floatformat:0 }}</span>
+                    <br><small class="stat-label">{% trans "Bytes Used" %}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-bullseye"></i> {% trans "Cache Hit Rate" %}</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="hitRateChart"></canvas></div>
+                <div class="text-center mt-2"><span class="stat-value text-success" id="hit-rate">{{ stats_data.hit_rate|default:0 }}%</span><br><small class="stat-label">{% trans "Hit Rate" %}</small></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-exchange-alt"></i> {% trans "Operations" %}</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="operationsChart"></canvas></div>
+                <div class="text-center mt-2"><small class="stat-label">{% trans "GET / SET / DELETE" %}</small></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-6 col-md-2"><div class="card bg-primary text-white stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value text-white" id="stat-connections">{{ stats_data.curr_connections|default:0 }}</div>
+        <div class="stat-label text-white-50">{% trans "Connections" %}</div>
+    </div></div></div>
+    <div class="col-6 col-md-2"><div class="card bg-success text-white stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value text-white" id="stat-items">{{ stats_data.curr_items|default:0 }}</div>
+        <div class="stat-label text-white-50">{% trans "Items" %}</div>
+    </div></div></div>
+    <div class="col-6 col-md-2"><div class="card bg-info text-white stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value text-white" id="stat-gets">{{ stats_data.cmd_get|default:0 }}</div>
+        <div class="stat-label text-white-50">{% trans "GET Cmds" %}</div>
+    </div></div></div>
+    <div class="col-6 col-md-2"><div class="card bg-warning text-dark stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value" id="stat-sets">{{ stats_data.cmd_set|default:0 }}</div>
+        <div class="stat-label">{% trans "SET Cmds" %}</div>
+    </div></div></div>
+    <div class="col-6 col-md-2"><div class="card bg-danger text-white stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value text-white" id="stat-evictions">{{ stats_data.evictions|default:0 }}</div>
+        <div class="stat-label text-white-50">{% trans "Evictions" %}</div>
+    </div></div></div>
+    <div class="col-6 col-md-2"><div class="card bg-secondary text-white stat-card"><div class="card-body text-center py-2">
+        <div class="stat-value text-white" id="stat-uptime">{{ stats_data.uptime_formatted|default:"N/A" }}</div>
+        <div class="stat-label text-white-50">{% trans "Uptime" %}</div>
+    </div></div></div>
+</div>
+{% endif %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="fas fa-cog"></i> {% trans "Configuration" %}</h5></div>
+            <div class="card-body p-0">
+                {% if config_data %}
+                <div class="config-item"><span class="config-label">{% trans "Service Type" %}:</span> <span class="config-value">{{ config_data.service_type|default:"Unknown" }}</span></div>
+                <div class="config-item"><span class="config-label">{% trans "Service Name" %}:</span> <span class="config-value">{{ config_data.service_name|default:"Unknown" }}</span></div>
+                <div class="config-item"><span class="config-label">{% trans "Host" %}:</span> <span class="config-value">{{ config_data.host|default:"127.0.0.1" }}</span></div>
+                <div class="config-item"><span class="config-label">{% trans "Port" %}:</span> <span class="config-value">{{ config_data.port|default:"11211" }}</span></div>
+                {% if config_data.config_file %}<div class="config-item"><span class="config-label">{% trans "Config File" %}:</span> <span class="config-value">{{ config_data.config_file }}</span></div>{% endif %}
+                {% for key, value in config_data.settings.items %}<div class="config-item"><span class="config-label">{{ key|title }}:</span> <span class="config-value">{{ value }}</span></div>{% endfor %}
+                {% else %}<div class="p-3 text-muted">{% trans "Configuration not available." %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="fas fa-terminal"></i> {% trans "Raw Stats Output" %}</h5></div>
+            <div class="card-body">
+                {% if stats_error %}<p class="text-danger">{{ stats_error }}</p>{% endif %}
+                <pre id="raw-stats" class="bg-dark text-light p-3 rounded" style="max-height:300px;overflow:auto;font-size:.8rem">{{ stats_raw|default:"Service not running or stats unavailable." }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+</div>
+</div></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+(function(){'use strict';
+var msgEl=document.getElementById('memcache-message'),refreshBtn=document.getElementById('refresh-stats-btn');
+var memoryChart=null,hitRateChart=null,operationsChart=null;
+var statsData={bytes:{{ stats_data.bytes|default:0 }},limit_maxbytes:{{ stats_data.limit_maxbytes|default:67108864 }},hit_rate:{{ stats_data.hit_rate|default:0 }},miss_rate:{{ stats_data.miss_rate|default:0 }},cmd_get:{{ stats_data.cmd_get|default:0 }},cmd_set:{{ stats_data.cmd_set|default:0 }},delete_hits:{{ stats_data.delete_hits|default:0 }},curr_connections:{{ stats_data.curr_connections|default:0 }},curr_items:{{ stats_data.curr_items|default:0 }},evictions:{{ stats_data.evictions|default:0 }}};
+function showMsg(t,e){if(!msgEl)return;msgEl.classList.remove('d-none','alert-success','alert-danger','alert-info');msgEl.classList.add(e?'alert-danger':'alert-success');msgEl.innerHTML='<i class="fas '+(e?'fa-exclamation-circle':'fa-check-circle')+'"></i> '+t;if(!e)setTimeout(function(){msgEl.classList.add('d-none')},5000)}
+function formatBytes(b){if(b===0)return'0 B';var k=1024,s=['B','KB','MB','GB'],i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(2))+' '+s[i]}
+function initCharts(){
+var mCtx=document.getElementById('memoryChart'),hCtx=document.getElementById('hitRateChart'),oCtx=document.getElementById('operationsChart');
+if(!mCtx||!hCtx||!oCtx)return;
+var mUsed=statsData.bytes,mFree=Math.max(0,statsData.limit_maxbytes-statsData.bytes);
+memoryChart=new Chart(mCtx.getContext('2d'),{type:'doughnut',data:{labels:['{% trans "Used" %}','{% trans "Free" %}'],datasets:[{data:[mUsed,mFree],backgroundColor:['#dc3545','#28a745'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.label+': '+formatBytes(c.parsed)}}}}}});
+hitRateChart=new Chart(hCtx.getContext('2d'),{type:'doughnut',data:{labels:['{% trans "Hits" %}','{% trans "Misses" %}'],datasets:[{data:[statsData.hit_rate,statsData.miss_rate],backgroundColor:['#28a745','#dc3545'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed.toFixed(1)+'%'}}}}}});
+operationsChart=new Chart(oCtx.getContext('2d'),{type:'bar',data:{labels:['GET','SET','DELETE'],datasets:[{data:[statsData.cmd_get,statsData.cmd_set,statsData.delete_hits],backgroundColor:['#17a2b8','#ffc107','#6c757d'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:function(v){if(v>=1e6)return(v/1e6).toFixed(1)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v}}}}}})
+}
+function updateCharts(s){
+if(memoryChart){var u=s.bytes||0,f=Math.max(0,(s.limit_maxbytes||67108864)-u);memoryChart.data.datasets[0].data=[u,f];memoryChart.update('none')}
+if(hitRateChart){hitRateChart.data.datasets[0].data=[s.hit_rate||0,s.miss_rate||0];hitRateChart.update('none')}
+if(operationsChart){operationsChart.data.datasets[0].data=[s.cmd_get||0,s.cmd_set||0,s.delete_hits||0];operationsChart.update('none')}
+var el;if((el=document.getElementById('hit-rate')))el.textContent=(s.hit_rate||0).toFixed(1)+'%';
+if((el=document.getElementById('stat-connections')))el.textContent=s.curr_connections||0;
+if((el=document.getElementById('stat-items')))el.textContent=s.curr_items||0;
+if((el=document.getElementById('stat-gets')))el.textContent=s.cmd_get||0;
+if((el=document.getElementById('stat-sets')))el.textContent=s.cmd_set||0;
+if((el=document.getElementById('stat-evictions')))el.textContent=s.evictions||0;
+if(s.uptime_formatted&&(el=document.getElementById('stat-uptime')))el.textContent=s.uptime_formatted
+}
+function refreshStats(){
+if(!refreshBtn)return;refreshBtn.classList.add('refreshing');
+fetch('{% url "memcacheManager:api_stats" %}',{method:'GET',headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+.then(function(r){return r.json()}).then(function(d){refreshBtn.classList.remove('refreshing');if(d.success&&d.stats){updateCharts(d.stats);showMsg('{% trans "Stats refreshed successfully" %}',false)}else{showMsg(d.error||'{% trans "Failed to refresh stats" %}',true)}})
+.catch(function(e){refreshBtn.classList.remove('refreshing');showMsg('{% trans "Request failed" %}: '+e.message,true)})
+}
+document.querySelectorAll('.memcache-action').forEach(function(b){
+b.addEventListener('click',function(){var a=this.getAttribute('data-action'),btn=this;btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> '+a+'...';
+fetch('{% url "memcacheManager:api_control" %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({action:a})})
+.then(function(r){return r.json()}).then(function(d){showMsg(d.message||d.error||'Done',!d.success);if(d.success){setTimeout(function(){location.reload()},1500)}else{btn.disabled=false;btn.innerHTML='<i class="fas fa-'+(a==='start'?'play':a==='stop'?'stop':a==='restart'?'redo':'check')+'"></i> '+a.charAt(0).toUpperCase()+a.slice(1)}})
+.catch(function(e){showMsg('{% trans "Request failed" %}: '+e.message,true);btn.disabled=false})})
+});
+var flushBtn=document.getElementById('memcache-flush-btn');
+if(flushBtn){flushBtn.addEventListener('click',function(){if(!confirm('{% trans "Flush all cache data? This cannot be undone." %}'))return;var btn=this;btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> {% trans "Flushing..." %}';
+fetch('{% url "memcacheManager:api_flush" %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({})})
+.then(function(r){return r.json()}).then(function(d){showMsg(d.message||d.error||'Done',!d.success);btn.disabled=false;btn.innerHTML='<i class="fas fa-trash-alt"></i> {% trans "Flush All" %}';if(d.success)setTimeout(refreshStats,1000)})
+.catch(function(e){showMsg('{% trans "Request failed" %}: '+e.message,true);btn.disabled=false;btn.innerHTML='<i class="fas fa-trash-alt"></i> {% trans "Flush All" %}'})})}
+if(refreshBtn)refreshBtn.addEventListener('click',refreshStats);
+document.addEventListener('DOMContentLoaded',function(){if(typeof Chart!=='undefined')initCharts()});
+{% if status_key == 'running' %}setInterval(refreshStats,30000);{% endif %}
+})();
+</script>
+{% endblock %}
