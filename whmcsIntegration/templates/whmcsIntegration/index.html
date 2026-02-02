@@ -1,0 +1,90 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+{% load static %}
+{% block title %}{% trans "WHMCS Integration - CyberPanel" %}{% endblock %}
+
+{% block header_scripts %}
+<style>
+    .whmcs-info-section {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 25px;
+    }
+    .whmcs-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .whmcs-card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .whmcs-link { color: #007bff; text-decoration: none; }
+    .whmcs-link:hover { text-decoration: underline; }
+    .whmcs-btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 5px 5px 5px 0; }
+    .whmcs-btn:hover { color: white; background: #0056b3; }
+</style>
+{% endblock header_scripts %}
+
+{% block content %}
+<div style="padding: 20px;">
+    <h1><i class="fas fa-plug"></i> {% trans "WHMCS Integration" %}</h1>
+
+    <div class="whmcs-info-section">
+        <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
+        <strong style="color: #0c5460;">{% trans "About this Plugin" %}</strong>
+        <p style="margin: 10px 0 0 0;">{% trans "This page provides documentation and links to the official CyberPanel WHMCS module. The WHMCS module is a separate PHP module that runs inside WHMCS (your billing software), not inside CyberPanel. It uses the CyberPanel API to provision and manage hosting accounts." %}</p>
+    </div>
+
+    <div class="whmcs-card">
+        <h3><i class="fas fa-code-branch"></i> {% trans "Original Repository" %}</h3>
+        <p><strong>{% trans "Author" %}:</strong> jetchirag</p>
+        <p><strong>{% trans "Repository" %}:</strong> <a href="https://github.com/jetchirag/cyberpanel-whmcs" target="_blank" rel="noopener noreferrer" class="whmcs-link">github.com/jetchirag/cyberpanel-whmcs</a></p>
+        <a href="https://github.com/jetchirag/cyberpanel-whmcs" target="_blank" rel="noopener noreferrer" class="whmcs-btn">{% trans "View Original" %}</a>
+    </div>
+
+    <div class="whmcs-card">
+        <h3><i class="fas fa-sync-alt"></i> {% trans "Maintained Version" %}</h3>
+        <p><strong>{% trans "Maintainer" %}:</strong> jesussuarz</p>
+        <p><strong>{% trans "Repository" %}:</strong> <a href="https://github.com/jesussuarz/cyberpanel-whmcs" target="_blank" rel="noopener noreferrer" class="whmcs-link">github.com/jesussuarz/cyberpanel-whmcs</a></p>
+        <p>{% trans "Fork with improvements. Compatible with CyberPanel v2.5.5-dev." %}</p>
+        <a href="https://github.com/jesussuarz/cyberpanel-whmcs" target="_blank" rel="noopener noreferrer" class="whmcs-btn">{% trans "Download WHMCS Module" %}</a>
+    </div>
+
+    <div class="whmcs-card">
+        <h3><i class="fas fa-cogs"></i> {% trans "Features" %}</h3>
+        <ul>
+            <li>{% trans "Create new website or user account" %}</li>
+            <li>{% trans "Terminate website" %}</li>
+            <li>{% trans "Suspend or unsuspend website" %}</li>
+            <li>{% trans "Change hosting package" %}</li>
+            <li>{% trans "Change user password" %}</li>
+            <li>{% trans "Auto-login to CyberPanel (Admin or Customer)" %}</li>
+            <li>{% trans "Store and display SSH credentials in WHMCS" %}</li>
+        </ul>
+    </div>
+
+    <div class="whmcs-card">
+        <h3><i class="fas fa-download"></i> {% trans "Installation (WHMCS)" %}</h3>
+        <ol>
+            <li>{% trans "SSH into your WHMCS server" %}</li>
+            <li>{% trans "Navigate to" %} <code>path_to_whmcs/modules/servers</code></li>
+            <li>{% trans "Clone the repository:" %} <code>git clone https://github.com/jesussuarz/cyberpanel-whmcs.git cyberpanel</code></li>
+            <li>{% trans "Copy the addon" %} <code>modules/addons/cyberpanel_extra</code> {% trans "to your WHMCS addons directory" %}</li>
+            <li>{% trans "Activate CyberPanel Extra in System Settings → Addon Modules" %}</li>
+        </ol>
+    </div>
+
+    <div class="whmcs-card">
+        <h3><i class="fas fa-key"></i> {% trans "CyberPanel API Setup" %}</h3>
+        <p>{% trans "Enable API Access in CyberPanel before using the WHMCS module:" %}</p>
+        <ol>
+            <li>{% trans "Log in to CyberPanel" %}</li>
+            <li>{% trans "Go to Users → API Access" %}</li>
+            <li>{% trans "Select the admin user and Enable API Access" %}</li>
+            <li>{% trans "Or visit" %} <code>https://your-server:8090/users/apiAccess</code></li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

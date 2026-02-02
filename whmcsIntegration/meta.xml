@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>WHMCS Integration</name>
+    <type>Integration</type>
+    <description>Documentation and link to the official CyberPanel WHMCS module. Integrate CyberPanel with WHMCS to sell and automate hosting services. Compatible with CyberPanel v2.5.5-dev.</description>
+    <version>1.0.0</version>
+    <author>jetchirag (original), jesussuarz (maintainer)</author>
+    <url>/plugins/whmcsIntegration/</url>
+    <settings_url>/plugins/whmcsIntegration/</settings_url>
+</cyberpanelPluginConfig>
