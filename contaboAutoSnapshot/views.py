@@ -12,8 +12,9 @@ from functools import wraps
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from plogical.httpProc import httpProc
 from .models import ContaboConfig, SnapshotSchedule, SnapshotHistory
-from .forms import ContaboConfigForm, SnapshotScheduleForm, ManualSnapshotForm
+from .forms import ContaboConfigForm, ApiCredentialsForm, SnapshotScheduleForm, ManualSnapshotForm
 from .utils import get_contabo_api, ContaboAPI
+from . import api_encryption
 
 # Plugin configuration
 PLUGIN_NAME = 'contaboAutoSnapshot'
@@ -22,6 +23,7 @@ PLUGIN_VERSION = '1.0.0'
 # Remote verification URLs
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
 REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'
+REMOTE_VERIFICATION_PLUGIN_GRANT_URL = 'https://api.newstargeted.com/api/verify-plugin-grant.php'
 REMOTE_ACTIVATION_KEY_URL = 'https://api.newstargeted.com/api/activate-plugin-key.php'
 
 # Payment URLs (from meta.xml)
@@ -60,7 +62,45 @@ def cyberpanel_login_required(view_func):
     return _wrapped_view
 
 
-def check_patreon_membership(user_email, user_ip=''):
+def _api_request(url, data, timeout=10):
+    """Send encrypted API request and return decoded response dict."""
+    try:
+        body, extra_headers = api_encryption.encrypt_payload(data)
+        headers = {
+            'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
+            'X-Plugin-Name': PLUGIN_NAME
+        }
+        headers.update(extra_headers)
+        req = urllib.request.Request(url, data=body, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            raw = response.read()
+            ct = response.headers.get('Content-Type', '')
+            expect_enc = extra_headers.get('X-Encrypted') == '1'
+            return api_encryption.decrypt_response(raw, ct, expect_encrypted=expect_enc)
+    except Exception as e:
+        logging.writeToFile(f"Contabo Auto Snapshot: API request error to {url}: {str(e)}")
+        return {}
+
+
+def check_plugin_grant(user_email, user_ip='', domain=''):
+    """Check Plugin Grants from api.newstargeted.com (manual grants from admin panel)"""
+    try:
+        request_data = {
+            'user_email': user_email or '',
+            'plugin_name': PLUGIN_NAME,
+            'user_ip': user_ip,
+            'domain': domain,
+        }
+        data = _api_request(REMOTE_VERIFICATION_PLUGIN_GRANT_URL, request_data)
+        if data.get('success') and data.get('has_access'):
+            return {'has_access': True, 'message': data.get('message', 'Access granted via Plugin Grants')}
+        return {'has_access': False, 'message': data.get('message', '')}
+    except Exception as e:
+        logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant check error: {str(e)}")
+        return {'has_access': False, 'message': ''}
+
+
+def check_patreon_membership(user_email, user_ip='', domain=''):
     """Check Patreon membership via remote verification server"""
     try:
         request_data = {
@@ -68,38 +108,25 @@ def check_patreon_membership(user_email, user_ip=''):
             'plugin_name': PLUGIN_NAME,
             'plugin_version': PLUGIN_VERSION,
             'user_ip': user_ip,
+            'domain': domain,
             'tier_id': '27789984'  # CyberPanel Paid Plugin tier ID
         }
-        
-        req = urllib.request.Request(
-            REMOTE_VERIFICATION_PATREON_URL,
-            data=json.dumps(request_data).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
-                'X-Plugin-Name': PLUGIN_NAME
+        response_data = _api_request(REMOTE_VERIFICATION_PATREON_URL, request_data)
+        if response_data.get('success', False):
+            return {
+                'has_access': response_data.get('has_access', False),
+                'patreon_tier': response_data.get('patreon_tier', PATREON_TIER),
+                'patreon_url': response_data.get('patreon_url', PATREON_URL),
+                'message': response_data.get('message', 'Access granted'),
+                'error': None
             }
-        )
-        
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response_data = json.loads(response.read().decode('utf-8'))
-            
-            if response_data.get('success', False):
-                return {
-                    'has_access': response_data.get('has_access', False),
-                    'patreon_tier': response_data.get('patreon_tier', PATREON_TIER),
-                    'patreon_url': response_data.get('patreon_url', PATREON_URL),
-                    'message': response_data.get('message', 'Access granted'),
-                    'error': None
-                }
-            else:
-                return {
-                    'has_access': False,
-                    'patreon_tier': PATREON_TIER,
-                    'patreon_url': PATREON_URL,
-                    'message': response_data.get('message', 'Patreon subscription required'),
-                    'error': response_data.get('error')
-                }
+        return {
+            'has_access': False,
+            'patreon_tier': PATREON_TIER,
+            'patreon_url': PATREON_URL,
+            'message': response_data.get('message', 'Patreon subscription required'),
+            'error': response_data.get('error')
+        }
     except urllib.error.URLError as e:
         logging.writeToFile(f"Error checking Patreon membership: {str(e)}")
         return {
@@ -131,36 +158,22 @@ def check_paypal_payment(user_email, user_ip='', domain=''):
             'domain': domain,
             'timestamp': int(datetime.now().timestamp())
         }
-        
-        req = urllib.request.Request(
-            REMOTE_VERIFICATION_PAYPAL_URL,
-            data=json.dumps(request_data).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
-                'X-Plugin-Name': PLUGIN_NAME
+        response_data = _api_request(REMOTE_VERIFICATION_PAYPAL_URL, request_data)
+        if response_data.get('success', False):
+            return {
+                'has_access': response_data.get('has_access', False),
+                'paypal_me_url': response_data.get('paypal_me_url', PAYPAL_ME_URL),
+                'paypal_payment_link': response_data.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
+                'message': response_data.get('message', 'Access granted'),
+                'error': None
             }
-        )
-        
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response_data = json.loads(response.read().decode('utf-8'))
-            
-            if response_data.get('success', False):
-                return {
-                    'has_access': response_data.get('has_access', False),
-                    'paypal_me_url': response_data.get('paypal_me_url', PAYPAL_ME_URL),
-                    'paypal_payment_link': response_data.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
-                    'message': response_data.get('message', 'Access granted'),
-                    'error': None
-                }
-            else:
-                return {
-                    'has_access': False,
-                    'paypal_me_url': PAYPAL_ME_URL,
-                    'paypal_payment_link': PAYPAL_PAYMENT_LINK,
-                    'message': response_data.get('message', 'PayPal payment required'),
-                    'error': response_data.get('error')
-                }
+        return {
+            'has_access': False,
+            'paypal_me_url': PAYPAL_ME_URL,
+            'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+            'message': response_data.get('message', 'PayPal payment required'),
+            'error': response_data.get('error')
+        }
     except urllib.error.URLError as e:
         logging.writeToFile(f"Error checking PayPal payment: {str(e)}")
         return {
@@ -213,43 +226,71 @@ def unified_verification_required(view_func):
             has_access = False
             verification_result = {}
             
-            # First check for activation key (if provided in request)
+            # First check for activation key (from request or stored in config)
             activation_key = request.GET.get('activation_key') or request.POST.get('activation_key')
+            if not activation_key:
+                try:
+                    config = ContaboConfig.get_config()
+                    activation_key = getattr(config, 'activation_key', '') or ''
+                except Exception:
+                    activation_key = ''
             if activation_key:
                 try:
-                    import json
                     request_data = {
                         'activation_key': activation_key.strip(),
                         'plugin_name': PLUGIN_NAME,
                         'user_email': user_email
                     }
-                    req = urllib.request.Request(
-                        REMOTE_ACTIVATION_KEY_URL,
-                        data=json.dumps(request_data).encode('utf-8'),
-                        headers={
-                            'Content-Type': 'application/json',
-                            'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
-                            'X-Plugin-Name': PLUGIN_NAME
+                    response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+                    if response_data.get('success', False) and response_data.get('has_access', False):
+                        has_access = True
+                        verification_result = {
+                            'method': 'activation_key',
+                            'has_access': True,
+                            'message': response_data.get('message', 'Access activated via key'),
+                            'grant_type': response_data.get('grant_type', 'manual')
                         }
-                    )
-                    with urllib.request.urlopen(req, timeout=10) as response:
-                        response_data = json.loads(response.read().decode('utf-8'))
-                        if response_data.get('success', False) and response_data.get('has_access', False):
-                            has_access = True
-                            verification_result = {
-                                'method': 'activation_key',
-                                'has_access': True,
-                                'message': response_data.get('message', 'Access activated via key'),
-                                'grant_type': response_data.get('grant_type', 'manual')
-                            }
+                        try:
+                            config = ContaboConfig.get_config()
+                            config.activation_key = activation_key.strip()
+                            config.save(update_fields=['activation_key', 'updated_at'])
+                        except Exception as persist_err:
+                            logging.writeToFile(f"Contabo Auto Snapshot: Could not persist activation key: {str(persist_err)}")
+                    elif not response_data.get('success') and activation_key:
+                        try:
+                            config = ContaboConfig.get_config()
+                            if getattr(config, 'activation_key', '') == activation_key.strip():
+                                config.activation_key = ''
+                                config.save(update_fields=['activation_key', 'updated_at'])
+                        except Exception:
+                            pass
                 except Exception as key_error:
                     logging.writeToFile(f"Contabo Auto Snapshot: Activation key check error: {str(key_error)}")
             
-            # If activation key didn't grant access, check payment methods
+            # If activation key didn't grant access, check Plugin Grants (api.newstargeted.com admin)
+            if not has_access:
+                grant_result = check_plugin_grant(
+                    user_email,
+                    request.META.get('REMOTE_ADDR', ''),
+                    request.get_host()
+                )
+                if grant_result.get('has_access'):
+                    has_access = True
+                    verification_result = {
+                        'method': 'plugin_grant',
+                        'has_access': True,
+                        'message': grant_result.get('message', 'Access granted via Plugin Grants')
+                    }
+            
+            # If still no access, check Patreon/PayPal
             if not has_access:
                 try:
                     if payment_method == 'patreon':
-                        result = check_patreon_membership(user_email, request.META.get('REMOTE_ADDR', ''))
+                        result = check_patreon_membership(
+                            user_email,
+                            request.META.get('REMOTE_ADDR', ''),
+                            request.get_host()
+                        )
                         has_access = result.get('has_access', False)
                         verification_result = {
                             'method': 'patreon',
@@ -275,7 +316,11 @@ def unified_verification_required(view_func):
                             'error': result.get('error')
                         }
                     else:  # 'both' - check both methods
-                        patreon_result = check_patreon_membership(user_email, request.META.get('REMOTE_ADDR', ''))
+                        patreon_result = check_patreon_membership(
+                            user_email,
+                            request.META.get('REMOTE_ADDR', ''),
+                            request.get_host()
+                        )
                         paypal_result = check_paypal_payment(
                             user_email,
                             request.META.get('REMOTE_ADDR', ''),
@@ -338,6 +383,9 @@ def unified_verification_required(view_func):
                     logging.writeToFile(f"Contabo Auto Snapshot: Render traceback: {error_trace}")
                     return HttpResponse(f"<div style='padding: 20px;'><h2>Subscription Required</h2><p>This plugin requires a premium subscription. Please subscribe to access this plugin.</p><p>Error: {str(render_error)}</p><pre>{error_trace}</pre></div>")
             
+            # User has access - store how they got it (template hides payment UI when whitelisted)
+            if has_access and verification_result:
+                request.session['contabo_premium_access_via'] = verification_result.get('method', '')
             # User has access - proceed with view
             try:
                 return view_func(request, *args, **kwargs)
@@ -419,6 +467,10 @@ def settings_view(request):
             logging.writeToFile(f"Contabo Auto Snapshot: Error loading snapshots: {str(snapshot_error)}")
             recent_snapshots = []
         
+        # Hide activation/payment UI when whitelisted (Plugin Grants or activation key)
+        access_via = request.session.get('contabo_premium_access_via', '')
+        show_payment_ui = access_via not in ('plugin_grant', 'activation_key')
+        
         context = {
             'title': 'Auto Snapshot for Contabo',
             'plugin_name': 'Auto Snapshot for Contabo',
@@ -430,6 +482,8 @@ def settings_view(request):
             'recent_snapshots': recent_snapshots,
             'schedule_form': SnapshotScheduleForm(),
             'manual_snapshot_form': ManualSnapshotForm(),
+            'show_payment_ui': show_payment_ui,
+            'access_via_grant_or_key': not show_payment_ui,
         }
         
         try:
@@ -478,41 +532,32 @@ def activate_key(request):
         if not user_email:
             user_email = request.session.get('email', '') or getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else ''
         
-        # Call activation API
         request_data = {
             'activation_key': activation_key,
             'plugin_name': PLUGIN_NAME,
             'user_email': user_email
         }
-        
-        req = urllib.request.Request(
-            REMOTE_ACTIVATION_KEY_URL,
-            data=json.dumps(request_data).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
-                'X-Plugin-Name': PLUGIN_NAME
-            }
-        )
-        
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response_data = json.loads(response.read().decode('utf-8'))
-            
-            if response_data.get('success', False) and response_data.get('has_access', False):
-                return JsonResponse({
-                    'success': True,
-                    'has_access': True,
-                    'message': response_data.get('message', 'Access activated successfully'),
-                    'grant_type': response_data.get('grant_type', 'manual'),
-                    'expires_at': response_data.get('expires_at')
-                })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'has_access': False,
-                    'message': response_data.get('message', 'Invalid activation key'),
-                    'error': response_data.get('error')
-                }, status=400)
+        response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+        if response_data.get('success', False) and response_data.get('has_access', False):
+            try:
+                config = ContaboConfig.get_config()
+                config.activation_key = activation_key
+                config.save(update_fields=['activation_key', 'updated_at'])
+            except Exception as persist_err:
+                logging.writeToFile(f"Contabo Auto Snapshot: Could not persist activation key: {str(persist_err)}")
+            return JsonResponse({
+                'success': True,
+                'has_access': True,
+                'message': response_data.get('message', 'Access activated successfully'),
+                'grant_type': response_data.get('grant_type', 'manual'),
+                'expires_at': response_data.get('expires_at')
+            })
+        return JsonResponse({
+            'success': False,
+            'has_access': False,
+            'message': response_data.get('message', 'Invalid activation key'),
+            'error': response_data.get('error')
+        }, status=400)
                 
     except urllib.error.URLError as e:
         logging.writeToFile(f"Error activating key: {str(e)}")
@@ -808,21 +853,27 @@ def api_snapshots(request):
 def test_connection(request):
     """Test Contabo API connection and save config"""
     try:
-        # Save config first if provided
         config = ContaboConfig.get_config()
-        form = ContaboConfigForm(request.POST, instance=config)
+        form = ApiCredentialsForm(request.POST, instance=config)
         if form.is_valid():
             form.save()
-            logging.writeToFile("Contabo Auto Snapshot config saved")
+            logging.writeToFile("Contabo Auto Snapshot API config saved")
         else:
             errors = {field: errors[0] for field, errors in form.errors.items()}
             return JsonResponse({'success': False, 'errors': errors}, status=400)
         
         # Test connection if API credentials are provided
-        if config.api_client_id and config.api_client_secret:
+        if config.api_client_id and config.api_client_secret and config.api_key and config.api_secret:
             try:
                 api = get_contabo_api()
                 result = api.test_connection()
+                if result.get('success') and 'plan_max_snapshots' in result:
+                    config.api_tested = True
+                    config.api_max_snapshots_from_plan = result['plan_max_snapshots']
+                    # Cap max_snapshots_per_vps to plan limit
+                    if config.max_snapshots_per_vps > (config.api_max_snapshots_from_plan or 1):
+                        config.max_snapshots_per_vps = config.api_max_snapshots_from_plan or 1
+                    config.save(update_fields=['api_tested', 'api_max_snapshots_from_plan', 'max_snapshots_per_vps', 'updated_at'])
                 return JsonResponse(result)
             except Exception as e:
                 return JsonResponse({
@@ -846,7 +897,7 @@ def test_connection(request):
 @cyberpanel_login_required
 @require_http_methods(["POST"])
 def save_config(request):
-    """Save Contabo configuration"""
+    """Save Contabo configuration (API credentials, max snapshots, auto backup). Runs API test when credentials present."""
     try:
         config = ContaboConfig.get_config()
         form = ContaboConfigForm(request.POST, instance=config)
@@ -855,7 +906,25 @@ def save_config(request):
             form.save()
             messages.success(request, 'Configuration saved successfully.')
             logging.writeToFile("Contabo Auto Snapshot config saved")
-            return JsonResponse({'success': True, 'message': 'Configuration saved successfully'})
+            msg = 'Configuration saved.'
+            # Test connection if API credentials are present
+            if config.api_client_id and config.api_client_secret and config.api_key and config.api_secret:
+                try:
+                    api = get_contabo_api()
+                    result = api.test_connection()
+                    if result.get('success'):
+                        config.api_tested = True
+                        config.api_max_snapshots_from_plan = result.get('plan_max_snapshots')
+                        if config.max_snapshots_per_vps > (config.api_max_snapshots_from_plan or 1):
+                            config.max_snapshots_per_vps = config.api_max_snapshots_from_plan or 1
+                        config.save(update_fields=['api_tested', 'api_max_snapshots_from_plan', 'max_snapshots_per_vps', 'updated_at'])
+                        msg = result.get('message', msg)
+                    else:
+                        msg = result.get('message', msg)
+                except Exception as te:
+                    logging.writeToFile(f"Contabo API test after save: {str(te)}")
+                    msg = f'Saved. API test failed: {str(te)}'
+            return JsonResponse({'success': True, 'message': msg})
         else:
             errors = {field: errors[0] for field, errors in form.errors.items()}
             return JsonResponse({'success': False, 'errors': errors}, status=400)

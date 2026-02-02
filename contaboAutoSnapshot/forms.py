@@ -2,10 +2,65 @@ from django import forms
 from .models import ContaboConfig, SnapshotSchedule
 
 
-class ContaboConfigForm(forms.ModelForm):
-    """Form for Contabo API configuration"""
+class ApiCredentialsForm(forms.ModelForm):
+    """Form for API credentials only (Test Connection & Save)"""
     class Meta:
         model = ContaboConfig
+        labels = {
+            'api_key': 'API User (your Contabo login email)',
+            'api_secret': 'API Password',
+        }
+        fields = ['api_client_id', 'api_client_secret', 'api_key', 'api_secret', 'api_base_url']
+        widgets = {
+            'api_client_id': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Your Contabo API Client ID'
+            }),
+            'api_client_secret': forms.PasswordInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Your Contabo API Client Secret'
+            }),
+            'api_key': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Your Contabo login email (API User)'
+            }),
+            'api_secret': forms.PasswordInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'API Password (from my.contabo.com/api)'
+            }),
+            'api_base_url': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://api.contabo.com/v1'
+            }),
+        }
+
+
+class ContaboConfigForm(forms.ModelForm):
+    """Form for Contabo API configuration"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and hasattr(self.instance, 'api_tested') and self.instance.api_tested:
+            plan_max = getattr(self.instance, 'api_max_snapshots_from_plan', None) or 1
+            self.fields['max_snapshots_per_vps'].widget.attrs['max'] = plan_max
+            self.fields['max_snapshots_per_vps'].widget.attrs['placeholder'] = str(plan_max)
+        else:
+            # Readonly until API tested (saving triggers test)
+            self.fields['max_snapshots_per_vps'].widget.attrs['readonly'] = 'readonly'
+            self.fields['max_snapshots_per_vps'].widget.attrs['placeholder'] = 'Save to fetch'
+
+    def clean_max_snapshots_per_vps(self):
+        val = self.cleaned_data.get('max_snapshots_per_vps')
+        plan_max = getattr(self.instance, 'api_max_snapshots_from_plan', None)
+        if plan_max is not None and val is not None and val > plan_max:
+            raise forms.ValidationError(f'Cannot exceed your Contabo plan limit ({plan_max} snapshots per VPS).')
+        return val
+
+    class Meta:
+        model = ContaboConfig
+        labels = {
+            'api_key': 'API User (your Contabo login email)',
+            'api_secret': 'API Password',
+        }
         fields = ['api_client_id', 'api_client_secret', 'api_key', 'api_secret', 'api_base_url', 
                   'auto_backup_enabled', 'max_snapshots_per_vps', 'payment_method']
         widgets = {
@@ -19,11 +74,11 @@ class ContaboConfigForm(forms.ModelForm):
             }),
             'api_key': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Your Contabo API Key'
+                'placeholder': 'Your Contabo login email (API User)'
             }),
             'api_secret': forms.PasswordInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Your Contabo API Secret'
+                'placeholder': 'API Password (from my.contabo.com/api)'
             }),
             'api_base_url': forms.URLInput(attrs={
                 'class': 'form-control',
@@ -34,17 +89,17 @@ class ContaboConfigForm(forms.ModelForm):
                 'class': 'form-control',
                 'min': 0,
                 'max': 100,
-                'placeholder': '10'
+                'placeholder': 'Test API first'
             }),
             'payment_method': forms.Select(attrs={'class': 'form-control'}),
         }
         help_texts = {
             'api_client_id': 'Get this from your Contabo API settings',
             'api_client_secret': 'Get this from your Contabo API settings',
-            'api_key': 'Get this from your Contabo API settings',
-            'api_secret': 'Get this from your Contabo API settings',
+            'api_key': 'API User = your Contabo account email',
+            'api_secret': 'API Password (set via "Send Link" in my.contabo.com/api)',
             'auto_backup_enabled': 'Enable or disable automatic snapshots globally. When disabled, all schedules are paused.',
-            'max_snapshots_per_vps': 'Maximum snapshots per VPS based on your Contabo plan. Check your plan limits at my.contabo.com',
+            'max_snapshots_per_vps': 'Set from your Contabo plan after testing API. Cannot exceed plan limit.',
             'payment_method': 'Choose which payment method to use for verification. "Check Both" will grant access if either Patreon or PayPal is valid.',
         }
 

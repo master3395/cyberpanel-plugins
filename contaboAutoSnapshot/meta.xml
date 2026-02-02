@@ -3,7 +3,7 @@
     <name>Auto Snapshot for Contabo</name>
     <type>Backup</type>
     <description>Automatically create snapshots for Contabo VPS instances on a schedule. Configure snapshot schedules, retention policies, and monitor snapshot creation history.</description>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <author>master3395</author>
     <url>/plugins/contaboAutoSnapshot/</url>
     <settings_url>/plugins/contaboAutoSnapshot/settings/</settings_url>

@@ -229,32 +229,6 @@
     border: 1px solid #90cdf4;
 }
 
-.plugin-info-section {
-    background: #d1ecf1 !important;
-    border: 1px solid #bee5eb !important;
-    border-radius: 8px !important;
-    padding: 15px 20px !important;
-    margin-bottom: 25px !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.plugin-info-section ul {
-    list-style: none !important;
-    padding-left: 0 !important;
-    margin-top: 10px !important;
-    margin-bottom: 0 !important;
-}
-
-.plugin-info-section li {
-    margin-bottom: 8px;
-}
-
-.plugin-info-section li:last-child {
-    margin-bottom: 0;
-}
-
 #scheduleModal, #snapshotModal {
     display: none;
     position: fixed;
@@ -324,21 +298,18 @@
         <p>Automatically create snapshots for your Contabo VPS instances on a schedule</p>
     </div>
 
-    <!-- Plugin Information Section -->
-    <div class="plugin-info-section">
-        <i class="fas fa-info-circle" style="color: #0c5460; margin-right: 8px;"></i>
-        <strong style="color: #0c5460; font-weight: 600;">{% trans "Plugin Information" %}</strong>
-        <ul>
-            <li><strong>{% trans "Name" %}:</strong> {{ plugin_name|default:"Auto Snapshot for Contabo" }}</li>
-            <li><strong>{% trans "Version" %}:</strong> {{ version|default:"1.0.0" }}</li>
-            <li>
-                <strong>{% trans "Status" %}:</strong> 
-                <span class="badge badge-success" style="background: #28a745 !important; color: white !important; padding: 4px 10px !important; border-radius: 4px !important; font-size: 12px !important; font-weight: 600 !important; display: inline-block !important;">{{ status|default:"Active" }}</span>
-            </li>
-        </ul>
+    {% if access_via_grant_or_key %}
+    <!-- Whitelisted: no payment/activation UI needed -->
+    <div class="card" style="border: 2px solid #28a745; background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
+        <h3 style="color: #28a745;">
+            <i class="fas fa-check-circle"></i> {% trans "Premium Access Active" %}
+        </h3>
+        <p style="color: #495057; margin: 0;">
+            {% trans "You have premium access via Plugin Grants or activation key. Configure your API credentials and schedules below." %}
+        </p>
     </div>
-
-    <!-- Activation Key Section -->
+    {% else %}
+    <!-- Activation Key Section (shown when access via Patreon/PayPal) -->
     <div class="card" style="border: 2px solid #17a2b8; background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);">
         <h3 style="color: #17a2b8;">
             <i class="fas fa-key"></i> {% trans "Activate Premium Access" %}
@@ -385,6 +356,7 @@
             </p>
         </div>
     </div>
+    {% endif %}
 
     {% if messages %}
         {% for message in messages %}
@@ -394,81 +366,74 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Auto Backup Settings Section -->
+    <!-- Unified Settings: API + Max Snapshots + Auto Backup -->
     <div class="card" style="border: 2px solid var(--primary-color);">
-        <h3 style="color: var(--primary-color);">⚙️ Auto Backup Settings</h3>
-        <p>Control automatic snapshot creation globally. You can enable/disable auto backups and set limits based on your Contabo plan.</p>
+        <h3 style="color: var(--primary-color);">⚙️ Settings</h3>
+        <p>Configure your Contabo API credentials once. That enables Maximum Snapshots Per VPS, Create Manual Snapshot, and schedules. Get API credentials from <a href="https://my.contabo.com/api" target="_blank">Contabo API Settings</a>.</p>
         
-        <form id="auto-backup-config-form" method="post" action="{% url 'contaboAutoSnapshot:save_config' %}">
+        <form id="unified-settings-form" method="post" action="{% url 'contaboAutoSnapshot:save_config' %}">
             {% csrf_token %}
-            <div class="form-group" style="background: #f7fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <div class="checkbox-group" style="margin-bottom: 15px;">
-                    {{ config_form.auto_backup_enabled }}
-                    <label for="id_auto_backup_enabled" style="font-size: 1.1rem; font-weight: 600;">
-                        Enable Automatic Snapshots
-                    </label>
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #bae6fd;">
+                <h4 style="margin: 0 0 16px 0; color: #0369a1;">Contabo API Configuration</h4>
+                <div class="form-group">
+                    <label for="id_api_client_id">API Client ID:</label>
+                    {{ config_form.api_client_id }}
                 </div>
-                <small style="color: #718096; margin-left: 30px; display: block;">
-                    When enabled, all active schedules will run automatically. When disabled, all schedules are paused regardless of their individual settings.
-                </small>
+                <div class="form-group">
+                    <label for="id_api_client_secret">API Client Secret:</label>
+                    {{ config_form.api_client_secret }}
+                </div>
+                <div class="form-group">
+                    <label for="id_api_key">API User (email):</label>
+                    {{ config_form.api_key }}
+                </div>
+                <div class="form-group">
+                    <label for="id_api_secret">API Password:</label>
+                    {{ config_form.api_secret }}
+                </div>
+                <div class="form-group">
+                    <label for="id_api_base_url">API Base URL:</label>
+                    {{ config_form.api_base_url }}
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="id_max_snapshots_per_vps">
-                    <strong>Maximum Snapshots Per VPS:</strong>
-                </label>
-                {{ config_form.max_snapshots_per_vps }}
-                <small style="color: #718096; display: block; margin-top: 5px;">
-                    Set this based on your Contabo plan limits. Check your plan at <a href="https://my.contabo.com" target="_blank">my.contabo.com</a>. 
-                    This is a global limit that applies to all schedules. Individual schedule retention counts cannot exceed this value.
-                </small>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 24px;">
+                <h4 style="margin: 0 0 16px 0; color: #2d3748;">Auto Backup & Limits</h4>
+                <div class="form-group" style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                    <div class="checkbox-group" style="margin-bottom: 0;">
+                        {{ config_form.auto_backup_enabled }}
+                        <label for="id_auto_backup_enabled" style="font-size: 1rem; font-weight: 600;">
+                            Enable Automatic Snapshots
+                        </label>
+                    </div>
+                    <small style="color: #718096; margin-left: 30px; display: block; margin-top: 6px;">
+                        When enabled, schedules run automatically. When disabled, all schedules are paused.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_max_snapshots_per_vps"><strong>Maximum Snapshots Per VPS:</strong></label>
+                    {{ config_form.max_snapshots_per_vps }}
+                    <small style="color: #718096; display: block; margin-top: 5px;">
+                        {% if config.api_tested %}
+                        Your plan allows up to {{ config.api_max_snapshots_from_plan|default:1 }} snapshot(s) per VPS.
+                        {% else %}
+                        Save to test connection and fetch your plan limit from Contabo.
+                        {% endif %}
+                    </small>
+                </div>
+                
+                {% if show_payment_ui %}
+                <div class="form-group" style="background: #e6f3ff; padding: 16px; border-radius: 8px; border: 1px solid #0070ba;">
+                    <label for="id_payment_method"><strong>💳 Payment Method Preference:</strong></label>
+                    {{ config_form.payment_method }}
+                </div>
+                {% else %}
+                <input type="hidden" name="payment_method" value="{{ config.payment_method|default:'both' }}">
+                {% endif %}
             </div>
             
-            <div class="form-group" style="background: #e6f3ff; padding: 20px; border-radius: 8px; border: 2px solid #0070ba; margin-top: 20px;">
-                <label for="id_payment_method">
-                    <strong>💳 Payment Method Preference:</strong>
-                </label>
-                {{ config_form.payment_method }}
-                <small style="color: #718096; display: block; margin-top: 5px;">
-                    <strong>Choose how to verify your premium access:</strong><br>
-                    • <strong>Patreon Subscription:</strong> Only check Patreon membership<br>
-                    • <strong>PayPal Payment:</strong> Only check PayPal payment<br>
-                    • <strong>Check Both:</strong> Grant access if either Patreon or PayPal is valid (recommended)
-                </small>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">💾 Save Auto Backup Settings</button>
-        </form>
-    </div>
-
-    <!-- API Configuration Section -->
-    <div class="card">
-        <h3>Contabo API Configuration</h3>
-        <p>Configure your Contabo API credentials to enable snapshot creation. Get your API credentials from <a href="https://my.contabo.com/api" target="_blank">Contabo API Settings</a>.</p>
-        
-        <form id="config-form" method="post" action="{% url 'contaboAutoSnapshot:test_connection' %}">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="id_api_client_id">API Client ID:</label>
-                {{ config_form.api_client_id }}
-            </div>
-            <div class="form-group">
-                <label for="id_api_client_secret">API Client Secret:</label>
-                {{ config_form.api_client_secret }}
-            </div>
-            <div class="form-group">
-                <label for="id_api_key">API Key:</label>
-                {{ config_form.api_key }}
-            </div>
-            <div class="form-group">
-                <label for="id_api_secret">API Secret:</label>
-                {{ config_form.api_secret }}
-            </div>
-            <div class="form-group">
-                <label for="id_api_base_url">API Base URL:</label>
-                {{ config_form.api_base_url }}
-            </div>
-            <button type="submit" class="btn btn-primary">🔌 Test Connection & Save</button>
+            <button type="submit" class="btn btn-primary" style="font-size: 1rem; padding: 12px 24px;">💾 Save</button>
         </form>
     </div>
 
@@ -820,8 +785,8 @@ document.getElementById('manual-snapshot-form').addEventListener('submit', funct
     });
 });
 
-// Auto Backup Config Form Submit
-document.getElementById('auto-backup-config-form').addEventListener('submit', function(e) {
+// Unified Settings Form Submit (API + max snapshots + auto backup)
+document.getElementById('unified-settings-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
@@ -837,41 +802,15 @@ document.getElementById('auto-backup-config-form').addEventListener('submit', fu
     .then(data => {
         if (data.success) {
             showAlert(data.message, 'success');
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 1200);
         } else {
-            showAlert('Error: ' + (data.error || JSON.stringify(data.errors)), 'danger');
+            const errMsg = data.message || data.error || (data.errors ? JSON.stringify(data.errors) : 'Unknown error');
+            showAlert('Error: ' + errMsg, 'danger');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('Error saving auto backup settings', 'danger');
-    });
-});
-
-// Config Form Submit (API credentials)
-document.getElementById('config-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    fetch(this.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showAlert(data.message, 'success');
-        } else {
-            showAlert('Error: ' + data.message, 'danger');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showAlert('Error testing connection', 'danger');
+        showAlert('Error saving settings', 'danger');
     });
 });
 

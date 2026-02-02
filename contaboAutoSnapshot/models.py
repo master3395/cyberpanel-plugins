@@ -21,8 +21,17 @@ class ContaboConfig(models.Model):
         help_text="Enable/disable automatic snapshots globally. When disabled, all schedules are paused."
     )
     max_snapshots_per_vps = models.IntegerField(
-        default=10,
-        help_text="Maximum number of snapshots to keep per VPS (based on your Contabo plan limit). Set to 0 for unlimited (not recommended)."
+        default=1,
+        help_text="Maximum snapshots per VPS (set from Contabo plan after API test). Cannot exceed your plan limit."
+    )
+    api_tested = models.BooleanField(
+        default=False,
+        help_text="True after successful Test Connection"
+    )
+    api_max_snapshots_from_plan = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Max snapshots from Contabo plan (fetched when API tested). User cannot set higher."
     )
     
     # Payment method preference
@@ -37,7 +46,15 @@ class ContaboConfig(models.Model):
         default='both',
         help_text="Choose which payment method to use for verification. 'Check Both' will grant access if either method is valid."
     )
-    
+
+    # Stored activation key (persisted after successful validation)
+    activation_key = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text="Validated activation key - grants access without re-entering on each page load"
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
