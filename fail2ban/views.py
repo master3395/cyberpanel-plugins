@@ -46,7 +46,7 @@ def plugin_card(request):
             'title': 'Fail2ban Security Manager',
             'status': status,
             'plugin_name': 'Fail2ban',
-            'version': '1.0.0',
+            'version': '1.0.3',
         }
         proc = httpProc(request, 'fail2ban/plugin_card.html', context, 'admin')
         return proc.render()
@@ -84,6 +84,49 @@ def unified_settings(request):
         manager = Fail2banManager()
         status = manager.get_status()
         
+        # Get more detailed data for direct template rendering
+        jails_list = status.get('jails', [])
+        total_jails = status.get('total_jails', len(jails_list))
+        is_running = status.get('running', False)
+        
+        # Get banned IPs count from all jails
+        banned_ips_total = 0
+        jails_detail = manager.get_jails()
+        for jail in jails_detail:
+            banned_ips_total += jail.get('banned_ips', 0)
+        
+        # Get uptime
+        uptime_str = 'N/A'
+        if is_running:
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ['/usr/bin/systemctl', 'show', 'fail2ban', '--property=ActiveEnterTimestamp', '--value'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    from datetime import datetime
+                    timestamp_str = result.stdout.strip()
+                    # Parse timestamp like "Wed 2026-02-01 22:17:36 CET"
+                    try:
+                        # Try parsing with timezone
+                        timestamp_str_clean = ' '.join(timestamp_str.split()[:4])  # Remove timezone
+                        start_time = datetime.strptime(timestamp_str_clean, '%a %Y-%m-%d %H:%M:%S')
+                        uptime_delta = datetime.now() - start_time
+                        days = uptime_delta.days
+                        hours, remainder = divmod(uptime_delta.seconds, 3600)
+                        minutes, _ = divmod(remainder, 60)
+                        if days > 0:
+                            uptime_str = f'{days}D, {hours}H, {minutes}M'
+                        else:
+                            uptime_str = f'{hours}H, {minutes}M'
+                    except:
+                        uptime_str = 'Running'
+            except:
+                uptime_str = 'Running'
+        
         # Get settings
         settings = Fail2banSettings.get_settings()
         
@@ -93,7 +136,14 @@ def unified_settings(request):
             'status': status,
             'settings': settings,
             'plugin_name': 'Fail2ban',
-            'version': '1.0.0',
+            'version': '1.0.3',
+            # Direct values for template rendering (no JavaScript needed)
+            'is_running': is_running,
+            'jails_count': len(jails_list),
+            'total_jails': total_jails,
+            'banned_ips_total': banned_ips_total,
+            'uptime_str': uptime_str,
+            'jails_detail': jails_detail,
             'tabs': [
                 {'id': 'overview', 'name': 'Overview', 'icon': '📊'},
                 {'id': 'jails', 'name': 'Manage Jails', 'icon': '🔒'},
@@ -122,6 +172,32 @@ def unified_settings(request):
         """, status=500)
 
 
+@cyberpanel_login_required
+def settings_simple(request):
+    """Simple settings page (PM2 Manager style) with plugin info and Go To dashboard link"""
+    try:
+        mailUtilities.checkHome()
+        manager = Fail2banManager()
+        status = manager.get_status()
+        status_label = 'Active' if status.get('running', False) else 'Inactive'
+        context = {
+            'plugin_name': 'Fail2ban Security Manager',
+            'version': '1.0.3',
+            'status': status_label,
+        }
+        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'admin')
+        return proc.render()
+    except Exception as e:
+        logging.writeToFile(f"Error in settings_simple: {str(e)}")
+        context = {
+            'plugin_name': 'Fail2ban Security Manager',
+            'version': '1.0.3',
+            'status': 'Unknown',
+        }
+        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'admin')
+        return proc.render()
+
+
 # Legacy views for backward compatibility
 @cyberpanel_login_required
 def dashboard(request):
@@ -129,6 +205,7 @@ def dashboard(request):
 
 @cyberpanel_login_required
 def settings_standalone(request):
+    """Full unified settings with settings tab (use ?tab=settings for direct tab)"""
     return unified_settings(request)
 
 @cyberpanel_login_required
@@ -172,7 +249,7 @@ def api_status(request):
         uptime = 'N/A'
         try:
             result = subprocess.run(
-                ['systemctl', 'show', 'fail2ban', '--property=ActiveEnterTimestamp', '--value'],
+                ['/usr/bin/systemctl', 'show', 'fail2ban', '--property=ActiveEnterTimestamp', '--value'],
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -187,18 +264,20 @@ def api_status(request):
         except:
             pass
         
-        return JsonResponse({
-            'success': True,
-            'data': {
-                'running': status.get('running', False),
-                'jails': status.get('jails', []),
-                'total_jails': status.get('total_jails', 0),
-                'active_jails': len(status.get('jails', [])),
-                'banned_ips': len(banned_ips),
-                'uptime': uptime,
-                'status': 'Active' if status.get('running', False) else 'Inactive'
-            }
-        })
+        running = status.get('running', False)
+        jails_list = status.get('jails', [])
+        data = {
+            'running': running,
+            'jails': jails_list,
+            'total_jails': status.get('total_jails', len(jails_list)),
+            'active_jails': len(jails_list),
+            'banned_ips': len(banned_ips),
+            'uptime': uptime,
+            'status': 'Active' if running else 'Inactive'
+        }
+        if not running and status.get('error'):
+            data['error'] = status.get('error')
+        return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         logging.writeToFile(f"api_status error: {str(e)}")
         return JsonResponse({
@@ -503,7 +582,7 @@ def api_restart_litespeed(request):
     """Restart LiteSpeed service"""
     try:
         result = subprocess.run(
-            ['systemctl', 'restart', 'lscpd'],
+            ['/usr/bin/systemctl', 'restart', 'lscpd'],
             capture_output=True,
             text=True,
             timeout=30
@@ -527,24 +606,44 @@ def api_restart_litespeed(request):
         }, status=500)
 
 
+def _parse_journal_log_line(line):
+    """Parse a journalctl line into timestamp and message. Returns dict with message, timestamp, event_type if parseable."""
+    import re
+    out = {'message': line, 'timestamp': None, 'event_type': 'log', 'ip_address': None, 'jail_name': None}
+    # journalctl format: "Feb 02 21:00:00 hostname unit[pid]: message" or ISO
+    if not line or len(line) < 20:
+        return out
+    # Try to extract timestamp at start (e.g. "Feb 02 21:00:00 " or "2025-02-02T21:00:00")
+    ts_match = re.match(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})', line)
+    if ts_match:
+        try:
+            tstr = ts_match.group(1)
+            parsed = datetime.strptime(tstr, '%b %d %H:%M:%S')
+            parsed = parsed.replace(year=datetime.now().year)
+            out['timestamp'] = parsed.isoformat()
+        except ValueError:
+            pass
+    # Infer event type from message
+    line_lower = line.lower()
+    if 'ban' in line_lower and 'unban' not in line_lower:
+        out['event_type'] = 'ban'
+    elif 'unban' in line_lower:
+        out['event_type'] = 'unban'
+    elif 'restart' in line_lower or 'start' in line_lower:
+        out['event_type'] = 'plugin_toggle'
+    return out
+
+
 @cyberpanel_login_required
 @require_http_methods(["GET"])
 def api_logs(request):
-    """Get fail2ban logs"""
+    """Get fail2ban logs (journalctl -u fail2ban), formatted for dashboard."""
     try:
         limit = int(request.GET.get('limit', 100))
+        limit = min(limit, 500)
         manager = Fail2banManager()
-        logs = manager.get_logs(limit)
-        
-        # Format logs
-        formatted_logs = []
-        for log in logs:
-            formatted_logs.append({
-                'timestamp': datetime.now().isoformat(),
-                'message': log,
-                'level': 'info'
-            })
-        
+        raw_logs = manager.get_logs(limit)
+        formatted_logs = [_parse_journal_log_line(log) for log in raw_logs]
         return JsonResponse({
             'success': True,
             'data': formatted_logs

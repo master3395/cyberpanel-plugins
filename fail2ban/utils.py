@@ -9,19 +9,31 @@ class Fail2banManager:
     """Main class for managing fail2ban operations"""
     
     def __init__(self):
-        self.fail2ban_cmd = 'fail2ban-client'
-        self.firewall_cmd = 'firewall-cmd'
+        # Use full paths to ensure commands work in CyberPanel environment
+        # Use sudo for fail2ban-client as it needs root to access the socket
+        self.fail2ban_cmd = 'sudo /usr/bin/fail2ban-client'
+        self.firewall_cmd = '/usr/bin/firewall-cmd'
         self.config_file = '/etc/fail2ban/jail.local'
     
     def run_command(self, command, timeout=30):
-        """Run a shell command and return the result"""
+        """Run a shell command and return the result.
+        Uses a clean environment for fail2ban-client to avoid PYTHONPATH conflicts.
+        """
         try:
+            import os
+            # Create a clean environment for fail2ban-client
+            # Remove PYTHONPATH and related vars that might interfere
+            clean_env = os.environ.copy()
+            for var in ['PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP']:
+                clean_env.pop(var, None)
+            
             result = subprocess.run(
                 command,
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                env=clean_env
             )
             return {
                 'success': result.returncode == 0,
@@ -46,24 +58,29 @@ class Fail2banManager:
     
     def get_status(self):
         """Get fail2ban service status"""
-        # Check if fail2ban is running
-        status_cmd = 'systemctl is-active fail2ban'
+        # Check if fail2ban is running using full path and checking stdout
+        status_cmd = '/usr/bin/systemctl is-active fail2ban'
         result = self.run_command(status_cmd)
         
-        if not result['success']:
+        # systemctl is-active returns "active" in stdout when running
+        service_status = result.get('stdout', '').strip().lower()
+        if service_status != 'active':
             return {
                 'running': False,
-                'error': 'Fail2ban service is not running'
+                'error': f'Fail2ban service status: {service_status or "unknown"}'
             }
         
-        # Get fail2ban status
+        # Get fail2ban status using self.fail2ban_cmd (includes sudo)
         fail2ban_cmd = f'{self.fail2ban_cmd} status'
         result = self.run_command(fail2ban_cmd)
         
         if not result['success']:
+            # Service is active but fail2ban-client failed (permission issue?)
             return {
-                'running': False,
-                'error': 'Failed to get fail2ban status'
+                'running': True,
+                'jails': [],
+                'total_jails': 0,
+                'error': f'fail2ban-client error: {result.get("stderr", "unknown")}'
             }
         
         # Parse the output
@@ -83,39 +100,62 @@ class Fail2banManager:
         }
     
     def get_jails(self):
-        """Get detailed information about all jails"""
+        """Get detailed information about all jails.
+        First gets jail list from 'fail2ban-client status', then for each jail
+        runs 'fail2ban-client status <jail>' to get details.
+        """
         try:
-            status_cmd = f'{self.fail2ban_cmd} status'
-            result = self.run_command(status_cmd)
-            
-            if not result['success']:
+            # Get jail list from main status (no jail name)
+            status_result = self.run_command(f'{self.fail2ban_cmd} status')
+            if not status_result['success']:
                 return []
-            
-            jails = []
-            lines = result['stdout'].split('\n')
-            current_jail = None
-            
-            for line in lines:
+            jail_names = []
+            for line in status_result['stdout'].split('\n'):
                 line = line.strip()
-                if line.startswith('Status for the jail:'):
-                    jail_name = line.split('Status for the jail:')[1].strip()
-                    current_jail = {
+                if 'Jail list:' in line:
+                    jail_list_str = line.split('Jail list:')[1].strip()
+                    jail_names = [j.strip() for j in jail_list_str.split(',') if j.strip()]
+                    break
+            if not jail_names:
+                return []
+            # Get details for each jail
+            jails = []
+            for jail_name in jail_names:
+                jail_result = self.run_command(f'{self.fail2ban_cmd} status {jail_name}')
+                if not jail_result['success']:
+                    jails.append({
                         'name': jail_name,
                         'enabled': True,
                         'failed_attempts': 0,
                         'banned_ips': 0,
-                        'banned_ip_list': []
-                    }
-                    jails.append(current_jail)
-                elif current_jail and 'Currently failed:' in line:
-                    current_jail['failed_attempts'] = int(line.split(':')[1].strip())
-                elif current_jail and 'Currently banned:' in line:
-                    current_jail['banned_ips'] = int(line.split(':')[1].strip())
-                elif current_jail and 'Banned IP list:' in line:
-                    banned_ips = line.split('Banned IP list:')[1].strip()
-                    if banned_ips:
-                        current_jail['banned_ip_list'] = [ip.strip() for ip in banned_ips.split() if ip.strip()]
-            
+                        'banned_ip_list': [],
+                        'error': jail_result.get('stderr', 'Unknown error')
+                    })
+                    continue
+                current_jail = {
+                    'name': jail_name,
+                    'enabled': True,
+                    'failed_attempts': 0,
+                    'banned_ips': 0,
+                    'banned_ip_list': []
+                }
+                for line in jail_result['stdout'].split('\n'):
+                    line = line.strip()
+                    if 'Currently failed:' in line:
+                        try:
+                            current_jail['failed_attempts'] = int(line.split(':')[1].strip())
+                        except (ValueError, IndexError):
+                            pass
+                    elif 'Currently banned:' in line:
+                        try:
+                            current_jail['banned_ips'] = int(line.split(':')[1].strip())
+                        except (ValueError, IndexError):
+                            pass
+                    elif 'Banned IP list:' in line:
+                        banned_part = line.split('Banned IP list:')[1].strip()
+                        if banned_part:
+                            current_jail['banned_ip_list'] = [ip.strip() for ip in banned_part.split() if ip.strip()]
+                jails.append(current_jail)
             return jails
         except Exception as e:
             return []
@@ -326,7 +366,7 @@ class Fail2banManager:
     def restart_service(self):
         """Restart fail2ban service"""
         try:
-            cmd = 'systemctl restart fail2ban'
+            cmd = '/usr/bin/systemctl restart fail2ban'
             result = self.run_command(cmd)
             
             if not result['success']:
@@ -337,9 +377,9 @@ class Fail2banManager:
             return {'success': False, 'error': str(e)}
     
     def get_logs(self, lines=100):
-        """Get fail2ban logs"""
+        """Get fail2ban logs via journalctl. Requires sudo for cyberpanel user."""
         try:
-            cmd = f'journalctl -u fail2ban -n {lines} --no-pager'
+            cmd = f'sudo /usr/bin/journalctl -u fail2ban -n {lines} --no-pager'
             result = self.run_command(cmd)
             
             if not result['success']:
@@ -366,7 +406,7 @@ class Fail2banManager:
     def start_service(self):
         """Start fail2ban service"""
         try:
-            cmd = 'systemctl start fail2ban'
+            cmd = '/usr/bin/systemctl start fail2ban'
             result = self.run_command(cmd)
             
             if not result['success']:
@@ -379,7 +419,7 @@ class Fail2banManager:
     def stop_service(self):
         """Stop fail2ban service"""
         try:
-            cmd = 'systemctl stop fail2ban'
+            cmd = '/usr/bin/systemctl stop fail2ban'
             result = self.run_command(cmd)
             
             if not result['success']:

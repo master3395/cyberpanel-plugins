@@ -6,14 +6,15 @@ urlpatterns = [
     re_path(r'^$', views.fail2ban_plugin, name='fail2ban_plugin'),
     
     # Standalone pages
-    re_path(r'^dashboard/$', views.dashboard, name='dashboard_alt'),
+    re_path(r'^dashboard/$', views.dashboard, name='dashboard'),
     re_path(r'^jails/$', views.jails_standalone, name='jails_standalone'),
     re_path(r'^banned-ips/$', views.banned_ips_standalone, name='banned_ips_standalone'),
     re_path(r'^whitelist/$', views.whitelist_standalone, name='whitelist_standalone'),
     re_path(r'^blacklist/$', views.blacklist_standalone, name='blacklist_standalone'),
     re_path(r'^logs/$', views.logs_standalone, name='logs_standalone'),
     re_path(r'^statistics/$', views.statistics_standalone, name='statistics_standalone'),
-    re_path(r'^settings/$', views.settings_standalone, name='settings_standalone'),
+    re_path(r'^settings/$', views.settings_simple, name='settings_simple'),
+    re_path(r'^unified-settings/$', views.settings_standalone, name='settings_standalone'),
     
     # Plugin card
     re_path(r'^card/$', views.plugin_card, name='plugin_card'),

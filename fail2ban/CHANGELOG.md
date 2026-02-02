@@ -5,6 +5,24 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-02-02
+
+### Added
+- PM2 Manager-style dashboard: header with Live indicator, action buttons, cleaner tab navigation
+- Go To dashboard button on settings page (like PM2 Manager)
+- sudo permission for journalctl so Recent Activity shows fail2ban logs when service is running
+
+### Fixed
+- Overview tab content nesting (tabs now switch correctly)
+- Hash-based tab loading (#overview, #jails, etc.) on page load
+- extraCSS block changed to header_scripts so styles load in CyberPanel base template
+- Recent Activity always showing "No recent activity" when fail2ban is running (journalctl now runs with sudo)
+
+### Changed
+- Removed aggressive CSS reset (all: initial) that broke layout
+- Tab styling: pill-style active state, PM2 Manager color scheme (#5856d6)
+- Status cards styling to match PM2 Manager stat-card design
+
 ## [1.0.2] - 2026-02-01
 
 ### Changed

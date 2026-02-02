@@ -14,11 +14,29 @@ class Fail2banPluginTestCase(TestCase):
         )
         self.client = Client()
         self.client.login(username='testuser', password='testpass123')
-    
+        # CyberPanel plugin decorator expects session['userID']
+        session = self.client.session
+        session['userID'] = self.user.id
+        session.save()
+
     def test_dashboard_view(self):
         """Test dashboard view loads correctly"""
         response = self.client.get(reverse('fail2ban_plugin:dashboard'))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Fail2ban Security Manager')
+
+    def test_plugin_card_contains_go_to_dashboard(self):
+        """Test plugin card has Go To dashboard button (PM2 Manager style)"""
+        response = self.client.get(reverse('fail2ban_plugin:plugin_card'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Go To dashboard')
+        self.assertContains(response, '/plugins/fail2ban/')
+
+    def test_settings_simple_view(self):
+        """Test simple settings page has Go to Fail2ban Security Manager Dashboard link"""
+        response = self.client.get(reverse('fail2ban_plugin:settings_simple'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Go to Fail2ban Security Manager Dashboard')
         self.assertContains(response, 'Fail2ban Security Manager')
     
     def test_api_status(self):

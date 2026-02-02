@@ -1,6 +1,10 @@
-<!-- Plugin Card Buttons Template -->
+<!-- Plugin Card Buttons Template (PM2 Manager style: Go To dashboard first) -->
 <div class="plugin-card-buttons" style="margin-top: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
     <a href="/plugins/fail2ban/" class="btn btn-primary">
+        <i class="fa fa-tachometer-alt"></i> Go To dashboard
+    </a>
+    
+    <a href="/plugins/fail2ban/settings/" class="btn btn-secondary">
         <i class="fa fa-cog"></i> Settings
     </a>
     
@@ -113,6 +117,19 @@ input:checked + .slider:before {
     color: #fff;
     background-color: #31b0d5;
     border-color: #269abc;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    color: #333;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.btn-secondary:hover {
+    color: #333;
+    background-color: #d3d9df;
+    border-color: #c6cbcf;
     text-decoration: none;
 }
 </style>
