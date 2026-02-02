@@ -31,7 +31,6 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |
 | [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
-| [WHMCS Integration](docs/plugins/whmcsIntegration.md) | Integration | 🟢 Free | jetchirag, jesussuarz | Documentation and links to official CyberPanel WHMCS module |
 
 ## Plugin Pricing
 
