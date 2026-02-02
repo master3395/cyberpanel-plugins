@@ -2,6 +2,7 @@
 
 A collection of plugins for CyberPanel web hosting control panel.
 
+**Version:** 1.2.0  
 **Author:** master3395  
 **Compatible with:** CyberPanel 2.5.5-dev and higher
 
@@ -16,6 +17,8 @@ A collection of plugins for CyberPanel web hosting control panel.
 
 | Plugin | Type | Pricing | Author | Description |
 |--------|------|---------|--------|-------------|
+| [Auto Snapshot for Contabo](contaboAutoSnapshot/) | Backup | 🟡 Paid | master3395 | Automated Contabo VPS snapshots |
+| [CSP Manager](cspManager/) | Security | 🟢 Free | master3395 | Content Security Policy management |
 | [Discord Authentication](discordAuth/) | Security | 🟢 Free | master3395 | Discord OAuth2 login for CyberPanel |
 | [Discord Webhooks](docs/plugins/discordWebhooks.md) | Integration | 🟢 Free | master3395 | Send server notifications to Discord |
 | [Email Marketing](emailMarketing/) | Email | 🟢 Free | usmannasir | Email marketing plugin for CyberPanel |
