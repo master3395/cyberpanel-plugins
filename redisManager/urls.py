@@ -6,6 +6,7 @@ app_name = 'redisManager'
 
 urlpatterns = [
     path('', views.main_view, name='main'),
+    path('settings/', views.main_view, name='settings'),
     path('api/control/', views.api_control, name='api_control'),
     path('api/flush/', views.api_flush, name='api_flush'),
     path('api/config/', views.api_config, name='api_config'),
