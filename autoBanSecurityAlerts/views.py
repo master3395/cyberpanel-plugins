@@ -1,0 +1,801 @@
+# -*- coding: utf-8 -*-
+"""
+Auto Ban Security Alerts Plugin Views
+Automatically bans IPs from Security Alerts Detected in Recent SSH Logs
+"""
+
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from plogical.mailUtilities import mailUtilities
+from plogical.httpProc import httpProc
+from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+from functools import wraps
+import urllib.request
+import urllib.error
+import json
+import os
+import threading
+import time
+
+from .models import AutoBanConfig, WhitelistedIP, AutoBanLog
+from . import api_encryption
+
+PLUGIN_NAME = 'autoBanSecurityAlerts'
+PLUGIN_VERSION = '1.0.0'
+
+REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
+REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'
+REMOTE_VERIFICATION_PLUGIN_GRANT_URL = 'https://api.newstargeted.com/api/verify-plugin-grant.php'
+REMOTE_ACTIVATION_KEY_URL = 'https://api.newstargeted.com/api/activate-plugin-key.php'
+
+PATREON_TIER = 'CyberPanel Paid Plugin'
+PATREON_URL = 'https://www.patreon.com/membership/27789984'
+PAYPAL_ME_URL = 'https://paypal.me/KimBS?locale.x=en_US&country.x=NO'
+PAYPAL_PAYMENT_LINK = ''
+
+# Global monitoring thread
+_monitoring_thread = None
+_monitoring_lock = threading.Lock()
+
+
+def cyberpanel_login_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            if not request.session.get('userID'):
+                from loginSystem.views import loadLoginPage
+                return redirect(loadLoginPage)
+            return view_func(request, *args, **kwargs)
+        except KeyError:
+            from loginSystem.views import loadLoginPage
+            return redirect(loadLoginPage)
+    return _wrapped_view
+
+
+def _api_request(url, data, timeout=10):
+    """Send encrypted API request and return decoded response dict."""
+    try:
+        body, extra_headers = api_encryption.encrypt_payload(data)
+        headers = {
+            'User-Agent': f'CyberPanel-Plugin/{PLUGIN_VERSION}',
+            'X-Plugin-Name': PLUGIN_NAME
+        }
+        headers.update(extra_headers)
+        req = urllib.request.Request(url, data=body, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            raw = response.read()
+            ct = response.headers.get('Content-Type', '')
+            expect_enc = extra_headers.get('X-Encrypted') == '1'
+            return api_encryption.decrypt_response(raw, ct, expect_encrypted=expect_enc)
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: API request error to {url}: {str(e)}")
+        return {}
+
+
+def check_plugin_grant(user_email, user_ip='', domain=''):
+    try:
+        # Normalize email to lowercase for matching
+        user_email_normalized = (user_email or '').strip().lower()
+        request_data = {
+            'user_email': user_email_normalized,
+            'plugin_name': PLUGIN_NAME,
+            'user_ip': user_ip,
+            'domain': domain,
+        }
+        data = _api_request(REMOTE_VERIFICATION_PLUGIN_GRANT_URL, request_data)
+        if data.get('success') and data.get('has_access'):
+            logging.writeToFile(f"Auto Ban Plugin: Plugin grant access granted for {user_email_normalized}")
+            return {'has_access': True, 'message': data.get('message', 'Access granted via Plugin Grants')}
+        logging.writeToFile(f"Auto Ban Plugin: Plugin grant check - no access for {user_email_normalized}: {data.get('message', 'No grant found')}")
+        return {'has_access': False, 'message': data.get('message', '')}
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Plugin grant check error: {str(e)}")
+        return {'has_access': False, 'message': ''}
+
+
+def check_patreon_membership(user_email, user_ip='', domain=''):
+    try:
+        request_data = {
+            'user_email': user_email,
+            'plugin_name': PLUGIN_NAME,
+            'plugin_version': PLUGIN_VERSION,
+            'user_ip': user_ip,
+            'domain': domain,
+            'tier_id': '27789984'
+        }
+        response_data = _api_request(REMOTE_VERIFICATION_PATREON_URL, request_data)
+        if response_data.get('success', False):
+            return {
+                'has_access': response_data.get('has_access', False),
+                'patreon_tier': response_data.get('patreon_tier', PATREON_TIER),
+                'patreon_url': response_data.get('patreon_url', PATREON_URL),
+                'message': response_data.get('message', 'Access granted'),
+                'error': None
+            }
+        return {
+            'has_access': False,
+            'patreon_tier': PATREON_TIER,
+            'patreon_url': PATREON_URL,
+            'message': response_data.get('message', 'Patreon subscription required'),
+            'error': response_data.get('error')
+        }
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Patreon check error: {str(e)}")
+        return {
+            'has_access': False,
+            'patreon_tier': PATREON_TIER,
+            'patreon_url': PATREON_URL,
+            'message': 'Unable to verify Patreon membership.',
+            'error': str(e)
+        }
+
+
+def check_paypal_payment(user_email, user_ip='', domain=''):
+    try:
+        request_data = {
+            'user_email': user_email,
+            'plugin_name': PLUGIN_NAME,
+            'plugin_version': PLUGIN_VERSION,
+            'user_ip': user_ip,
+            'domain': domain,
+            'timestamp': 0,
+        }
+        import time
+        request_data['timestamp'] = int(time.time())
+        response_data = _api_request(REMOTE_VERIFICATION_PAYPAL_URL, request_data)
+        if response_data.get('success', False):
+            return {
+                'has_access': response_data.get('has_access', False),
+                'paypal_me_url': response_data.get('paypal_me_url', PAYPAL_ME_URL),
+                'paypal_payment_link': response_data.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
+                'message': response_data.get('message', 'Access granted'),
+                'error': None
+            }
+        return {
+            'has_access': False,
+            'paypal_me_url': PAYPAL_ME_URL,
+            'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+            'message': response_data.get('message', 'PayPal payment required'),
+            'error': response_data.get('error')
+        }
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: PayPal check error: {str(e)}")
+        return {
+            'has_access': False,
+            'paypal_me_url': PAYPAL_ME_URL,
+            'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+            'message': 'Unable to verify PayPal payment.',
+            'error': str(e)
+        }
+
+
+def unified_verification_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            if not request.session.get('userID'):
+                from loginSystem.views import loadLoginPage
+                return redirect(loadLoginPage)
+
+            # Get user email from session or user object, normalize to lowercase
+            user_email = request.session.get('email', '') or (getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else '') or getattr(request.user, 'username', '')
+            user_email = user_email.strip().lower() if user_email else ''
+            logging.writeToFile(f"Auto Ban Plugin: Checking access for email: {user_email}")
+
+            try:
+                config = AutoBanConfig.get_config()
+                payment_method = config.payment_method
+            except Exception:
+                payment_method = 'both'
+
+            has_access = False
+            verification_result = {}
+
+            activation_key = request.GET.get('activation_key') or request.POST.get('activation_key')
+            if not activation_key:
+                try:
+                    config = AutoBanConfig.get_config()
+                    activation_key = getattr(config, 'activation_key', '') or ''
+                except Exception:
+                    activation_key = ''
+
+            if activation_key:
+                try:
+                    request_data = {
+                        'activation_key': activation_key.strip(),
+                        'plugin_name': PLUGIN_NAME,
+                        'user_email': user_email
+                    }
+                    response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+                    if response_data.get('success', False) and response_data.get('has_access', False):
+                        has_access = True
+                        verification_result = {'method': 'activation_key', 'has_access': True, 'message': response_data.get('message', 'Access activated via key')}
+                        try:
+                            config = AutoBanConfig.get_config()
+                            config.activation_key = activation_key.strip()
+                            config.save(update_fields=['activation_key', 'updated_at'])
+                        except Exception as e:
+                            logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
+                    elif not response_data.get('success') and activation_key:
+                        try:
+                            config = AutoBanConfig.get_config()
+                            if getattr(config, 'activation_key', '') == activation_key.strip():
+                                config.activation_key = ''
+                                config.save(update_fields=['activation_key', 'updated_at'])
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logging.writeToFile(f"Auto Ban Plugin: Activation key check error: {str(e)}")
+
+            if not has_access:
+                grant_result = check_plugin_grant(user_email, request.META.get('REMOTE_ADDR', ''), request.get_host())
+                if grant_result.get('has_access'):
+                    has_access = True
+                    verification_result = {'method': 'plugin_grant', 'has_access': True, 'message': grant_result.get('message', 'Access granted via Plugin Grants')}
+
+            if not has_access:
+                try:
+                    if payment_method == 'patreon':
+                        result = check_patreon_membership(user_email, request.META.get('REMOTE_ADDR', ''), request.get_host())
+                        has_access = result.get('has_access', False)
+                        verification_result = {
+                            'method': 'patreon', 'has_access': has_access,
+                            'patreon_tier': result.get('patreon_tier', PATREON_TIER),
+                            'patreon_url': result.get('patreon_url', PATREON_URL),
+                            'paypal_me_url': PAYPAL_ME_URL, 'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+                            'message': result.get('message', 'Patreon subscription required'),
+                            'error': result.get('error')
+                        }
+                    elif payment_method == 'paypal':
+                        result = check_paypal_payment(user_email, request.META.get('REMOTE_ADDR', ''), request.get_host())
+                        has_access = result.get('has_access', False)
+                        verification_result = {
+                            'method': 'paypal', 'has_access': has_access,
+                            'patreon_tier': PATREON_TIER, 'patreon_url': PATREON_URL,
+                            'paypal_me_url': result.get('paypal_me_url', PAYPAL_ME_URL),
+                            'paypal_payment_link': result.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
+                            'message': result.get('message', 'PayPal payment required'),
+                            'error': result.get('error')
+                        }
+                    else:
+                        patreon_result = check_patreon_membership(user_email, request.META.get('REMOTE_ADDR', ''), request.get_host())
+                        paypal_result = check_paypal_payment(user_email, request.META.get('REMOTE_ADDR', ''), request.get_host())
+                        has_access = patreon_result.get('has_access', False) or paypal_result.get('has_access', False)
+                        verification_result = {
+                            'method': 'both', 'has_access': has_access,
+                            'patreon_tier': patreon_result.get('patreon_tier', PATREON_TIER),
+                            'patreon_url': patreon_result.get('patreon_url', PATREON_URL),
+                            'paypal_me_url': paypal_result.get('paypal_me_url', PAYPAL_ME_URL),
+                            'paypal_payment_link': paypal_result.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
+                            'message': 'Payment or subscription required' if not has_access else 'Access granted'
+                        }
+                except Exception as e:
+                    logging.writeToFile(f"Auto Ban Plugin: Verification error: {str(e)}")
+                    has_access = False
+                    verification_result = {
+                        'method': payment_method, 'has_access': False,
+                        'patreon_tier': PATREON_TIER, 'patreon_url': PATREON_URL,
+                        'paypal_me_url': PAYPAL_ME_URL, 'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+                        'message': 'Unable to verify access.',
+                        'error': str(e)
+                    }
+
+            if not has_access:
+                context = {
+                    'plugin_name': 'Auto Ban Security Alerts',
+                    'is_paid': True,
+                    'payment_method': payment_method,
+                    'verification_result': verification_result,
+                    'patreon_tier': verification_result.get('patreon_tier', PATREON_TIER),
+                    'patreon_url': verification_result.get('patreon_url', PATREON_URL),
+                    'paypal_me_url': verification_result.get('paypal_me_url', PAYPAL_ME_URL),
+                    'paypal_payment_link': verification_result.get('paypal_payment_link', PAYPAL_PAYMENT_LINK),
+                    'message': verification_result.get('message', 'Payment or subscription required'),
+                    'error': verification_result.get('error')
+                }
+                proc = httpProc(request, 'autoBanSecurityAlerts/subscription_required.html', context, 'admin')
+                return proc.render()
+
+            if has_access and verification_result:
+                request.session['auto_ban_plugin_access_via'] = verification_result.get('method', '')
+
+            return view_func(request, *args, **kwargs)
+        except Exception as e:
+            logging.writeToFile(f"Auto Ban Plugin: Decorator error: {str(e)}")
+            return HttpResponse(f"<div style='padding: 20px;'><h2>Plugin Error</h2><p>{str(e)}</p></div>")
+    return _wrapped_view
+
+
+def get_machine_ip():
+    """Get CyberPanel machine IP from /etc/cyberpanel/machineIP"""
+    try:
+        ip_file = '/etc/cyberpanel/machineIP'
+        if os.path.exists(ip_file):
+            with open(ip_file, 'r') as f:
+                ip = f.read().strip()
+                if ip:
+                    return ip
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error reading machine IP: {str(e)}")
+    return None
+
+
+def ensure_machine_ip_whitelisted():
+    """Ensure the current CyberPanel machine IP is whitelisted"""
+    try:
+        machine_ip = get_machine_ip()
+        if not machine_ip:
+            return
+
+        # Check if already whitelisted
+        existing = WhitelistedIP.objects.filter(ip_address=machine_ip, is_system_ip=True).first()
+        if existing:
+            return
+
+        # Remove old system IP entries (in case IP changed)
+        WhitelistedIP.objects.filter(is_system_ip=True).exclude(ip_address=machine_ip).delete()
+
+        # Add new system IP
+        WhitelistedIP.objects.get_or_create(
+            ip_address=machine_ip,
+            defaults={
+                'description': 'CyberPanel Machine IP (Auto-managed)',
+                'is_system_ip': True
+            }
+        )
+        logging.writeToFile(f"Auto Ban Plugin: Auto-whitelisted machine IP: {machine_ip}")
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error ensuring machine IP whitelisted: {str(e)}")
+
+
+@cyberpanel_login_required
+def main_view(request):
+    mailUtilities.checkHome()
+    return redirect('autoBanSecurityAlerts:settings')
+
+
+@cyberpanel_login_required
+@unified_verification_required
+def settings_view(request):
+    mailUtilities.checkHome()
+    try:
+        config = AutoBanConfig.get_config()
+    except Exception:
+        from django.core.management import call_command
+        try:
+            call_command('migrate', 'autoBanSecurityAlerts', verbosity=0, interactive=False)
+            config = AutoBanConfig.get_config()
+            ensure_machine_ip_whitelisted()
+        except Exception as e:
+            return HttpResponse(f"<div style='padding: 20px;'><h2>Database Error</h2><p>{str(e)}</p></div>")
+
+    # Ensure machine IP is whitelisted
+    ensure_machine_ip_whitelisted()
+
+    access_via = request.session.get('auto_ban_plugin_access_via', '')
+    show_payment_ui = access_via not in ('plugin_grant', 'activation_key')
+
+    whitelisted_ips = WhitelistedIP.objects.all()
+    recent_bans = AutoBanLog.objects.all()[:50]  # Last 50 bans
+    machine_ip = get_machine_ip()
+
+    context = {
+        'plugin_name': 'Auto Ban Security Alerts',
+        'version': PLUGIN_VERSION,
+        'status': 'Active' if config.enabled else 'Disabled',
+        'config': config,
+        'has_access': True,
+        'show_payment_ui': show_payment_ui,
+        'access_via_grant_or_key': not show_payment_ui,
+        'patreon_tier': PATREON_TIER,
+        'patreon_url': PATREON_URL,
+        'paypal_me_url': PAYPAL_ME_URL,
+        'paypal_payment_link': PAYPAL_PAYMENT_LINK,
+        'description': 'Automatically ban IP addresses from Security Alerts Detected in Recent SSH Logs.',
+        'whitelisted_ips': whitelisted_ips,
+        'recent_bans': recent_bans,
+        'machine_ip': machine_ip,
+    }
+    proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'admin')
+    return proc.render()
+
+
+@cyberpanel_login_required
+@unified_verification_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def update_config(request):
+    """Update plugin configuration"""
+    try:
+        config = AutoBanConfig.get_config()
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+
+        if 'enabled' in data:
+            config.enabled = data.get('enabled') in [True, 'true', '1', 1]
+        if 'ban_duration' in data:
+            config.ban_duration = data.get('ban_duration', 'permanent')
+        if 'ban_reason' in data:
+            config.ban_reason = data.get('ban_reason', 'Auto-banned from Security Alerts Detected')
+        if 'check_interval' in data:
+            try:
+                interval = int(data.get('check_interval', 60))
+                if interval < 30:
+                    interval = 30
+                config.check_interval = interval
+            except ValueError:
+                pass
+
+        config.save()
+
+        # Restart monitoring if enabled
+        if config.enabled:
+            start_monitoring_thread()
+
+        return JsonResponse({'status': 1, 'message': 'Configuration updated successfully'})
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error updating config: {str(e)}")
+        return JsonResponse({'status': 0, 'error_message': str(e)})
+
+
+@cyberpanel_login_required
+@unified_verification_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def add_whitelist_ip(request):
+    """Add IP to whitelist"""
+    try:
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        ip_address = data.get('ip_address', '').strip()
+        description = data.get('description', '').strip()
+
+        if not ip_address:
+            return JsonResponse({'status': 0, 'error_message': 'IP address is required'})
+
+        # Validate IP
+        import ipaddress
+        try:
+            ipaddress.ip_address(ip_address)
+        except ValueError:
+            return JsonResponse({'status': 0, 'error_message': 'Invalid IP address format'})
+
+        # Check if already whitelisted
+        if WhitelistedIP.objects.filter(ip_address=ip_address).exists():
+            return JsonResponse({'status': 0, 'error_message': 'IP address is already whitelisted'})
+
+        WhitelistedIP.objects.create(
+            ip_address=ip_address,
+            description=description,
+            is_system_ip=False
+        )
+
+        return JsonResponse({'status': 1, 'message': 'IP address added to whitelist'})
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error adding whitelist IP: {str(e)}")
+        return JsonResponse({'status': 0, 'error_message': str(e)})
+
+
+@cyberpanel_login_required
+@unified_verification_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def remove_whitelist_ip(request):
+    """Remove IP from whitelist (cannot remove system IP)"""
+    try:
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        ip_id = data.get('ip_id')
+
+        if not ip_id:
+            return JsonResponse({'status': 0, 'error_message': 'IP ID is required'})
+
+        whitelist_ip = WhitelistedIP.objects.filter(pk=ip_id).first()
+        if not whitelist_ip:
+            return JsonResponse({'status': 0, 'error_message': 'Whitelisted IP not found'})
+
+        if whitelist_ip.is_system_ip:
+            return JsonResponse({'status': 0, 'error_message': 'Cannot delete system IP (CyberPanel machine IP)'})
+
+        whitelist_ip.delete()
+        return JsonResponse({'status': 1, 'message': 'IP address removed from whitelist'})
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error removing whitelist IP: {str(e)}")
+        return JsonResponse({'status': 0, 'error_message': str(e)})
+
+
+@cyberpanel_login_required
+@unified_verification_required
+@require_http_methods(["POST"])
+def activate_key(request):
+    """Activate plugin with activation key"""
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        activation_key = data.get('activation_key', '').strip()
+        user_email = data.get('user_email', '').strip()
+        if not user_email:
+            user_email = request.session.get('email', '') or (getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else '')
+
+        if not activation_key:
+            return JsonResponse({'status': 0, 'error_message': 'Activation key is required'})
+
+        request_data = {
+            'activation_key': activation_key,
+            'plugin_name': PLUGIN_NAME,
+            'user_email': user_email
+        }
+        response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+
+        if response_data.get('success', False) and response_data.get('has_access', False):
+            try:
+                config = AutoBanConfig.get_config()
+                config.activation_key = activation_key
+                config.save(update_fields=['activation_key', 'updated_at'])
+            except Exception as e:
+                logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
+
+            return JsonResponse({
+                'status': 1,
+                'message': response_data.get('message', 'Plugin activated successfully'),
+                'has_access': True
+            })
+        else:
+            return JsonResponse({
+                'status': 0,
+                'error_message': response_data.get('message', 'Invalid activation key'),
+                'has_access': False
+            })
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Activation key error: {str(e)}")
+        return JsonResponse({'status': 0, 'error_message': str(e)})
+
+
+def auto_ban_ip(ip_address, alert_type='', reason=''):
+    """Ban an IP address using the firewall manager"""
+    try:
+        from firewall.firewallManager import FirewallManager
+        from loginSystem.models import Administrator
+
+        # Get first admin user for the ban operation
+        admin = Administrator.objects.filter(acl__adminStatus=1).first()
+        if not admin:
+            logging.writeToFile("Auto Ban Plugin: No admin user found for banning IP")
+            return False
+
+        config = AutoBanConfig.get_config()
+        ban_reason = reason or config.ban_reason
+        if alert_type:
+            ban_reason = f"{ban_reason} - {alert_type}"
+
+        fm = FirewallManager()
+        data = {
+            'ip': ip_address,
+            'reason': ban_reason,
+            'duration': config.ban_duration
+        }
+
+        result = fm.addBannedIP(admin.pk, data)
+
+        # Check if ban was successful
+        if hasattr(result, 'status_code'):
+            # HttpResponse object
+            if result.status_code == 200:
+                try:
+                    result_data = json.loads(result.content)
+                    if result_data.get('status') == 1:
+                        # Log the ban
+                        AutoBanLog.objects.create(
+                            ip_address=ip_address,
+                            ban_reason=ban_reason,
+                            ban_duration=config.ban_duration,
+                            security_alert_type=alert_type
+                        )
+                        logging.writeToFile(f"Auto Ban Plugin: Successfully banned IP {ip_address} - {ban_reason}")
+                        return True
+                except Exception:
+                    pass
+        elif isinstance(result, dict) and result.get('status') == 1:
+            # Already a dict with status
+            AutoBanLog.objects.create(
+                ip_address=ip_address,
+                ban_reason=ban_reason,
+                ban_duration=config.ban_duration,
+                security_alert_type=alert_type
+            )
+            logging.writeToFile(f"Auto Ban Plugin: Successfully banned IP {ip_address} - {ban_reason}")
+            return True
+
+        logging.writeToFile(f"Auto Ban Plugin: Failed to ban IP {ip_address}")
+        return False
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error banning IP {ip_address}: {str(e)}")
+        return False
+
+
+def get_security_alerts():
+    """Get current security alerts by calling analyzeSSHSecurity logic directly"""
+    try:
+        from plogical.processUtilities import ProcessUtilities
+        import re
+        from collections import defaultdict
+        from datetime import datetime, timedelta
+        
+        alerts = []
+        
+        # Determine log path
+        distro = ProcessUtilities.decideDistro()
+        if distro in [ProcessUtilities.ubuntu, ProcessUtilities.ubuntu20]:
+            log_path = '/var/log/auth.log'
+        else:
+            log_path = '/var/log/secure'
+        
+        try:
+            # Get last 500 lines for better analysis
+            output = ProcessUtilities.outputExecutioner(f'tail -n 500 {log_path}')
+        except Exception as e:
+            logging.writeToFile(f"Auto Ban Plugin: Failed to read log: {str(e)}")
+            return []
+        
+        lines = output.split('\n')
+        
+        # Analysis patterns
+        failed_passwords = defaultdict(int)
+        invalid_users = defaultdict(int)
+        root_login_attempts = []
+        
+        for line in lines:
+            if not line.strip():
+                continue
+            
+            # Failed password attempts
+            if 'Failed password' in line:
+                match = re.search(r'Failed password for (?:invalid user )?(\S+) from (\S+)', line)
+                if match:
+                    user, ip = match.groups()
+                    failed_passwords[ip] += 1
+                    
+                    # Check for root login attempts
+                    if user == 'root':
+                        root_login_attempts.append({
+                            'ip': ip,
+                            'line': line
+                        })
+            
+            # Invalid user attempts
+            elif 'Invalid user' in line or 'invalid user' in line:
+                match = re.search(r'[Ii]nvalid user (\S+) from (\S+)', line)
+                if match:
+                    user, ip = match.groups()
+                    invalid_users[ip] += 1
+        
+        # Generate alerts based on analysis
+        # High severity: Brute force attacks
+        for ip, count in failed_passwords.items():
+            if count >= 10:
+                alerts.append({
+                    'title': 'Brute Force Attack Detected',
+                    'description': f'IP address {ip} has made {count} failed password attempts.',
+                    'severity': 'high',
+                    'details': {
+                        'IP Address': ip,
+                        'Failed Attempts': count,
+                        'Attack Type': 'Brute Force'
+                    }
+                })
+        
+        # High severity: Root login attempts
+        if root_login_attempts:
+            unique_ips = set(r["ip"] for r in root_login_attempts)
+            alerts.append({
+                'title': 'Root Login Attempts Detected',
+                'description': f'Direct root login attempts detected from {len(unique_ips)} IP addresses.',
+                'severity': 'high',
+                'details': {
+                    'Unique IPs': len(unique_ips),
+                    'Total Attempts': len(root_login_attempts),
+                    'Top IP': max(unique_ips, key=lambda x: sum(1 for r in root_login_attempts if r["ip"] == x))
+                }
+            })
+        
+        # Medium severity: Dictionary attacks
+        for ip, count in invalid_users.items():
+            if count >= 5:
+                alerts.append({
+                    'title': 'Dictionary Attack Detected',
+                    'description': f'IP address {ip} attempted to login with {count} non-existent usernames.',
+                    'severity': 'medium',
+                    'details': {
+                        'IP Address': ip,
+                        'Invalid User Attempts': count,
+                        'Attack Type': 'Dictionary Attack'
+                    }
+                })
+        
+        return alerts
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error getting security alerts: {str(e)}")
+        return []
+
+
+def extract_ips_from_alerts(alerts):
+    """Extract IP addresses from security alerts"""
+    ips = []
+    for alert in alerts:
+        details = alert.get('details', {})
+        ip = details.get('IP Address') or details.get('Top IP')
+        if ip:
+            ips.append({
+                'ip': ip,
+                'type': alert.get('title', ''),
+                'severity': alert.get('severity', 'medium')
+            })
+    return ips
+
+
+def monitoring_worker():
+    """Background worker that monitors Security Alerts and auto-bans IPs"""
+    global _monitoring_thread
+    logging.writeToFile("Auto Ban Plugin: Monitoring thread started")
+
+    while True:
+        try:
+            with _monitoring_lock:
+                config = AutoBanConfig.get_config()
+                if not config.enabled:
+                    time.sleep(10)
+                    continue
+
+            # Get security alerts
+            alerts = get_security_alerts()
+            if not alerts:
+                time.sleep(config.check_interval)
+                continue
+
+            # Extract IPs from alerts
+            alert_ips = extract_ips_from_alerts(alerts)
+
+            # Get whitelisted IPs
+            whitelisted = set(WhitelistedIP.objects.values_list('ip_address', flat=True))
+
+            # Get already banned IPs (check recent bans to avoid duplicates)
+            from datetime import datetime, timedelta
+            recent_bans = AutoBanLog.objects.filter(
+                banned_at__gte=datetime.now() - timedelta(hours=1)
+            ).values_list('ip_address', flat=True)
+            recently_banned = set(recent_bans)
+
+            # Ban IPs that are in alerts, not whitelisted, and not recently banned
+            for alert_ip_info in alert_ips:
+                ip = alert_ip_info['ip']
+                if ip not in whitelisted and ip not in recently_banned:
+                    auto_ban_ip(ip, alert_ip_info['type'], f"Auto-banned: {alert_ip_info['type']}")
+
+            # Sleep for the configured interval
+            time.sleep(config.check_interval)
+
+        except Exception as e:
+            logging.writeToFile(f"Auto Ban Plugin: Monitoring worker error: {str(e)}")
+            time.sleep(30)  # Wait a bit before retrying on error
+
+
+def start_monitoring_thread():
+    """Start the monitoring thread if not already running"""
+    global _monitoring_thread
+    with _monitoring_lock:
+        if _monitoring_thread is None or not _monitoring_thread.is_alive():
+            _monitoring_thread = threading.Thread(target=monitoring_worker, daemon=True)
+            _monitoring_thread.start()
+            logging.writeToFile("Auto Ban Plugin: Started monitoring thread")
+
+
+# Start monitoring on module load if enabled
+try:
+    config = AutoBanConfig.get_config()
+    if config.enabled:
+        start_monitoring_thread()
+    ensure_machine_ip_whitelisted()
+except Exception:
+    pass  # Will be initialized on first access

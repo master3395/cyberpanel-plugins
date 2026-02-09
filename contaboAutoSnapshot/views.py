@@ -85,15 +85,19 @@ def _api_request(url, data, timeout=10):
 def check_plugin_grant(user_email, user_ip='', domain=''):
     """Check Plugin Grants from api.newstargeted.com (manual grants from admin panel)"""
     try:
+        # Normalize email to lowercase for matching
+        user_email_normalized = (user_email or '').strip().lower()
         request_data = {
-            'user_email': user_email or '',
+            'user_email': user_email_normalized,
             'plugin_name': PLUGIN_NAME,
             'user_ip': user_ip,
             'domain': domain,
         }
         data = _api_request(REMOTE_VERIFICATION_PLUGIN_GRANT_URL, request_data)
         if data.get('success') and data.get('has_access'):
+            logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant access granted for {user_email_normalized}")
             return {'has_access': True, 'message': data.get('message', 'Access granted via Plugin Grants')}
+        logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant check - no access for {user_email_normalized}: {data.get('message', 'No grant found')}")
         return {'has_access': False, 'message': data.get('message', '')}
     except Exception as e:
         logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant check error: {str(e)}")
@@ -209,10 +213,12 @@ def unified_verification_required(view_func):
                 from loginSystem.views import loadLoginPage
                 return redirect(loadLoginPage)
             
-            # Get user email
+            # Get user email and normalize to lowercase for matching
             user_email = getattr(request.user, 'email', None) if hasattr(request, 'user') and request.user else None
             if not user_email:
                 user_email = request.session.get('email', '') or getattr(request.user, 'username', '')
+            user_email = user_email.strip().lower() if user_email else ''
+            logging.writeToFile(f"Contabo Auto Snapshot: Checking access for email: {user_email}")
             
             # Get payment method preference from config (with error handling)
             try:

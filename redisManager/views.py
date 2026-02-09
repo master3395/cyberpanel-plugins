@@ -42,7 +42,7 @@ def main_view(request):
         context = {
             'title': 'Redis Manager',
             'plugin_name': 'Redis Manager',
-            'version': '1.1.0',
+            'version': '1.0.0',
             'is_paid': False,
             'installed': utils.is_installed(),
             'status_key': status_key,

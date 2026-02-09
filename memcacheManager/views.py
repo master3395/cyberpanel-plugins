@@ -66,7 +66,7 @@ def main_view(request):
         context = {
             'title': 'Memcache Manager',
             'plugin_name': 'Memcache Manager',
-            'version': '1.1.0',
+            'version': '1.0.0',
             'is_paid': False,
             'installed': utils.is_installed(),
             'service_type': service_type,

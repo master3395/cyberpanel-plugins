@@ -147,7 +147,8 @@ class CSPManagerMiddleware(MiddlewareMixin):
             script_src.extend([
                 "https://www.jsdelivr.com",
                 "https://cdn.jsdelivr.net",
-                "https://cdnjs.cloudflare.com"
+                "https://cdnjs.cloudflare.com",
+                "https://maxcdn.bootstrapcdn.com"
             ])
             style_src.extend([
                 "https://www.jsdelivr.com",
