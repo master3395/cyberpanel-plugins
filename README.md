@@ -27,6 +27,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Google Tag Manager](googleTagManager/) | Analytics | 🟢 Free | master3395 | Configure GTM container IDs per domain |
 | [PayPal Premium Plugin Example](paypalPremiumPlugin/) | Utility | 🟡 Paid | master3395 | Example paid plugin with PayPal payment integration |
 | [Memcache Manager](memcacheManager/) | Utility | 🟢 Free | master3395 | Manage Memcached/LSMCD: status, stats, flush, config |
+| [Panel Access (Custom Domain)](panelAccess/) | Utility | 🟢 Free | master3395 | Configure custom domain(s) for accessing CyberPanel behind a reverse proxy |
 | [PM2 Manager](docs/plugins/pm2Manager.md) | Development | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |
