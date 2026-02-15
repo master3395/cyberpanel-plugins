@@ -45,6 +45,8 @@ See the [Pricing Guide](docs/guides/pricing.md) for more information.
 
 ## Installation
 
+All plugins in this repository include `meta.xml` and required files so they work with **Install from store** in CyberPanel (Plugins → Installed → Store, or Install button fallback from grid).
+
 Quick installation steps:
 
 1. Download the plugin ZIP file
