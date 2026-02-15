@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>SnappyMail Admin Password</name>
+    <type>Email</type>
+    <description>Change the SnappyMail Admin panel password from CyberPanel. Use this when you forgot the login for https://your-panel/snappymail/?admin. Free plugin.</description>
+    <version>1.0.0</version>
+    <author>master3395</author>
+    <url>/plugins/snappymailAdmin/</url>
+    <settings_url>/plugins/snappymailAdmin/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>

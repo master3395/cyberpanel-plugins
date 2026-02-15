@@ -31,6 +31,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [PM2 Manager](docs/plugins/pm2Manager.md) | Development | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |
+| [SnappyMail Admin Password](snappymailAdmin/) | Email | 🟢 Free | master3395 | Set or change SnappyMail Admin panel username and password from CyberPanel |
 | [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
 
 ## Plugin Pricing
