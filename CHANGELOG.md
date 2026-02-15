@@ -5,6 +5,16 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-02-15] - Settings routes and resilience
+
+### Changed
+- **panelAccess** (1.0.0 → 1.0.1): Added `settings/` route so `/plugins/panelAccess/settings/` works in Plugin Store grid.
+- **cspManager** (1.0.1 → 1.0.2): Settings view handles missing DB table gracefully; prompts user to run `migrate cspManager` instead of 500.
+- **examplePlugin** (1.0.1 → 1.0.2): Template directory layout and compatibility with panel plugin URL routing; ensure template dirs are readable (755) when deployed.
+
+### Fixed
+- **emailMarketing**: Added `settings/` route (version already 1.0.2). All plugins with a settings page now expose `/plugins/<name>/settings/` for the store.
+
 ## [2026-02-02] - Redis Manager & Memcache Manager 1.1.0 (CyberPanel 2.5.5-dev)
 
 ### Added
