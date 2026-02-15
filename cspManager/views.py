@@ -45,8 +45,23 @@ def settings_view(request):
     try:
         mailUtilities.checkHome()
         
-        # Get or create config
-        config = CSPConfig.get_config()
+        # Get or create config (may fail if migrations not run)
+        try:
+            config = CSPConfig.get_config()
+        except Exception as db_err:
+            from django.db.utils import OperationalError
+            from django.http import HttpResponse
+            from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+            logging.writeToFile(f"CSP Manager get_config error: {db_err}")
+            if isinstance(db_err, OperationalError):
+                return HttpResponse(
+                    '<div style="padding:20px;font-family:sans-serif;">'
+                    '<h2>CSP Manager</h2><p>The database table is missing. Run migrations:</p>'
+                    '<pre>cd /usr/local/CyberCP && python3 manage.py migrate cspManager</pre>'
+                    '</div>',
+                    status=503
+                )
+            raise
         
         if request.method == 'POST':
             form = CSPConfigForm(request.POST, instance=config)

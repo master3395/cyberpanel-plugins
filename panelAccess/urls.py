@@ -7,6 +7,7 @@ from . import views
 
 urlpatterns = [
     path('', views.settings_page, name='panel_access_settings'),
+    path('settings/', views.settings_page, name='settings'),
     path('save', views.save_origins, name='panel_access_save'),
     path('domains', views.get_domains_api, name='panel_access_domains'),
 ]
