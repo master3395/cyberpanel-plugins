@@ -36,6 +36,12 @@ def main_view(request):
     except Exception:
         pass
     available = utils.is_snappymail_available()
+    try:
+        host = request.get_host()
+        scheme = 'https' if request.is_secure() else 'http'
+        snappymail_admin_url = '%s://%s/snappymail/?admin' % (scheme, host)
+    except Exception:
+        snappymail_admin_url = 'https://your-panel:2087/snappymail/?admin'
     context = {
         'title': 'SnappyMail Admin Password',
         'plugin_name': 'SnappyMail Admin Password',
@@ -43,6 +49,7 @@ def main_view(request):
         'is_paid': False,
         'snappymail_available': available,
         'current_admin_login': utils.get_snappymail_admin_login() if available else 'admin',
+        'snappymail_admin_url': snappymail_admin_url,
     }
     proc = httpProc(request, 'snappymailAdmin/index.html', context, 'admin')
     response = proc.render()
@@ -69,6 +76,13 @@ def api_set_password(request):
             return JsonResponse({'success': False, 'error': 'Passwords do not match.'}, status=400)
         success, message = utils.set_snappymail_admin_password(new_password, admin_login=admin_username)
         if success:
+            try:
+                host = request.get_host()
+                scheme = 'https' if request.is_secure() else 'http'
+                login_url = '%s://%s/snappymail/?admin' % (scheme, host)
+                message = 'SnappyMail Admin credentials updated. Log in at %s with username "%s" and your new password.' % (login_url, admin_username or 'admin')
+            except Exception:
+                pass  # keep utils message if get_host fails
             return JsonResponse({'success': True, 'message': message})
         return JsonResponse({'success': False, 'error': message}, status=400)
     except json.JSONDecodeError:

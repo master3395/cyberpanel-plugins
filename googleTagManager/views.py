@@ -49,20 +49,44 @@ def main_view(request):
         # Get all user domains
         domains = get_user_domains(userID, currentACL)
         
-        # Get GTM settings for all domains
+        # Get GTM settings for all domains (with defensive migrate if table missing)
         gtm_settings = {}
-        for domain_info in domains:
-            domain = domain_info['domain']
-            try:
-                gtm_setting = GTMSettings.objects.get(domain=domain)
-                gtm_settings[domain] = {
-                    'container_id': gtm_setting.gtm_container_id,
-                    'enabled': gtm_setting.enabled,
-                    'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
-                }
-            except GTMSettings.DoesNotExist:
-                gtm_settings[domain] = None
+        try:
+            for domain_info in domains:
+                domain = domain_info['domain']
+                try:
+                    gtm_setting = GTMSettings.objects.get(domain=domain)
+                    gtm_settings[domain] = {
+                        'container_id': gtm_setting.gtm_container_id,
+                        'enabled': gtm_setting.enabled,
+                        'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                except GTMSettings.DoesNotExist:
+                    gtm_settings[domain] = None
+        except Exception as db_err:
+            from django.db.utils import OperationalError, ProgrammingError
+            if isinstance(db_err, (OperationalError, ProgrammingError)):
+                try:
+                    from django.core.management import call_command
+                    call_command('migrate', 'googleTagManager', verbosity=0, interactive=False)
+                    for domain_info in domains:
+                        domain = domain_info['domain']
+                        try:
+                            gtm_setting = GTMSettings.objects.get(domain=domain)
+                            gtm_settings[domain] = {
+                                'container_id': gtm_setting.gtm_container_id,
+                                'enabled': gtm_setting.enabled,
+                                'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                            }
+                        except GTMSettings.DoesNotExist:
+                            gtm_settings[domain] = None
+                except Exception as migrate_err:
+                    logging.writeToFile(f"GTM main_view migrate error: {migrate_err}")
+                    raise db_err
+            else:
+                raise
         
         # Statistics
         total_domains = len(domains)
@@ -113,19 +137,42 @@ def settings_view(request):
         # Get all user domains
         domains = get_user_domains(userID, currentACL)
         
-        # Get existing GTM settings
+        # Get existing GTM settings (with defensive migrate if table missing)
         gtm_settings = {}
-        for domain_info in domains:
-            domain = domain_info['domain']
-            try:
-                gtm_setting = GTMSettings.objects.get(domain=domain)
-                gtm_settings[domain] = {
-                    'container_id': gtm_setting.gtm_container_id,
-                    'enabled': gtm_setting.enabled,
-                    'id': gtm_setting.id
-                }
-            except GTMSettings.DoesNotExist:
-                gtm_settings[domain] = None
+        try:
+            for domain_info in domains:
+                domain = domain_info['domain']
+                try:
+                    gtm_setting = GTMSettings.objects.get(domain=domain)
+                    gtm_settings[domain] = {
+                        'container_id': gtm_setting.gtm_container_id,
+                        'enabled': gtm_setting.enabled,
+                        'id': gtm_setting.id
+                    }
+                except GTMSettings.DoesNotExist:
+                    gtm_settings[domain] = None
+        except Exception as db_err:
+            from django.db.utils import OperationalError, ProgrammingError
+            if isinstance(db_err, (OperationalError, ProgrammingError)):
+                try:
+                    from django.core.management import call_command
+                    call_command('migrate', 'googleTagManager', verbosity=0, interactive=False)
+                    for domain_info in domains:
+                        domain = domain_info['domain']
+                        try:
+                            gtm_setting = GTMSettings.objects.get(domain=domain)
+                            gtm_settings[domain] = {
+                                'container_id': gtm_setting.gtm_container_id,
+                                'enabled': gtm_setting.enabled,
+                                'id': gtm_setting.id
+                            }
+                        except GTMSettings.DoesNotExist:
+                            gtm_settings[domain] = None
+                except Exception as migrate_err:
+                    logging.writeToFile(f"GTM settings_view migrate error: {migrate_err}")
+                    raise db_err
+            else:
+                raise
         
         context = {
             'plugin_name': 'Google Tag Manager',

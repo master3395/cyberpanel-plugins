@@ -184,7 +184,7 @@ echo $ok ? 'Done' : 'Error';
                 'The admin panel may be using a different config path. '
                 'Try running: sudo bash /usr/local/CyberCP/snappymailAdmin/fix_snappymail_permissions.sh'
             )
-        return True, 'SnappyMail Admin credentials updated. Log in at your-panel/snappymail/?admin with username "%s" and your new password.' % login_val
+        return True, 'SnappyMail Admin credentials updated. Log in at the Admin URL shown above with username "%s" and your new password.' % login_val
     except subprocess.TimeoutExpired:
         return False, 'Request timed out.'
     except Exception as e:

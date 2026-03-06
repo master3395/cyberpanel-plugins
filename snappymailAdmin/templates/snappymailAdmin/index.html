@@ -27,7 +27,7 @@
                     {% else %}
                     <p class="text-muted mb-4">
                         {% trans "Set or change the SnappyMail Admin username and password. Use only letters, numbers, underscore and hyphen for the username." %}
-                        {% trans "Admin URL:" %} <code>https://your-panel:2087/snappymail/?admin</code>
+                        {% trans "Admin URL:" %} <code>{{ snappymail_admin_url }}</code>
                     </p>
                     <div id="snappymail-message" class="alert d-none"></div>
                     <form id="snappymail-password-form" class="form-horizontal">

@@ -46,10 +46,27 @@ def settings_view(request):
     try:
         from plogical.mailUtilities import mailUtilities
         from plogical.httpProc import httpProc
+        from django.db.utils import OperationalError, ProgrammingError
+        from django.core.management import call_command
         
         mailUtilities.checkHome()
-        webhooks = DiscordWebhook.objects.all().order_by('name')
-        settings = WebhookSettings.get_settings()
+        try:
+            webhooks = DiscordWebhook.objects.all().order_by('name')
+            settings = WebhookSettings.get_settings()
+        except (OperationalError, ProgrammingError) as db_err:
+            logging.writeToFile(f"Discord Webhooks settings DB error: {db_err}")
+            try:
+                call_command('migrate', 'discordWebhooks', verbosity=0, interactive=False)
+                webhooks = DiscordWebhook.objects.all().order_by('name')
+                settings = WebhookSettings.get_settings()
+            except Exception as migrate_err:
+                logging.writeToFile(f"Discord Webhooks migrate error: {migrate_err}")
+                return HttpResponse(
+                    '<div style="padding:20px;">'
+                    '<h2>Discord Webhooks</h2><p>Database tables missing. Run: '
+                    'cd /usr/local/CyberCP && python3 manage.py migrate discordWebhooks</p>'
+                    '<p>Error: %s</p></div>' % str(db_err)
+                )
         
         context = {
             'title': 'Discord Webhooks Settings',

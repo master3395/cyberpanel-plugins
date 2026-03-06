@@ -63,15 +63,27 @@ def run_cmd(command, timeout=10):
         return False, str(e)
 
 
+def _is_dbus_error(output):
+    """Return True if output indicates D-Bus/systemctl unavailable (e.g. container, minimal env)."""
+    if not output:
+        return False
+    out_lower = (output or '').strip().lower()
+    return ('failed to connect to bus' in out_lower or 'connection refused' in out_lower or
+            'dbus' in out_lower and 'refused' in out_lower)
+
+
 def get_service_status():
     """Return status of Redis service: running, stopped, or not-installed."""
     if not is_installed():
         return 'not-installed', 'Redis is not installed. Install it from Manage Services.'
-    # Run without shell redirections (run_cmd uses no shell; 2>/dev/null would be passed as unit name)
     ok, out = run_cmd('systemctl is-active %s' % REDIS_SERVICE)
     if not ok:
-        # Unit not found or error -> treat as stopped/unknown
         out_lower = (out or '').strip().lower()
+        if _is_dbus_error(out):
+            return 'unknown', (
+                'Could not determine status (systemctl/D-Bus unavailable). '
+                'Check Redis manually (e.g. redis-cli ping) or ensure D-Bus is running.'
+            )
         if 'could not find' in out_lower or 'not-found' in out_lower or 'no such file' in out_lower:
             return 'stopped', 'Stopped (unit not found)'
         return 'unknown', out or 'Could not determine status'
@@ -90,6 +102,11 @@ def service_control(action):
     if not is_installed():
         return False, 'Redis is not installed.'
     ok, out = run_cmd('systemctl %s %s' % (action, REDIS_SERVICE), timeout=30)
+    if not ok and _is_dbus_error(out):
+        return False, (
+            'systemctl/D-Bus unavailable. Start/stop Redis manually (e.g. service redis start) '
+            'or ensure D-Bus is running.'
+        )
     return ok, out
 
 
@@ -197,9 +214,11 @@ def detect_redis_config_path():
     except (OSError, IOError, subprocess.TimeoutExpired):
         pass
 
-    # 2) Systemd: try known unit names first, then list all redis* units
+    # 2) Systemd: try known unit names first, then list all redis* units (skip if D-Bus unavailable)
     for unit in (REDIS_SERVICE, 'redis-server', 'redis-server.service', 'redis.service'):
         ok, out = run_cmd('systemctl show %s --property=ExecStart --no-pager' % unit)
+        if not ok and _is_dbus_error(out):
+            break  # D-Bus unavailable, skip systemd detection
         if ok and out:
             # ExecStart=/usr/bin/redis-server /etc/redis/redis.conf or /usr/bin/redis-server /etc/redis/redis.conf --supervised systemd
             m = re.search(r'redis-server\s+(\S+)', out)
@@ -219,9 +238,11 @@ def detect_redis_config_path():
                     if path.endswith('.conf') and os.path.isfile(path):
                         return path
 
-    # 2b) List all unit files, find redis* and check ExecStart
+    # 2b) List all unit files, find redis* and check ExecStart (skip if D-Bus failed above)
     ok, out = run_cmd('systemctl list-unit-files --no-legend --no-pager')
-    if ok and out:
+    if not ok and _is_dbus_error(out):
+        pass  # Skip to fallback paths
+    elif ok and out:
         for line in out.splitlines():
             line = line.strip()
             if not line or 'redis' not in line.lower():

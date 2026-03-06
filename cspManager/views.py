@@ -49,19 +49,26 @@ def settings_view(request):
         try:
             config = CSPConfig.get_config()
         except Exception as db_err:
-            from django.db.utils import OperationalError
+            from django.db.utils import OperationalError, ProgrammingError
             from django.http import HttpResponse
+            from django.core.management import call_command
             from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
             logging.writeToFile(f"CSP Manager get_config error: {db_err}")
-            if isinstance(db_err, OperationalError):
-                return HttpResponse(
-                    '<div style="padding:20px;font-family:sans-serif;">'
-                    '<h2>CSP Manager</h2><p>The database table is missing. Run migrations:</p>'
-                    '<pre>cd /usr/local/CyberCP && python3 manage.py migrate cspManager</pre>'
-                    '</div>',
-                    status=503
-                )
-            raise
+            if isinstance(db_err, (OperationalError, ProgrammingError)):
+                try:
+                    call_command('migrate', 'cspManager', verbosity=0, interactive=False)
+                    config = CSPConfig.get_config()
+                except Exception as migrate_err:
+                    logging.writeToFile(f"CSP Manager migrate error: {migrate_err}")
+                    return HttpResponse(
+                        '<div style="padding:20px;font-family:sans-serif;">'
+                        '<h2>CSP Manager</h2><p>The database table is missing. Run migrations:</p>'
+                        '<pre>cd /usr/local/CyberCP && python3 manage.py migrate cspManager</pre>'
+                        '<p>Error: %s</p></div>' % str(db_err),
+                        status=503
+                    )
+            else:
+                raise
         
         if request.method == 'POST':
             form = CSPConfigForm(request.POST, instance=config)
