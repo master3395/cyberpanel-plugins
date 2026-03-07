@@ -26,60 +26,46 @@ function loadAppInfo() {
 }
 
 function renderAppInfo(info) {
-    // Application Information
-    const appInfoHtml = `
-        <div class="info-row">
-            <span class="info-label">{% trans "Status" %}</span>
-            <span class="info-value" id="appStatus">${getStatusBadge(info.status || 'unknown')}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "PID" %}</span>
-            <span class="info-value">${info.pid || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "PM ID" %}</span>
-            <span class="info-value">${info.pm_id || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Script Path" %}</span>
-            <span class="info-value" style="font-size: 12px; word-break: break-all;">${escapeHtml(info.script_path || 'N/A')}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Mode" %}</span>
-            <span class="info-value">${info.mode || 'fork'}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Instances" %}</span>
-            <span class="info-value">${info.instances || 1}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Restarts" %}</span>
-            <span class="info-value">${info.restarts || 0}</span>
-        </div>
-    `;
-    
+    var pmId = (info.pm_id != null && info.pm_id !== '') ? info.pm_id : (info.id != null && info.id !== '') ? info.id : 'N/A';
+    var labels = {
+        status: 'Status',
+        pid: 'PID',
+        pmId: 'PM ID',
+        scriptPath: 'Script Path',
+        mode: 'Mode',
+        instances: 'Instances',
+        restarts: 'Restarts',
+        namespace: 'Namespace',
+        version: 'Version',
+        user: 'User',
+        watching: 'Watching',
+        cpuUsage: 'CPU Usage',
+        memoryUsage: 'Memory Usage',
+        uptime: 'Uptime'
+    };
+    var appInfoHtml = [
+        '<div class="info-row"><span class="info-label">' + labels.status + '</span><span class="info-value" id="appStatus">' + getStatusBadge(info.status || 'unknown') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.pid + '</span><span class="info-value">' + (info.pid != null ? info.pid : 'N/A') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.pmId + '</span><span class="info-value">' + pmId + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.scriptPath + '</span><span class="info-value" style="font-size: 12px; word-break: break-all;">' + escapeHtml(info.script_path || 'N/A') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.mode + '</span><span class="info-value">' + escapeHtml(info.mode || 'fork') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.instances + '</span><span class="info-value">' + (info.instances != null ? info.instances : 1) + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.restarts + '</span><span class="info-value">' + (info.restarts != null ? info.restarts : 0) + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.namespace + '</span><span class="info-value">' + escapeHtml(info.namespace != null ? String(info.namespace) : 'default') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.version + '</span><span class="info-value">' + escapeHtml(info.version != null ? String(info.version) : '') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.user + '</span><span class="info-value">' + escapeHtml(info.user != null ? String(info.user) : '') + '</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.watching + '</span><span class="info-value">' + (info.watching ? 'Yes' : 'No') + '</span></div>'
+    ].join('');
     document.getElementById('appInfo').innerHTML = appInfoHtml;
-    
-    // Resource Usage
-    const cpu = (info.cpu || 0).toFixed(1);
-    const memory = ((info.memory || 0) / 1024 / 1024).toFixed(2);
-    const uptime = formatUptime(info.uptime);
-    
-    const resourceHtml = `
-        <div class="info-row">
-            <span class="info-label">{% trans "CPU Usage" %}</span>
-            <span class="info-value">${cpu}%</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Memory Usage" %}</span>
-            <span class="info-value">${memory} MB</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{% trans "Uptime" %}</span>
-            <span class="info-value">${uptime}</span>
-        </div>
-    `;
-    
+
+    var cpu = (info.cpu || 0).toFixed(1);
+    var memory = ((info.memory || 0) / 1024 / 1024).toFixed(2);
+    var uptime = formatUptime(info.uptime);
+    var resourceHtml = [
+        '<div class="info-row"><span class="info-label">' + labels.cpuUsage + '</span><span class="info-value">' + cpu + '%</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.memoryUsage + '</span><span class="info-value">' + memory + ' MB</span></div>',
+        '<div class="info-row"><span class="info-label">' + labels.uptime + '</span><span class="info-value">' + uptime + '</span></div>'
+    ].join('');
     document.getElementById('resourceUsage').innerHTML = resourceHtml;
 }
 
@@ -102,13 +88,13 @@ function updateActionButtons(info) {
 
 function loadLogs() {
     fetch(`/plugins/pm2Manager/api/logs/${encodeURIComponent(appName)}/?lines=200`)
-        .then(response => response.json())
-        .then(data => {
+        .then(response => response.json().then(data => ({ ok: response.ok, data: data })))
+        .then(({ ok, data }) => {
             if (data.success) {
                 renderLogs(data.logs);
             } else {
                 document.getElementById('logsContainer').innerHTML = 
-                    `<div class="log-line" style="color: #ef4444;">Error: ${escapeHtml(data.error || 'Failed to load logs')}</div>`;
+                    '<div class="log-line" style="color: #ef4444;">Error: ' + escapeHtml(data.error || 'Failed to load logs') + '</div>';
             }
         })
         .catch(error => {
@@ -144,6 +130,27 @@ function renderLogs(logs) {
 function refreshLogs() {
     loadLogs();
 }
+
+function copyAllLogs() {
+    const container = document.getElementById('logsContainer');
+    if (!container) return;
+    const text = (container.innerText || container.textContent || '').trim();
+    const btn = document.getElementById('btnCopyLogs');
+    if (!text) {
+        if (btn) { btn.innerHTML = '<i class="fas fa-copy"></i> Nothing to copy'; setTimeout(function() { if (btn) btn.innerHTML = '<i class="fas fa-copy"></i> Copy all'; }, 1500); }
+        return;
+    }
+    navigator.clipboard.writeText(text).then(function() {
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(function() { btn.innerHTML = orig; }, 2000);
+        }
+    }).catch(function() {
+        if (btn) { btn.innerHTML = '<i class="fas fa-copy"></i> Copy failed'; setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy all'; }, 1500); }
+    });
+}
+window.copyAllLogs = copyAllLogs;
 
 function startAutoRefresh() {
     // Refresh info and logs every 3 seconds

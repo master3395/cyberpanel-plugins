@@ -5,6 +5,14 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-07] - PM2 Manager 1.2.0
+
+### Fixed
+- **pm2Manager** (1.1.1 → 1.2.0): Dashboard table column alignment and data placement. Table rows are now built with DOM (`insertRow`/`insertCell`) so ID, App Name, Namespace, Version, Mode, Status, CPU, Memory, Uptime, Restarts, User, Watching, and Actions align correctly with headers. ID column shows only numeric PM2 id (or –). Fixed static file serving: after plugin updates, copy `pm2Manager/static/**` to CyberPanel `STATIC_ROOT` (e.g. `/usr/local/CyberCP/static/pm2Manager/`) or run `collectstatic` so the panel serves the updated JS/CSS.
+
+### Changed
+- **pm2Manager**: Sortable column headers; explicit table and column widths; cache-bust script tag (`dashboard.js?v=15`).
+
 ## [2026-02-15] - Settings routes and resilience
 
 ### Changed

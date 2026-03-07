@@ -9,7 +9,7 @@ from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from functools import wraps
 import json
 from .utils import (
-    get_pm2_list, get_pm2_info, get_pm2_logs,
+    get_pm2_list, get_pm2_info, get_pm2_logs, get_pm2_status,
     start_pm2_app, stop_pm2_app, restart_pm2_app, delete_pm2_app, add_pm2_app,
     format_pm2_process
 )
@@ -32,10 +32,20 @@ def cyberpanel_login_required(view_func):
 
 @cyberpanel_login_required
 def dashboard(request):
-    """Main PM2 Manager dashboard"""
+    """Main PM2 Manager dashboard - pass PM2 status for initial display"""
     mailUtilities.checkHome()
-    proc = httpProc(request, 'pm2Manager/dashboard.html', {}, 'admin')
-    return proc.render()
+    try:
+        pm2_status = get_pm2_status()
+    except Exception as e:
+        logging.writeToFile(f"PM2 Manager get_pm2_status error: {str(e)}")
+        pm2_status = {'installed': False, 'running': False, 'message': str(e)}
+    context = {'pm2_status': pm2_status}
+    proc = httpProc(request, 'pm2Manager/dashboard.html', context, 'admin')
+    response = proc.render()
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 @cyberpanel_login_required
 def settings(request):
@@ -63,39 +73,58 @@ def node_detail(request, app_name):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_list_apps(request):
-    """Get list of all PM2 applications"""
+    """Get list of all PM2 applications and PM2 status (check status, load active apps)"""
     mailUtilities.checkHome()
     
     try:
+        pm2_status = get_pm2_status()
         processes = get_pm2_list()
         formatted_processes = [format_pm2_process(p) for p in processes]
         
         return JsonResponse({
             'success': True,
             'apps': formatted_processes,
-            'count': len(formatted_processes)
+            'count': len(formatted_processes),
+            'pm2_status': pm2_status
         })
     except Exception as e:
         logging.writeToFile(f"Error listing PM2 apps: {str(e)}")
+        try:
+            pm2_status = get_pm2_status()
+        except Exception:
+            pm2_status = {'installed': False, 'running': False, 'message': str(e)}
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'pm2_status': pm2_status
         }, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_info(request, app_name):
-    """Get detailed information about a PM2 app"""
+    """Get detailed information about a PM2 app. Returns formatted info for the detail page."""
     mailUtilities.checkHome()
     
     try:
-        info = get_pm2_info(app_name)
-        if info is None:
+        raw = get_pm2_info(app_name)
+        if raw is None:
+            # Fallback: find app in list (e.g. if "pm2 show" failed but app exists)
+            processes = get_pm2_list()
+            for proc in processes:
+                if proc.get('name') == app_name:
+                    return JsonResponse({
+                        'success': True,
+                        'info': format_pm2_process(proc)
+                    })
             return JsonResponse({
                 'success': False,
                 'error': f'App {app_name} not found'
             }, status=404)
-        
+        # Format raw PM2 output so frontend gets status, uptime (seconds), cpu, memory, etc.
+        if isinstance(raw, dict) and ('pm2_env' in raw or 'monit' in raw):
+            info = format_pm2_process(raw)
+        else:
+            info = raw
         return JsonResponse({
             'success': True,
             'info': info
@@ -115,7 +144,14 @@ def api_get_logs(request, app_name):
     
     try:
         lines = int(request.GET.get('lines', 100))
-        logs = get_pm2_logs(app_name, lines)
+        logs, error_msg = get_pm2_logs(app_name, lines)
+        
+        if error_msg is not None:
+            return JsonResponse({
+                'success': False,
+                'error': error_msg,
+                'logs': []
+            })
         
         return JsonResponse({
             'success': True,
@@ -301,16 +337,7 @@ def api_monitor(request):
         
         for process in processes:
             formatted = format_pm2_process(process)
-            monitoring_data.append({
-                'name': formatted['name'],
-                'status': formatted['status'],
-                'cpu': formatted['cpu'],
-                'memory': formatted['memory'],
-                'uptime': formatted['uptime'],
-                'restarts': formatted['restarts'],
-                'pid': formatted['pid'],
-                'pm_id': formatted['pm_id']
-            })
+            monitoring_data.append(formatted)
         
         return JsonResponse({
             'success': True,

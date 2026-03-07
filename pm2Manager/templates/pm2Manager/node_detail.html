@@ -90,9 +90,14 @@
                 <i class="fas fa-file-alt"></i>
                 {% trans "Application Logs" %}
             </h3>
-            <button onclick="refreshLogs()" style="padding: 8px 16px; background: #5856d6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="typeof window.copyAllLogs === 'function' && window.copyAllLogs();" id="btnCopyLogs" style="padding: 8px 16px; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-copy"></i> Copy all
+                </button>
+                <button onclick="refreshLogs()" style="padding: 8px 16px; background: #5856d6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
         </div>
         <div class="logs-container" id="logsContainer">
             <div class="log-line">{% trans "Loading logs..." %}</div>
@@ -100,8 +105,29 @@
     </div>
 </div>
 
-<script src="{% static 'pm2Manager/js/node_detail.js' %}"></script>
+<script src="{% static 'pm2Manager/js/node_detail.js' %}?v=4"></script>
 <script>
     const appName = '{{ app_name|escapejs }}';
+    (function() {
+        function copyLogs() {
+            var c = document.getElementById('logsContainer');
+            var btn = document.getElementById('btnCopyLogs');
+            if (!c || !btn) return;
+            var t = (c.innerText || c.textContent || '').trim();
+            if (!t) {
+                btn.innerHTML = '<i class="fas fa-copy"></i> Nothing to copy';
+                setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy all'; }, 1500);
+                return;
+            }
+            navigator.clipboard.writeText(t).then(function() {
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy all'; }, 2000);
+            }).catch(function() {
+                btn.innerHTML = '<i class="fas fa-copy"></i> Copy failed';
+                setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy all'; }, 1500);
+            });
+        }
+        window.copyAllLogs = window.copyAllLogs || copyLogs;
+    })();
 </script>
 {% endblock %}

@@ -91,20 +91,54 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
     
-    .apps-table {
-        width: 100%;
+    .pm2-dashboard .apps-table-wrapper .apps-table {
+        width: 1200px !important;
+        min-width: 1200px;
         border-collapse: collapse;
+        table-layout: fixed !important;
+        display: table !important;
     }
-    
-    .apps-table thead {
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-id { width: 40px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-name { width: 140px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-namespace { width: 80px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-version { width: 60px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-mode { width: 60px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-status { width: 90px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-cpu { width: 80px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-memory { width: 100px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-uptime { width: 80px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-restarts { width: 55px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-user { width: 80px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-watching { width: 65px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table col.col-actions { width: 270px !important; }
+    .pm2-dashboard .apps-table-wrapper .apps-table thead {
+        display: table-header-group !important;
         background: var(--bg-secondary, #f8f9ff);
     }
+    .pm2-dashboard .apps-table-wrapper .apps-table tbody {
+        display: table-row-group !important;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table tr {
+        display: table-row !important;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table th,
+    .pm2-dashboard .apps-table-wrapper .apps-table td {
+        display: table-cell !important;
+        vertical-align: middle;
+        border-left: 1px solid var(--border-primary, #e8e9ff);
+        box-sizing: border-box;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table th:first-child,
+    .pm2-dashboard .apps-table-wrapper .apps-table td:first-child {
+        border-left: none;
+    }
     
-    .apps-table th {
-        padding: 15px;
+    .pm2-dashboard .apps-table-wrapper .apps-table th {
+        padding: 12px 10px;
         text-align: left;
         font-weight: 600;
         color: var(--text-secondary, #64748b);
@@ -114,12 +148,38 @@
         border-bottom: 2px solid var(--border-primary, #e8e9ff);
     }
     
-    .apps-table td {
-        padding: 15px;
-        border-bottom: 1px solid var(--border-primary, #e8e9ff);
+    .pm2-dashboard .apps-table-wrapper .apps-table th.sortable-column {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table th.sortable-column:hover {
+        color: var(--text-primary, #2f3640);
+        background: var(--bg-hover, #eef0ff);
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table th.sortable-column .sort-icon {
+        margin-left: 4px;
+        opacity: 0.6;
     }
     
-    .apps-table tr:hover {
+    .pm2-dashboard .apps-table-wrapper .apps-table td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border-primary, #e8e9ff);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table td:nth-child(13) {
+        white-space: nowrap;
+        overflow: visible;
+    }
+    .pm2-dashboard .apps-table-wrapper .apps-table .actions-cell {
+        display: flex !important;
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-items: center;
+    }
+    
+    .pm2-dashboard .apps-table-wrapper .apps-table tr:hover {
         background: var(--bg-hover, #f8f9ff);
     }
     
@@ -257,6 +317,11 @@
                 <span class="pulse-dot"></span>
                 <span>{% trans "Live" %}</span>
             </span>
+            {% if pm2_status %}
+            <span id="pm2StatusBadge" class="status-badge {% if pm2_status.running %}status-online{% else %}status-stopped{% endif %}" style="margin-left: 12px; font-size: 11px;">
+                {% if pm2_status.running %}{% trans "PM2 running" %}{% elif pm2_status.installed %}{% trans "PM2 daemon not running" %}{% else %}{% trans "PM2 not installed" %}{% endif %}
+            </span>
+            {% endif %}
         </h1>
         <div class="action-buttons">
             <button class="btn-add-app" onclick="showAddAppModal()">
@@ -302,25 +367,47 @@
     </div>
     
     <div class="apps-table-wrapper">
+        <!-- One table: thead + tbody are siblings; colgroup forces column widths so headers and cells align -->
         <table class="apps-table">
+            <colgroup>
+                <col class="col-id" style="width: 40px;">
+                <col class="col-name" style="width: 140px;">
+                <col class="col-namespace" style="width: 80px;">
+                <col class="col-version" style="width: 60px;">
+                <col class="col-mode" style="width: 60px;">
+                <col class="col-status" style="width: 90px;">
+                <col class="col-cpu" style="width: 80px;">
+                <col class="col-memory" style="width: 100px;">
+                <col class="col-uptime" style="width: 80px;">
+                <col class="col-restarts" style="width: 55px;">
+                <col class="col-user" style="width: 80px;">
+                <col class="col-watching" style="width: 65px;">
+                <col class="col-actions" style="width: 270px;">
+            </colgroup>
             <thead>
                 <tr>
-                    <th>{% trans "App Name" %}</th>
-                    <th>{% trans "Status" %}</th>
-                    <th>{% trans "CPU" %}</th>
-                    <th>{% trans "Memory" %}</th>
-                    <th>{% trans "Uptime" %}</th>
-                    <th>{% trans "Restarts" %}</th>
-                    <th>{% trans "Actions" %}</th>
+                    <th class="sortable-column col-id" data-sort-key="pm_id" style="width:40px;">{% trans "ID" %}</th>
+                    <th class="sortable-column col-name" data-sort-key="name" style="width:140px;">{% trans "App Name" %}</th>
+                    <th class="sortable-column col-namespace" data-sort-key="namespace" style="width:80px;">{% trans "Namespace" %}</th>
+                    <th class="sortable-column col-version" data-sort-key="version" style="width:60px;">{% trans "Version" %}</th>
+                    <th class="sortable-column col-mode" data-sort-key="mode" style="width:60px;">{% trans "Mode" %}</th>
+                    <th class="sortable-column col-status" data-sort-key="status" style="width:90px;">{% trans "Status" %}</th>
+                    <th class="sortable-column col-cpu" data-sort-key="cpu" style="width:80px;">{% trans "CPU" %}</th>
+                    <th class="sortable-column col-memory" data-sort-key="memory" style="width:100px;">{% trans "Memory" %}</th>
+                    <th class="sortable-column col-uptime" data-sort-key="uptime" style="width:80px;">{% trans "Uptime" %}</th>
+                    <th class="sortable-column col-restarts" data-sort-key="restarts" style="width:55px;">{% trans "Restarts" %}</th>
+                    <th class="sortable-column col-user" data-sort-key="user" style="width:80px;">{% trans "User" %}</th>
+                    <th class="sortable-column col-watching" data-sort-key="watching" style="width:65px;">{% trans "Watching" %}</th>
+                    <th class="col-actions" style="width:270px;">{% trans "Actions" %}</th>
                 </tr>
             </thead>
             <tbody id="appsTableBody">
                 <tr>
-                    <td colspan="7" class="empty-state">
+                    <td colspan="13" class="empty-state">
                         <div class="empty-icon">
                             <i class="fas fa-spinner fa-spin"></i>
                         </div>
-                        <div>{% trans "Loading PM2 applications..." %}</div>
+                        <div>{% trans "Checking PM2 status and loading applications..." %}</div>
                     </td>
                 </tr>
             </tbody>
@@ -387,5 +474,5 @@
     </div>
 </div>
 
-<script src="{% static 'pm2Manager/js/dashboard.js' %}"></script>
+<script src="{% static 'pm2Manager/js/dashboard.js' %}?v=15"></script>
 {% endblock %}
