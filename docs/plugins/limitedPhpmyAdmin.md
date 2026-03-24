@@ -2,10 +2,15 @@
 
 **Author:** master3395  
 **Type:** Utility (free)  
-**Version:** 1.1.0  
+**Version:** 1.1.1  
 **CyberPanel:** 2.5.5-dev and higher  
 
 ## Changelog
+
+### 1.1.1
+
+- **Docs**: Clarified uninstall when the panel cannot write `settings.py` / `urls.py` (permissions, `chgrp lscpd` / `chmod 664`, optional root CLI `pluginInstaller.py remove --pluginName limitedPhpmyAdmin`).
+- **Compatibility note**: On cores that **auto-sync** `INSTALLED_APPS` from disk, the plugin may not appear as a static line in `settings.py`; uninstall still rewrites core files—ensure the panel user can write them or use CLI as root.
 
 ### 1.1.0
 
