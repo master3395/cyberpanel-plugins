@@ -91,3 +91,57 @@ systemctl restart gunicorn.socket 2>/dev/null || true
 ### 6. Check CyberPanel logs
 
 Inspect recent errors in CyberPanel’s log writer / `pluginHolder` messages if imports fail at startup (plugin skipped when `urls` cannot be loaded).
+
+## Troubleshooting: plugin page returns HTTP 404
+
+A **404** on `/plugins/limitedPhpmyAdmin/` usually means Django did **not** register the plugin routes (the URL is not handled).
+
+1. **Confirm files exist**
+
+   ```bash
+   test -f /usr/local/CyberCP/limitedPhpmyAdmin/meta.xml && echo OK || echo MISSING
+   test -f /usr/local/CyberCP/limitedPhpmyAdmin/urls.py && echo OK || echo MISSING
+   ```
+
+2. **Confirm the app loads** (imports `cryptography`, models, migrations):
+
+   ```bash
+   cd /usr/local/CyberCP
+   python3 -c "import limitedPhpmyAdmin.urls; print('ok')"
+   ```
+
+   If this fails, install **`python3-cryptography`** (or `pip install cryptography`) on the server.
+
+3. **Check `settings.py` auto-sync** (CyberPanel 2.5.5+): plugins under `/usr/local/CyberCP/<name>/` with `meta.xml` + `urls.py` are appended to `INSTALLED_APPS` automatically. If your `settings.py` has no such block, add `'limitedPhpmyAdmin',` inside `INSTALLED_APPS` manually, or upgrade CyberPanel.
+
+4. **Look for “Skipping plugin” in logs**
+
+   ```bash
+   grep -i limitedPhpmyAdmin /usr/local/CyberCP/logs/*.log 2>/dev/null | tail -20
+   ```
+
+5. **Run migrations** (after `enable_migrations`):
+
+   ```bash
+   cd /usr/local/CyberCP
+   python3 manage.py migrate limitedPhpmyAdmin
+   ```
+
+6. **Restart the panel**
+
+   ```bash
+   systemctl restart lscpd
+   ```
+
+## Troubleshooting: Uninstall fails (Permission denied: settings.py)
+
+Uninstall edits `/usr/local/CyberCP/CyberCP/settings.py` and `urls.py`. If those files are **root:root** and not group-writable, the panel user cannot save changes.
+
+**One-time fix (as root):**
+
+```bash
+chgrp lscpd /usr/local/CyberCP/CyberCP/settings.py /usr/local/CyberCP/CyberCP/urls.py
+chmod 664 /usr/local/CyberCP/CyberCP/settings.py /usr/local/CyberCP/CyberCP/urls.py
+```
+
+Newer **CyberPanel** `pluginInstaller` also writes via a privileged copy when a direct write fails; upgrade the `pluginInstaller` package from the `cyberpanel` repo if uninstall still errors.
