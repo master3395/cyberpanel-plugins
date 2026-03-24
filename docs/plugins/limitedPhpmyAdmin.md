@@ -2,10 +2,15 @@
 
 **Author:** master3395  
 **Type:** Utility (free)  
-**Version:** 1.1.1  
+**Version:** 1.1.2  
 **CyberPanel:** 2.5.5-dev and higher  
 
 ## Changelog
+
+### 1.1.2
+
+- **Template loading**: `AppConfig.ready()` registers the plugin’s `templates/` directory on Django’s `TEMPLATES` `DIRS` so `limitedPhpmyAdmin/index.html` resolves even when app template discovery is flaky after install.
+- **post_install**: Verifies `templates/limitedPhpmyAdmin/index.html` exists (clear message if ZIP is wrong); sets template files to world-readable (`644`) so `lscpd` can read them after a root-owned extract.
 
 ### 1.1.1
 
@@ -96,6 +101,28 @@ systemctl restart gunicorn.socket 2>/dev/null || true
 ### 6. Check CyberPanel logs
 
 Inspect recent errors in CyberPanel’s log writer / `pluginHolder` messages if imports fail at startup (plugin skipped when `urls` cannot be loaded).
+
+## Troubleshooting: “Something went wrong” / Error: limitedPhpmyAdmin/index.html
+
+The panel caught **`TemplateDoesNotExist`** (or similar): Django cannot load **`limitedPhpmyAdmin/index.html`**.
+
+1. **Confirm the template file exists** (wrong ZIP layout is the most common cause):
+
+   ```bash
+   test -f /usr/local/CyberCP/limitedPhpmyAdmin/templates/limitedPhpmyAdmin/index.html && echo OK || echo MISSING
+   ```
+
+   If **MISSING**, rebuild the ZIP so the archive contains a top-level folder **`limitedPhpmyAdmin/`** with **`templates/limitedPhpmyAdmin/index.html`** inside it. GitHub’s “Download ZIP” of the whole repo is **wrong** unless you repackage only that folder.
+
+2. **Readable by the panel user** (`lscpd`). From **v1.1.2**, `post_install` chmods template files to **`644`**. If needed:
+
+   ```bash
+   chmod -R a+rX /usr/local/CyberCP/limitedPhpmyAdmin/templates
+   ```
+
+3. **Restart** after install: `systemctl restart lscpd`.
+
+4. Use **plugin v1.1.2+**: `AppConfig.ready()` adds this app’s `templates/` directory to Django **`TEMPLATES` `DIRS`** so resolution is reliable across installs.
 
 ## Troubleshooting: plugin page returns HTTP 404
 

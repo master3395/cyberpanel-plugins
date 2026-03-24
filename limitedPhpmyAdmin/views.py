@@ -99,7 +99,7 @@ def main_view(request):
     context = {
         'title': 'Limited phpMyAdmin',
         'plugin_name': 'Limited phpMyAdmin',
-        'version': '1.1.1',
+        'version': '1.1.2',
         'is_paid': False,
         'sites_json': json.dumps(site_opts, ensure_ascii=False),
     }

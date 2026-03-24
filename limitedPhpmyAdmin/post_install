@@ -46,7 +46,39 @@ class Migration(migrations.Migration):
 
 print(BLUE + "Limited phpMyAdmin: post-install" + RESET)
 
+LPMA = os.path.join(CYBERCP, 'limitedPhpmyAdmin')
+TPL_INDEX = os.path.join(LPMA, 'templates', 'limitedPhpmyAdmin', 'index.html')
+
 if os.path.isdir(CYBERCP):
+    if not os.path.isfile(TPL_INDEX):
+        print(
+            YELLOW
+            + "CRITICAL: Missing template %s — ZIP layout is wrong (need limitedPhpmyAdmin/templates/limitedPhpmyAdmin/index.html) or install incomplete."
+            % TPL_INDEX
+            + RESET
+        )
+    else:
+        print(GREEN + "Template present: templates/limitedPhpmyAdmin/index.html" + RESET)
+        try:
+            import stat
+
+            tdir = os.path.join(LPMA, 'templates')
+            if os.path.isdir(tdir):
+                for root, _dirs, files in os.walk(tdir):
+                    for fn in files:
+                        fp = os.path.join(root, fn)
+                        try:
+                            os.chmod(
+                                fp,
+                                stat.S_IRUSR
+                                | stat.S_IWUSR
+                                | stat.S_IRGRP
+                                | stat.S_IROTH,
+                            )
+                        except OSError:
+                            pass
+        except Exception as exc:
+            print(YELLOW + "chmod templates: %s" % exc + RESET)
     try:
         os.makedirs(MIG_DIR, exist_ok=True)
         init_path = os.path.join(MIG_DIR, '__init__.py')
