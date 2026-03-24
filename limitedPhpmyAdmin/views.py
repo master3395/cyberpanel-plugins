@@ -2,9 +2,10 @@
 import json
 import secrets
 import string
+import traceback
 from functools import wraps
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -86,6 +87,20 @@ def _gen_password(length=24):
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
+def _lpma_url_base(request):
+    """
+    Stable prefix for API paths, e.g. /plugins/limitedPhpmyAdmin/, even when the
+    current URL is .../limitedPhpmyAdmin/settings/.
+    Avoids {% url %} / namespace issues that can raise NoReverseMatch on some stacks.
+    """
+    p = request.path or ''
+    marker = 'limitedPhpmyAdmin'
+    i = p.find(marker)
+    if i < 0:
+        return '/plugins/limitedPhpmyAdmin/'
+    return p[: i + len(marker)] + '/'
+
+
 @cyberpanel_login_required
 @require_http_methods(['GET'])
 def main_view(request):
@@ -93,18 +108,43 @@ def main_view(request):
         mailUtilities.checkHome()
     except Exception:
         pass
-    user_id, admin, acl = acl_helpers.get_session_admin_acl(request)
-    sites = acl_helpers.get_allowed_websites(user_id, acl) if user_id else []
-    site_opts = [{'id': s.pk, 'domain': s.domain} for s in sites]
-    context = {
-        'title': 'Limited phpMyAdmin',
-        'plugin_name': 'Limited phpMyAdmin',
-        'version': '1.1.2',
-        'is_paid': False,
-        'sites_json': json.dumps(site_opts, ensure_ascii=False),
-    }
-    proc = httpProc(request, 'limitedPhpmyAdmin/index.html', context, 'admin')
-    return proc.render()
+    try:
+        user_id, admin, acl = acl_helpers.get_session_admin_acl(request)
+        sites = acl_helpers.get_allowed_websites(user_id, acl) if user_id else []
+        site_opts = [{'id': s.pk, 'domain': s.domain} for s in sites]
+        api_grants_url = _lpma_url_base(request) + 'api/grants/'
+        context = {
+            'title': 'Limited phpMyAdmin',
+            'plugin_name': 'Limited phpMyAdmin',
+            'version': '1.1.3',
+            'is_paid': False,
+            'sites_json': json.dumps(site_opts, ensure_ascii=False),
+            'api_grants_url': api_grants_url,
+        }
+        proc = httpProc(request, 'limitedPhpmyAdmin/index.html', context, 'admin')
+        return proc.render()
+    except Exception as exc:
+        try:
+            logging.writeToFile('limitedPhpmyAdmin main_view error: %s' % str(exc))
+            logging.writeToFile(traceback.format_exc())
+        except Exception:
+            pass
+        try:
+            from django.shortcuts import render
+
+            return render(
+                request,
+                'baseTemplate/error.html',
+                {
+                    'error_message': (
+                        'Limited phpMyAdmin failed to load. If this persists, check '
+                        'CyberPanel logs, run: cd /usr/local/CyberCP && python3 manage.py '
+                        'migrate limitedPhpmyAdmin --noinput, then systemctl restart lscpd.'
+                    ),
+                },
+            )
+        except Exception:
+            return HttpResponse('Limited phpMyAdmin error', status=500)
 
 
 def _require_api_session(request):

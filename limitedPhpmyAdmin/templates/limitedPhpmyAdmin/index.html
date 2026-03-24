@@ -162,7 +162,7 @@
 
 <script>
 (function() {
-    var apiGrantsUrl = '{% url "limitedPhpmyAdmin:api_grants" %}';
+    var apiGrantsUrl = "{{ api_grants_url|escapejs }}";
     var API_BASE = (apiGrantsUrl && apiGrantsUrl.indexOf('api/grants') !== -1)
         ? apiGrantsUrl.replace(/api\/grants\/?$/, '')
         : ((window.location.pathname || '').replace(/\/?$/, '') + '/');

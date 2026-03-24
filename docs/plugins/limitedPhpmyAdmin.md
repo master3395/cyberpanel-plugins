@@ -2,10 +2,16 @@
 
 **Author:** master3395  
 **Type:** Utility (free)  
-**Version:** 1.1.2  
+**Version:** 1.1.3  
 **CyberPanel:** 2.5.5-dev and higher  
 
 ## Changelog
+
+### 1.1.3
+
+- **HTTP 500 on plugin page**: Removed `{% url "limitedPhpmyAdmin:api_grants" %}` from the template (some installs raised **`NoReverseMatch`** during render). API URL is now built from the request path in **`main_view`** (`api_grants_url` context).
+- **`main_view`**: Wrapped in **try/except** — logs full traceback to CyberPanel logs and shows **`baseTemplate/error.html`** with a short recovery hint instead of a bare browser 500 when something else fails.
+- **`enable_migrations`**: Added marker file so **pluginInstaller** runs **`migrate limitedPhpmyAdmin`** on install (in addition to `post_install`).
 
 ### 1.1.2
 
@@ -123,6 +129,29 @@ The panel caught **`TemplateDoesNotExist`** (or similar): Django cannot load **`
 3. **Restart** after install: `systemctl restart lscpd`.
 
 4. Use **plugin v1.1.2+**: `AppConfig.ready()` adds this app’s `templates/` directory to Django **`TEMPLATES` `DIRS`** so resolution is reliable across installs.
+
+## Troubleshooting: HTTP 500 on `/plugins/limitedPhpmyAdmin/`
+
+A **500** from the browser usually means an **unhandled exception** in Django/LSWS (or an empty error body). **v1.1.3** avoids a common cause (**`NoReverseMatch`** on `{% url "limitedPhpmyAdmin:api_grants" %}`) and logs **`limitedPhpmyAdmin main_view error`** to CyberPanel logs on other failures.
+
+1. **Upgrade to plugin v1.1.3+**, restart: `systemctl restart lscpd`.
+
+2. **Apply migrations** (v1.1.3 ships `enable_migrations` so the installer migrates automatically; for a manual fix):
+
+   ```bash
+   cd /usr/local/CyberCP
+   python3 manage.py migrate limitedPhpmyAdmin --noinput
+   systemctl restart lscpd
+   ```
+
+3. **Inspect logs** (paths vary by install):
+
+   ```bash
+   grep -i limitedPhpmyAdmin /usr/local/CyberCP/logs/*.log 2>/dev/null | tail -40
+   journalctl -u lscpd -n 80 --no-pager
+   ```
+
+4. **Dependencies**: `python3 -c "import cryptography; print('ok')"` — install **`python3-cryptography`** if this fails.
 
 ## Troubleshooting: plugin page returns HTTP 404
 
