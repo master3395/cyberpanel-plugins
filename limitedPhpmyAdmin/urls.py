@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.urls import path
+from . import pma_launch
 from . import views
 
 app_name = 'limitedPhpmyAdmin'
@@ -19,4 +20,6 @@ urlpatterns = [
     path('api/grants/rotate-password/', views.api_rotate_password, name='api_rotate_password'),
     path('api/grants/change-database/', views.api_change_database, name='api_change_database'),
     path('api/grants/notes/', views.api_update_notes, name='api_update_notes'),
+    path('api/grants/pma-launch-link/', pma_launch.api_create_pma_launch_link, name='api_pma_launch_link'),
+    path('launch/<str:token>/', pma_launch.pma_launch, name='pma_launch'),
 ]

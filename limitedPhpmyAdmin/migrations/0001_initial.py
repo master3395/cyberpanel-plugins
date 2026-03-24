@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('websiteFunctions', '0001_initial'),
     ]
 
     operations = [

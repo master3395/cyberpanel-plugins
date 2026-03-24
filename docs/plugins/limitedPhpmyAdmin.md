@@ -2,7 +2,18 @@
 
 **Author:** master3395  
 **Type:** Utility (free)  
+**Version:** 1.1.0  
 **CyberPanel:** 2.5.5-dev and higher  
+
+## Changelog
+
+### 1.1.0
+
+- **Copy phpMyAdmin link / Open phpMyAdmin**: one-time launch URLs (24 h, single-use) that POST into CyberPanel’s `phpmyadminsignin.php` sign-on flow.
+- **Bootstrap 3 compatibility**: replaced unsupported `d-none` with `.lpma-hidden` so alerts and the grants table display correctly.
+- **Fernet key ownership**: key file is written for the `cyberpanel` user (WSGI), fixing “Failed to save grant” when encrypting passwords.
+- **Migrations**: `websiteFunctions` stub migration support for FK resolution; `PmaLaunchToken` model for launch links.
+- **UI**: grants section heading, sessionStorage domain restore, safer JSON bootstrap for site list.
 
 ## Purpose
 
@@ -16,6 +27,7 @@ Create dedicated MySQL accounts that have privileges on **one database only**. Y
 - **Delete**: drops the MySQL user and removes the grant row.
 - **Password**: rotate MySQL password (shown once in a modal).
 - **Database**: move the grant to another database on the same website (revoke old, grant new).
+- **Copy phpMyAdmin link** / **Open phpMyAdmin**: generate a one-time URL for the end user (no CyberPanel login required to *use* the link; only admins can create links). Treat links like secrets (HTTPS, short lifetime).
 
 ## Security notes
 

@@ -1,19 +1,36 @@
 # -*- coding: utf-8 -*-
 """
 Fernet key storage for encrypted MySQL passwords (same pattern as CyberPanel phpMyAdmin flow).
+
+The CyberPanel WSGI process runs as user ``cyberpanel``; the key must be readable by that
+user (mode 600, owner cyberpanel). Do NOT chown to root — that breaks encrypt/decrypt.
 """
 import os
+import pwd
 
 from cryptography.fernet import Fernet
-from plogical.processUtilities import ProcessUtilities
 
 
 KEY_BASENAME = 'limitedPhpmyAdmin_fernet.key'
 KEY_DIR = '/home/cyberpanel'
+_PANEL_USER = 'cyberpanel'
 
 
 def _key_path():
     return os.path.join(KEY_DIR, KEY_BASENAME)
+
+
+def _chown_key_to_panel(path):
+    """Make key file readable by lswsgi (cyberpanel). Safe no-op if user missing or not root."""
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    try:
+        ent = pwd.getpwnam(_PANEL_USER)
+        os.chown(path, ent.pw_uid, ent.pw_gid)
+    except (OSError, KeyError):
+        pass
 
 
 def get_cipher():
@@ -31,15 +48,17 @@ def get_cipher():
         try:
             with open(path, 'wb') as f:
                 f.write(key)
-            try:
-                ProcessUtilities.executioner('chown root:root %s' % path)
-                ProcessUtilities.executioner('chmod 600 %s' % path)
-            except Exception:
-                pass
+            _chown_key_to_panel(path)
         except OSError:
             raise RuntimeError('Cannot create Fernet key at %s' % path)
-    with open(path, 'rb') as f:
-        return Fernet(f.read())
+    try:
+        with open(path, 'rb') as f:
+            return Fernet(f.read())
+    except OSError as exc:
+        raise RuntimeError(
+            'Cannot read Fernet key at %s (fix: chown %s:%s and chmod 600)'
+            % (path, _PANEL_USER, _PANEL_USER)
+        ) from exc
 
 
 def encrypt_password(plain_password):

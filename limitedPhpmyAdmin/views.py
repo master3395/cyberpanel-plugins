@@ -35,6 +35,47 @@ def _json(data, status=200):
     return JsonResponse(data, status=status, json_dumps_params={'ensure_ascii': False})
 
 
+def cyberpanel_api_login_required(view_func):
+    """Like cyberpanel_login_required but return JSON 401 for fetch/XHR (never HTML redirect)."""
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            request.session['userID']
+        except KeyError:
+            return _json(
+                {
+                    'success': False,
+                    'error': 'Session expired. Reload the page and sign in again.',
+                },
+                401,
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
+
+def catch_json_api_errors(view_func):
+    """Return JSON 500 instead of Django HTML error pages for plugin API calls."""
+
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            return view_func(request, *args, **kwargs)
+        except Exception as exc:
+            logging.writeToFile(
+                'limitedPhpmyAdmin %s: %s' % (getattr(view_func, '__name__', 'api'), str(exc))
+            )
+            return _json(
+                {
+                    'success': False,
+                    'error': 'Unexpected server error. Check CyberPanel logs and plugin migrations.',
+                },
+                500,
+            )
+
+    return _wrapped_view
+
+
 def _gen_mysql_username():
     # cpma_ + 10 hex = 15 chars (<= 32)
     return 'cpma_' + secrets.token_hex(5)
@@ -58,7 +99,7 @@ def main_view(request):
     context = {
         'title': 'Limited phpMyAdmin',
         'plugin_name': 'Limited phpMyAdmin',
-        'version': '1.0.0',
+        'version': '1.1.0',
         'is_paid': False,
         'sites_json': json.dumps(site_opts, ensure_ascii=False),
     }
@@ -73,9 +114,10 @@ def _require_api_session(request):
     return triplet
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['GET'])
+@catch_json_api_errors
 def api_list_domains(request):
     sess = _require_api_session(request)
     if not sess:
@@ -85,9 +127,10 @@ def api_list_domains(request):
     return _json({'success': True, 'sites': [{'id': s.pk, 'domain': s.domain} for s in sites]})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['GET'])
+@catch_json_api_errors
 def api_list_databases(request):
     sess = _require_api_session(request)
     if not sess:
@@ -101,9 +144,10 @@ def api_list_databases(request):
     return _json({'success': True, 'databases': [{'dbName': d.dbName} for d in dbs]})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['GET'])
+@catch_json_api_errors
 def api_list_ftp(request):
     sess = _require_api_session(request)
     if not sess:
@@ -115,9 +159,10 @@ def api_list_ftp(request):
     return _json({'success': True, 'ftp_users': acl_helpers.list_ftp_for_website(site)})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['GET'])
+@catch_json_api_errors
 def api_list_cpusers(request):
     sess = _require_api_session(request)
     if not sess:
@@ -144,9 +189,10 @@ def _grant_to_dict(g):
     }
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['GET'])
+@catch_json_api_errors
 def api_list_grants(request):
     sess = _require_api_session(request)
     if not sess:
@@ -159,9 +205,10 @@ def api_list_grants(request):
     return _json({'success': True, 'grants': [_grant_to_dict(g) for g in grants]})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_create_grant(request):
     sess = _require_api_session(request)
     if not sess:
@@ -217,6 +264,10 @@ def api_create_grant(request):
             notes=notes,
         )
         g.save()
+    except RuntimeError as exc:
+        mysql_grant.drop_mysql_user(mysql_user)
+        logging.writeToFile('limitedPhpmyAdmin api_create_grant: %s' % str(exc))
+        return _json({'success': False, 'error': str(exc)}, 500)
     except Exception as exc:
         mysql_grant.drop_mysql_user(mysql_user)
         logging.writeToFile('limitedPhpmyAdmin api_create_grant save: %s' % str(exc))
@@ -229,9 +280,10 @@ def api_create_grant(request):
     })
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_disable_grant(request):
     sess = _require_api_session(request)
     if not sess:
@@ -259,9 +311,10 @@ def api_disable_grant(request):
     return _json({'success': True, 'grant': _grant_to_dict(g)})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_enable_grant(request):
     sess = _require_api_session(request)
     if not sess:
@@ -293,9 +346,10 @@ def api_enable_grant(request):
     return _json({'success': True, 'grant': _grant_to_dict(g)})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_delete_grant(request):
     sess = _require_api_session(request)
     if not sess:
@@ -321,9 +375,10 @@ def api_delete_grant(request):
     return _json({'success': True})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_rotate_password(request):
     sess = _require_api_session(request)
     if not sess:
@@ -357,9 +412,10 @@ def api_rotate_password(request):
     })
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_change_database(request):
     sess = _require_api_session(request)
     if not sess:
@@ -397,9 +453,10 @@ def api_change_database(request):
     return _json({'success': True, 'grant': _grant_to_dict(g)})
 
 
-@cyberpanel_login_required
+@cyberpanel_api_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
+@catch_json_api_errors
 def api_update_notes(request):
     sess = _require_api_session(request)
     if not sess:

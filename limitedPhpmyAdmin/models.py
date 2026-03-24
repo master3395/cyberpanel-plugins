@@ -34,3 +34,27 @@ class LimitedPhpmyAdminGrant(models.Model):
 
     def __str__(self):
         return '%s -> %s (%s)' % (self.mysql_username, self.database_name, self.subject_label)
+
+
+class PmaLaunchToken(models.Model):
+    """
+    Short-lived, single-use token so an end user can open phpMyAdmin via the panel
+    signon script without CyberPanel admin credentials.
+    """
+
+    grant = models.ForeignKey(
+        LimitedPhpmyAdminGrant,
+        on_delete=models.CASCADE,
+        related_name='pma_launch_tokens',
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'limitedphpmyadmin_pma_launch_token'
+        ordering = ['-id']
+
+    def __str__(self):
+        return 'launch %s…' % (self.token[:8],)

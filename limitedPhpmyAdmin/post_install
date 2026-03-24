@@ -1,6 +1,91 @@
 #!/usr/local/CyberCP/bin/python
+# -*- coding: utf-8 -*-
+"""Ensure websiteFunctions is in the migration graph, then migrate this plugin."""
+import os
+import subprocess
+import sys
+
 RESET = '\033[0;0m'
 BLUE = "\033[0;34m"
 GREEN = "\033[0;32m"
+YELLOW = "\033[0;33m"
+
+CYBERCP = '/usr/local/CyberCP'
+MIG_DIR = os.path.join(CYBERCP, 'websiteFunctions', 'migrations')
+STUB = os.path.join(MIG_DIR, '0001_initial.py')
+STUB_MARKER = 'limitedPhpmyAdmin-websiteFunctions-stub'
+
+MIG_INIT = b'# -*- coding: utf-8 -*-\n'
+STUB_BODY = b'''# -*- coding: utf-8 -*-
+# ''' + STUB_MARKER.encode() + b'''
+"""
+State-only registration for legacy Websites table (CyberPanel has no prior
+django_migrations for websiteFunctions). Allows plugin FKs to resolve.
+"""
+from django.db import migrations, models
+
+class Migration(migrations.Migration):
+    initial = True
+    dependencies = []
+    operations = [
+        migrations.CreateModel(
+            name='Websites',
+            fields=[
+                ('id', models.AutoField(
+                    auto_created=True, primary_key=True,
+                    serialize=False, verbose_name='ID',
+                )),
+            ],
+            options={
+                'db_table': 'websiteFunctions_websites',
+                'managed': False,
+            },
+        ),
+    ]
+'''
+
 print(BLUE + "Limited phpMyAdmin: post-install" + RESET)
-print(GREEN + "Migrations run by CyberPanel plugin installer when enable_migrations is present." + RESET)
+
+if os.path.isdir(CYBERCP):
+    try:
+        os.makedirs(MIG_DIR, exist_ok=True)
+        init_path = os.path.join(MIG_DIR, '__init__.py')
+        if not os.path.isfile(init_path):
+            with open(init_path, 'wb') as f:
+                f.write(MIG_INIT)
+        need_write_stub = False
+        if not os.path.isfile(STUB):
+            need_write_stub = True
+        else:
+            with open(STUB, 'rb') as f:
+                if STUB_MARKER.encode() not in f.read():
+                    print(
+                        YELLOW
+                        + "websiteFunctions/migrations/0001_initial.py already exists; "
+                        + "not overwriting. If plugin DB errors persist, check FK migrations."
+                        + RESET
+                    )
+                else:
+                    pass
+        if need_write_stub:
+            print(YELLOW + "Installing websiteFunctions migration stub (legacy CyberPanel)." + RESET)
+            with open(STUB, 'wb') as f:
+                f.write(STUB_BODY)
+        py = sys.executable if sys.executable else 'python3'
+        for app in ('websiteFunctions', 'limitedPhpmyAdmin'):
+            r = subprocess.run(
+                [py, 'manage.py', 'migrate', app, '--noinput'],
+                cwd=CYBERCP,
+                capture_output=True,
+                text=True,
+            )
+            if r.returncode != 0:
+                print(YELLOW + "migrate %s: %s" % (app, (r.stderr or r.stdout)[:500]) + RESET)
+            else:
+                print(GREEN + "migrate %s: OK" % app + RESET)
+    except OSError as exc:
+        print(YELLOW + "post_install I/O error: %s" % exc + RESET)
+else:
+    print(YELLOW + "CyberCP path not found: %s" % CYBERCP + RESET)
+
+print(GREEN + "Limited phpMyAdmin post-install finished." + RESET)
