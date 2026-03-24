@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>Limited phpMyAdmin</name>
+    <type>Utility</type>
+    <description>Issue dedicated MySQL users with access to a single database for phpMyAdmin. Label grants by FTP or CyberPanel user; disable without deleting. Free plugin.</description>
+    <version>1.0.0</version>
+    <author>master3395</author>
+    <url>/plugins/limitedPhpmyAdmin/</url>
+    <settings_url>/plugins/limitedPhpmyAdmin/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>

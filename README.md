@@ -25,6 +25,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Example Plugin](examplePlugin/) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
 | [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
 | [Google Tag Manager](googleTagManager/) | Analytics | 🟢 Free | master3395 | Configure GTM container IDs per domain |
+| [Limited phpMyAdmin](docs/plugins/limitedPhpmyAdmin.md) | Utility | 🟢 Free | master3395 | Single-database MySQL users for phpMyAdmin; FTP/CP labels; disable without delete |
 | [PayPal Premium Plugin Example](paypalPremiumPlugin/) | Utility | 🟡 Paid | master3395 | Example paid plugin with PayPal payment integration |
 | [Memcache Manager](memcacheManager/) | Utility | 🟢 Free | master3395 | Manage Memcached/LSMCD: status, stats, flush, config |
 | [Panel Access (Custom Domain)](panelAccess/) | Utility | 🟢 Free | master3395 | Configure custom domain(s) for accessing CyberPanel behind a reverse proxy |
