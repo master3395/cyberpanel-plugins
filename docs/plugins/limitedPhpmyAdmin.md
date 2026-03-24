@@ -138,15 +138,33 @@ A **404** on `/plugins/limitedPhpmyAdmin/` usually means Django did **not** regi
    systemctl restart lscpd
    ```
 
-## Troubleshooting: Uninstall fails (Permission denied: settings.py)
+## Troubleshooting: Uninstall fails (Permission denied: settings.py, urls.py, or index.html)
 
-Uninstall edits `/usr/local/CyberCP/CyberCP/settings.py` and `urls.py`. If those files are **root:root** and not group-writable, the panel user cannot save changes.
+Uninstall **reads and writes** these files:
+
+- `/usr/local/CyberCP/CyberCP/settings.py`
+- `/usr/local/CyberCP/CyberCP/urls.py`
+- `/usr/local/CyberCP/baseTemplate/templates/baseTemplate/index.html` (sidebar link removal)
+
+If any of them are **root:root** and the panel user **cannot read** (mode `600`) or **cannot write** (mode `644` without group write), you may see **`[Errno 13] Permission denied`** on that path.
 
 **One-time fix (as root):**
 
 ```bash
-chgrp lscpd /usr/local/CyberCP/CyberCP/settings.py /usr/local/CyberCP/CyberCP/urls.py
-chmod 664 /usr/local/CyberCP/CyberCP/settings.py /usr/local/CyberCP/CyberCP/urls.py
+chgrp lscpd \
+  /usr/local/CyberCP/CyberCP/settings.py \
+  /usr/local/CyberCP/CyberCP/urls.py \
+  /usr/local/CyberCP/baseTemplate/templates/baseTemplate/index.html
+chmod 664 \
+  /usr/local/CyberCP/CyberCP/settings.py \
+  /usr/local/CyberCP/CyberCP/urls.py \
+  /usr/local/CyberCP/baseTemplate/templates/baseTemplate/index.html
 ```
 
-Newer **CyberPanel** `pluginInstaller` also writes via a privileged copy when a direct write fails; upgrade the `pluginInstaller` package from the `cyberpanel` repo if uninstall still errors.
+**CyberPanel `pluginInstaller`** (current `v2.5.5-dev` branch) uses a **privileged read/write copy** when direct access fails; deploy the latest `pluginInstaller/pluginInstaller.py` from the [cyberpanel](https://github.com/master3395/cyberpanel) repo to `/usr/local/CyberCP/pluginInstaller/`, then `systemctl restart lscpd`.
+
+**CLI uninstall (always runs as root):**
+
+```bash
+cd /usr/local/CyberCP && python3 pluginInstaller/pluginInstaller.py remove --pluginName limitedPhpmyAdmin
+```
