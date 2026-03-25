@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.mailUtilities import mailUtilities
 from functools import wraps
 import json
@@ -101,7 +102,7 @@ def settings_view(request):
                 'config': config,
             }
         
-        proc = httpProc(request, 'cspManager/settings.html', context, 'admin')
+        proc = httpProc(request, 'cspManager/settings.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -115,6 +116,7 @@ def settings_view(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def toggle_plugin_csp(request):

@@ -7,6 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from functools import wraps
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+from plogical.plugin_acl import require_manage_plugins_api
 from .models import DiscordWebhook, WebhookSettings
 from .forms import DiscordWebhookForm, WebhookSettingsForm
 from .utils import send_discord_webhook, format_server_usage_embed, get_server_metrics
@@ -79,7 +80,7 @@ def settings_view(request):
             'settings_form': WebhookSettingsForm(instance=settings)
         }
         
-        proc = httpProc(request, 'discordWebhooks/settings.html', context, 'admin')
+        proc = httpProc(request, 'discordWebhooks/settings.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -88,6 +89,7 @@ def settings_view(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def add_webhook(request):
     """Add new webhook"""
@@ -108,6 +110,7 @@ def add_webhook(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET", "POST"])
 def edit_webhook(request, webhook_id):
     """Edit webhook"""
@@ -142,6 +145,7 @@ def edit_webhook(request, webhook_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def delete_webhook(request, webhook_id):
     """Delete webhook"""
@@ -159,6 +163,7 @@ def delete_webhook(request, webhook_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def test_webhook(request, webhook_id):
     """Test webhook"""
@@ -207,6 +212,7 @@ def test_webhook(request, webhook_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def save_settings(request):
     """Save plugin settings"""

@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from plogical.acl import ACLManager
 from functools import wraps
@@ -104,7 +105,7 @@ def main_view(request):
             'is_admin': currentACL['admin'] == 1
         }
         
-        proc = httpProc(request, 'googleTagManager/index.html', context, 'admin')
+        proc = httpProc(request, 'googleTagManager/index.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -119,7 +120,7 @@ def main_view(request):
             'configured_domains': 0,
             'enabled_domains': 0
         }
-        proc = httpProc(request, 'googleTagManager/index.html', context, 'admin')
+        proc = httpProc(request, 'googleTagManager/index.html', context, 'managePlugins')
         return proc.render()
 
 
@@ -182,7 +183,7 @@ def settings_view(request):
             'is_admin': currentACL['admin'] == 1
         }
         
-        proc = httpProc(request, 'googleTagManager/settings.html', context, 'admin')
+        proc = httpProc(request, 'googleTagManager/settings.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -194,11 +195,12 @@ def settings_view(request):
             'domains': [],
             'gtm_settings': {}
         }
-        proc = httpProc(request, 'googleTagManager/settings.html', context, 'admin')
+        proc = httpProc(request, 'googleTagManager/settings.html', context, 'managePlugins')
         return proc.render()
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_domains(request):
@@ -239,6 +241,7 @@ def api_get_domains(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_gtm(request):
@@ -311,6 +314,7 @@ def api_save_gtm(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_delete_gtm(request):
@@ -366,6 +370,7 @@ def api_delete_gtm(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_gtm_code(request, domain):
@@ -415,6 +420,7 @@ def api_get_gtm_code(request, domain):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_toggle_gtm(request):

@@ -66,7 +66,7 @@ def settings_page(request):
         'all_domains': json.dumps(all_domains),
         'origins_json': json.dumps(origins),
     }
-    proc = httpProc(request, 'panelAccess/settings.html', data, 'admin')
+    proc = httpProc(request, 'panelAccess/settings.html', data, 'managePlugins')
     return proc.render()
 
 
@@ -89,10 +89,12 @@ def save_origins(request):
             from plogical.acl import ACLManager
             user_id = request.session['userID']
             current_acl = ACLManager.loadedACL(user_id)
-            if not current_acl.get('admin'):
+            _ad = int(current_acl.get('admin', 0) or 0)
+            _mp = int(current_acl.get('managePlugins', 0) or 0)
+            if _ad != 1 and _mp != 1:
                 return JsonResponse({
                     'save': 0,
-                    'error_message': _('Only administrators can change Panel Access settings.'),
+                    'error_message': _('Only administrators or users with plugin management can change Panel Access settings.'),
                 }, status=403)
         except Exception as e:
             CyberCPLogFileWriter.writeToFile(f"Panel Access: Authorization check error: {str(e)}")
@@ -221,8 +223,10 @@ def get_domains_api(request):
         from plogical.acl import ACLManager
         user_id = request.session['userID']
         current_acl = ACLManager.loadedACL(user_id)
-        if not current_acl.get('admin'):
-            return JsonResponse({'error': 'Admin access required'}, status=403)
+        _ad = int(current_acl.get('admin', 0) or 0)
+        _mp = int(current_acl.get('managePlugins', 0) or 0)
+        if _ad != 1 and _mp != 1:
+            return JsonResponse({'error': 'Administrator or plugin management access required'}, status=403)
     except Exception:
         return JsonResponse({'error': 'Authorization check failed'}, status=500)
     

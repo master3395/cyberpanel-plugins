@@ -9,6 +9,7 @@ from django.utils import timezone
 from functools import wraps
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.acl import ACLManager
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from .models import Fail2banSettings, SecurityEvent, BannedIP, WhitelistIP, BlacklistIP
@@ -48,7 +49,7 @@ def plugin_card(request):
             'plugin_name': 'Fail2ban',
             'version': '1.0.3',
         }
-        proc = httpProc(request, 'fail2ban/plugin_card.html', context, 'admin')
+        proc = httpProc(request, 'fail2ban/plugin_card.html', context, 'managePlugins')
         return proc.render()
     except Exception as e:
         return HttpResponse(f"<div>Plugin Card Error: {str(e)}</div>")
@@ -156,7 +157,7 @@ def unified_settings(request):
             ]
         }
         
-        proc = httpProc(request, 'fail2ban/unified_settings.html', context, 'admin')
+        proc = httpProc(request, 'fail2ban/unified_settings.html', context, 'managePlugins')
         return proc.render()
     except Exception as e:
         logging.writeToFile(f"Error in unified_settings: {str(e)}")
@@ -185,7 +186,7 @@ def settings_simple(request):
             'version': '1.0.3',
             'status': status_label,
         }
-        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'admin')
+        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'managePlugins')
         return proc.render()
     except Exception as e:
         logging.writeToFile(f"Error in settings_simple: {str(e)}")
@@ -194,7 +195,7 @@ def settings_simple(request):
             'version': '1.0.3',
             'status': 'Unknown',
         }
-        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'admin')
+        proc = httpProc(request, 'fail2ban/settings_simple.html', context, 'managePlugins')
         return proc.render()
 
 
@@ -235,6 +236,7 @@ def statistics_standalone(request):
 
 # API Endpoints
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_status(request):
     """Get fail2ban service status"""
@@ -287,6 +289,7 @@ def api_status(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_jails(request):
     """Get all jails information"""
@@ -306,6 +309,7 @@ def api_jails(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_banned_ips(request):
     """Get all banned IPs"""
@@ -325,6 +329,7 @@ def api_banned_ips(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_whitelist(request):
     """Manage whitelist IPs"""
@@ -403,6 +408,7 @@ def api_whitelist(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_blacklist(request):
     """Manage blacklist IPs"""
@@ -481,6 +487,7 @@ def api_blacklist(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def api_ban_ip(request):
     """Ban an IP address"""
@@ -517,6 +524,7 @@ def api_ban_ip(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def api_unban_ip(request):
     """Unban an IP address"""
@@ -553,6 +561,7 @@ def api_unban_ip(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def api_restart(request):
     """Restart fail2ban service"""
@@ -577,6 +586,7 @@ def api_restart(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def api_restart_litespeed(request):
     """Restart LiteSpeed service"""
@@ -635,6 +645,7 @@ def _parse_journal_log_line(line):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_logs(request):
     """Get fail2ban logs (journalctl -u fail2ban), formatted for dashboard."""
@@ -657,6 +668,7 @@ def api_logs(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET", "POST"])
 def api_settings(request):
     """Get or update fail2ban settings"""
@@ -705,6 +717,7 @@ def api_settings(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_statistics(request):
     """Get security statistics"""
@@ -749,6 +762,7 @@ def api_statistics(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def api_toggle_plugin(request):
     """Toggle plugin on/off"""

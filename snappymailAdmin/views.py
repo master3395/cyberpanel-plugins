@@ -8,6 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.csrf import ensure_csrf_cookie
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from functools import wraps
 import json
 
@@ -51,7 +52,7 @@ def main_view(request):
         'current_admin_login': utils.get_snappymail_admin_login() if available else 'admin',
         'snappymail_admin_url': snappymail_admin_url,
     }
-    proc = httpProc(request, 'snappymailAdmin/index.html', context, 'admin')
+    proc = httpProc(request, 'snappymailAdmin/index.html', context, 'managePlugins')
     response = proc.render()
     # Prevent browser/proxy cache so Admin username field always shows (no stale HTML)
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -61,6 +62,7 @@ def main_view(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_set_password(request):

@@ -8,7 +8,7 @@ The plugin store calls `pluginInstaller.installPlugin(name, zip_path=...)`. Olde
 
 Update **`pluginHolder/views.py`** on the server (under `/usr/local/CyberCP/pluginHolder/views.py`) with the compatibility helper **`_install_plugin_compat`** and use it everywhere the store calls `installPlugin` with `zip_path`.
 
-Reference implementation: [cyberpanel-repo `pluginHolder/views.py`](https://github.com) — search for `_install_plugin_compat` in your CyberPanel source tree or sync from a branch that includes this patch.
+Reference implementation: search for **`_install_plugin_compat`** in `pluginHolder/views.py` in your CyberPanel source checkout (same patch applied in the `cyberpanel-repo` workspace used for development).
 
 After editing:
 

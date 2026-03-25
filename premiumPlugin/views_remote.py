@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from functools import wraps
 import sys
 import os
@@ -69,7 +70,7 @@ def remote_verification_required(view_func):
                 'message': verification_result.get('message', 'Patreon subscription required'),
                 'error': verification_result.get('error')
             }
-            proc = httpProc(request, 'premiumPlugin/subscription_required.html', context, 'admin')
+            proc = httpProc(request, 'premiumPlugin/subscription_required.html', context, 'managePlugins')
             return proc.render()
         
         # User has access - proceed with view
@@ -198,7 +199,7 @@ def main_view(request):
         ]
     }
     
-    proc = httpProc(request, 'premiumPlugin/index.html', context, 'admin')
+    proc = httpProc(request, 'premiumPlugin/index.html', context, 'managePlugins')
     return proc.render()
 
 @cyberpanel_login_required
@@ -216,10 +217,11 @@ def settings_view(request):
         'description': 'Configure your premium plugin settings'
     }
     
-    proc = httpProc(request, 'premiumPlugin/settings.html', context, 'admin')
+    proc = httpProc(request, 'premiumPlugin/settings.html', context, 'managePlugins')
     return proc.render()
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @remote_verification_required
 def api_status_view(request):
     """

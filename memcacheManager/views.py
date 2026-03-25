@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.mailUtilities import mailUtilities
 from functools import wraps
 import json
@@ -82,7 +83,7 @@ def main_view(request):
             'connection_msg': connection_msg,
         }
         
-        proc = httpProc(request, 'memcacheManager/index.html', context, 'admin')
+        proc = httpProc(request, 'memcacheManager/index.html', context, 'managePlugins')
         return proc.render()
     
     except Exception as e:
@@ -92,6 +93,7 @@ def main_view(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_control(request):
@@ -118,6 +120,7 @@ def api_control(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_stats(request):
     """API: Get memcache statistics as JSON (for real-time updates)."""
@@ -164,6 +167,7 @@ def api_stats(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_flush(request):
@@ -179,6 +183,7 @@ def api_flush(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_config(request):
     """API: Get memcache configuration as JSON."""

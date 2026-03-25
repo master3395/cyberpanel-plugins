@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from functools import wraps
 import urllib.request
@@ -295,7 +296,7 @@ def unified_verification_required(view_func):
                     'message': verification_result.get('message', 'Payment or subscription required'),
                     'error': verification_result.get('error')
                 }
-                proc = httpProc(request, 'autoBanSecurityAlerts/subscription_required.html', context, 'admin')
+                proc = httpProc(request, 'autoBanSecurityAlerts/subscription_required.html', context, 'managePlugins')
                 return proc.render()
 
             if has_access and verification_result:
@@ -398,11 +399,12 @@ def settings_view(request):
         'recent_bans': recent_bans,
         'machine_ip': machine_ip,
     }
-    proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'admin')
+    proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'managePlugins')
     return proc.render()
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["POST"])
 @csrf_exempt
@@ -440,6 +442,7 @@ def update_config(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["POST"])
 @csrf_exempt
@@ -477,6 +480,7 @@ def add_whitelist_ip(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["POST"])
 @csrf_exempt

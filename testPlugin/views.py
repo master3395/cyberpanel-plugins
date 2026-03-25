@@ -31,7 +31,7 @@ def test_plugin_view(request):
         'version': '1.0.0',
         'description': 'A simple test plugin for CyberPanel'
     }
-    proc = httpProc(request, 'testPlugin/index.html', context, 'admin')
+    proc = httpProc(request, 'testPlugin/index.html', context, 'managePlugins')
     return proc.render()
 
 @cyberpanel_login_required
@@ -57,5 +57,5 @@ def settings_view(request):
         'version': '1.0.0',
         'description': 'A simple test plugin for CyberPanel'
     }
-    proc = httpProc(request, 'testPlugin/settings.html', context, 'admin')
+    proc = httpProc(request, 'testPlugin/settings.html', context, 'managePlugins')
     return proc.render()

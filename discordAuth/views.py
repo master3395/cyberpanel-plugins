@@ -289,7 +289,7 @@ def main_view(request):
             'has_discord': discord_account is not None
         }
         
-        proc = httpProc(request, 'discordAuth/index.html', context, 'admin')
+        proc = httpProc(request, 'discordAuth/index.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -306,10 +306,12 @@ def settings_view(request):
         userID = request.session['userID']
         currentACL = ACLManager.loadedACL(userID)
         
-        if currentACL['admin'] != 1:
+        _ad = int(currentACL.get('admin', 0) or 0)
+        _mp = int(currentACL.get('managePlugins', 0) or 0)
+        if _ad != 1 and _mp != 1:
             return JsonResponse({
                 'status': 0,
-                'error_message': 'Admin access required'
+                'error_message': 'Plugin management or administrator access required'
             })
         
         config = get_config()
@@ -358,7 +360,7 @@ def settings_view(request):
             'suggested_redirect_uri': suggested_redirect
         }
         
-        proc = httpProc(request, 'discordAuth/settings.html', context, 'admin')
+        proc = httpProc(request, 'discordAuth/settings.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:

@@ -121,7 +121,7 @@ def main_view(request):
             'sites_json': json.dumps(site_opts, ensure_ascii=False),
             'api_grants_url': api_grants_url,
         }
-        proc = httpProc(request, 'limitedPhpmyAdmin/index.html', context, 'admin')
+        proc = httpProc(request, 'limitedPhpmyAdmin/index.html', context)
         return proc.render()
     except Exception as exc:
         try:

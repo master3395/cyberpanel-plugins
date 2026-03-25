@@ -9,6 +9,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from functools import wraps
 import urllib.request
@@ -289,7 +290,7 @@ def unified_verification_required(view_func):
                     'message': verification_result.get('message', 'Payment or subscription required'),
                     'error': verification_result.get('error')
                 }
-                proc = httpProc(request, 'premiumPlugin/subscription_required.html', context, 'admin')
+                proc = httpProc(request, 'premiumPlugin/subscription_required.html', context, 'managePlugins')
                 return proc.render()
 
             if has_access and verification_result:
@@ -339,7 +340,7 @@ def settings_view(request):
         'paypal_payment_link': PAYPAL_PAYMENT_LINK,
         'description': 'Configure your premium plugin settings.',
     }
-    proc = httpProc(request, 'premiumPlugin/settings.html', context, 'admin')
+    proc = httpProc(request, 'premiumPlugin/settings.html', context, 'managePlugins')
     return proc.render()
 
 
@@ -389,6 +390,7 @@ def activate_key(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def save_payment_method(request):
     try:
@@ -404,6 +406,7 @@ def save_payment_method(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 def api_status_view(request):
     return JsonResponse({

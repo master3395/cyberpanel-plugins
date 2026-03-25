@@ -260,7 +260,7 @@ def secure_verification_required(view_func):
                 'error': 'Plugin integrity check failed. Please reinstall the plugin.',
                 'security_violation': True
             }
-            proc = httpProc(request, 'paypalPremiumPlugin/subscription_required.html', context, 'admin')
+            proc = httpProc(request, 'paypalPremiumPlugin/subscription_required.html', context, 'managePlugins')
             return proc.render()
         
         # Check 3: Remote verification
@@ -288,7 +288,7 @@ def secure_verification_required(view_func):
                 'message': verification_result.get('message', 'PayPal payment required'),
                 'error': verification_result.get('error')
             }
-            proc = httpProc(request, 'paypalPremiumPlugin/subscription_required.html', context, 'admin')
+            proc = httpProc(request, 'paypalPremiumPlugin/subscription_required.html', context, 'managePlugins')
             return proc.render()
         
         # All checks passed - proceed
@@ -297,7 +297,10 @@ def secure_verification_required(view_func):
     return _wrapped_view
 
 # Usage example:
+# CyberPanel ACL: use httpProc(..., 'managePlugins') for plugin pages and
+# plogical.plugin_acl.require_manage_plugins_api on APIs (full admin OR managePlugins in ACL).
 # @cyberpanel_login_required
+# @require_manage_plugins_api
 # @secure_verification_required
 # def settings_view(request):
 #     # Your settings code here

@@ -34,7 +34,7 @@ def examplePlugin(request):
         'description': 'This is an example plugin demonstrating CyberPanel plugin structure.'
     }
     
-    proc = httpProc(request, 'examplePlugin/examplePlugin.html', context, 'admin')
+    proc = httpProc(request, 'examplePlugin/examplePlugin.html', context, 'managePlugins')
     return proc.render()
 
 @cyberpanel_login_required
@@ -50,5 +50,5 @@ def settings_view(request):
         'description': 'Configure your example plugin settings'
     }
     
-    proc = httpProc(request, 'examplePlugin/settings.html', context, 'admin')
+    proc = httpProc(request, 'examplePlugin/settings.html', context, 'managePlugins')
     return proc.render()

@@ -35,7 +35,7 @@ If using `httpProc`, you can set headers:
 from plogical.httpProc import httpProc
 
 def my_plugin_view(request):
-    proc = httpProc(request, 'myPlugin/template.html', context, 'admin')
+    proc = httpProc(request, 'myPlugin/template.html', context, 'managePlugins')
     response = proc.render()
     response['X-CSP-Opt-Out'] = 'true'
     return response
@@ -67,7 +67,7 @@ def my_plugin_view(request):
         # Your plugin logic here
         context = {'data': 'example'}
         
-        proc = httpProc(request, 'myPlugin/template.html', context, 'admin')
+        proc = httpProc(request, 'myPlugin/template.html', context, 'managePlugins')
         response = proc.render()
         
         # Opt-out of CSP for this plugin

@@ -11,6 +11,7 @@ from django.utils import timezone
 from functools import wraps
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from .models import ContaboConfig, SnapshotSchedule, SnapshotHistory
 from .forms import ContaboConfigForm, ApiCredentialsForm, SnapshotScheduleForm, ManualSnapshotForm
 from .utils import get_contabo_api, ContaboAPI
@@ -379,7 +380,7 @@ def unified_verification_required(view_func):
                         'message': verification_result.get('message', 'Payment or subscription required'),
                         'error': verification_result.get('error')
                     }
-                    proc = httpProc(request, 'contaboAutoSnapshot/subscription_required.html', context, 'admin')
+                    proc = httpProc(request, 'contaboAutoSnapshot/subscription_required.html', context, 'managePlugins')
                     return proc.render()
                 except Exception as render_error:
                     # If rendering fails, return a simple error page
@@ -493,7 +494,7 @@ def settings_view(request):
         }
         
         try:
-            proc = httpProc(request, 'contaboAutoSnapshot/settings.html', context, 'admin')
+            proc = httpProc(request, 'contaboAutoSnapshot/settings.html', context, 'managePlugins')
             return proc.render()
         except Exception as render_error:
             logging.writeToFile(f"Contabo Auto Snapshot: Template render error: {str(render_error)}")
@@ -587,6 +588,7 @@ def activate_key(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["POST"])
 def add_schedule(request):
@@ -614,6 +616,7 @@ def add_schedule(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["GET", "POST"])
 def edit_schedule(request, schedule_id):
@@ -656,6 +659,7 @@ def edit_schedule(request, schedule_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def delete_schedule(request, schedule_id):
     """Delete snapshot schedule"""
@@ -673,6 +677,7 @@ def delete_schedule(request, schedule_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def toggle_schedule(request, schedule_id):
     """Toggle schedule enabled/disabled"""
@@ -696,6 +701,7 @@ def toggle_schedule(request, schedule_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @unified_verification_required
 @require_http_methods(["POST"])
 def create_snapshot(request):
@@ -769,7 +775,7 @@ def snapshot_history(request):
             'snapshots': snapshots,
         }
         
-        proc = httpProc(request, 'contaboAutoSnapshot/history.html', context, 'admin')
+        proc = httpProc(request, 'contaboAutoSnapshot/history.html', context, 'managePlugins')
         return proc.render()
         
     except Exception as e:
@@ -778,6 +784,7 @@ def snapshot_history(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def delete_snapshot(request, snapshot_id):
     """Delete snapshot from history (and optionally from Contabo)"""
@@ -806,6 +813,7 @@ def delete_snapshot(request, snapshot_id):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_schedules(request):
     """API endpoint to get all schedules"""
@@ -829,6 +837,7 @@ def api_schedules(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_snapshots(request):
     """API endpoint to get snapshot history"""
@@ -855,6 +864,7 @@ def api_snapshots(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def test_connection(request):
     """Test Contabo API connection and save config"""
@@ -901,6 +911,7 @@ def test_connection(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["POST"])
 def save_config(request):
     """Save Contabo configuration (API credentials, max snapshots, auto backup). Runs API test when credentials present."""

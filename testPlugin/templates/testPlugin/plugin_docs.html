@@ -1112,7 +1112,7 @@ def your_view(request):
         'plugin_enabled': True
     }
     
-    proc = httpProc(request, 'yourPlugin/your_template.html', context, 'admin')
+    proc = httpProc(request, 'yourPlugin/your_template.html', context, 'managePlugins')
     return proc.render()</code></pre>
 
                     <h3>2. Template Structure</h3>

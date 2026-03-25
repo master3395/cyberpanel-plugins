@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from plogical.httpProc import httpProc
+from plogical.plugin_acl import require_manage_plugins_api
 from plogical.mailUtilities import mailUtilities
 from functools import wraps
 import json
@@ -57,7 +58,7 @@ def main_view(request):
             'redis_config_defaults': config_defaults,
             'redis_config_defaults_json': json.dumps(config_defaults),
         }
-        proc = httpProc(request, 'redisManager/index.html', context, 'admin')
+        proc = httpProc(request, 'redisManager/index.html', context, 'managePlugins')
         return proc.render()
     except Exception as e:
         from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
@@ -66,6 +67,7 @@ def main_view(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_control(request):
@@ -86,6 +88,7 @@ def api_control(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_flush(request):
@@ -100,6 +103,7 @@ def api_flush(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_config(request):
     """API: get Redis editable config (JSON)."""
@@ -115,6 +119,7 @@ def api_config(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_config(request):
@@ -136,6 +141,7 @@ def api_save_config(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_detect_config(request):
     """API: auto-detect Redis config path from systemd / fallbacks. Returns path or error."""
@@ -154,6 +160,7 @@ def api_detect_config(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_config_path(request):
@@ -172,6 +179,7 @@ def api_save_config_path(request):
 
 
 @cyberpanel_login_required
+@require_manage_plugins_api
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_fix_permissions(request):
