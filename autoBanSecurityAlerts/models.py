@@ -21,6 +21,16 @@ class AutoBanConfig(models.Model):
         default='',
         help_text="Validated activation key - grants access without re-entering."
     )
+    entitlement_token = models.TextField(
+        blank=True,
+        default='',
+        help_text="Short-lived token from api.newstargeted.com; premium requires phone-home refresh."
+    )
+    entitlement_expires_at = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Unix timestamp when entitlement_token expires (from API)."
+    )
     enabled = models.BooleanField(
         default=True,
         help_text="Enable/disable auto-banning of IPs from Security Alerts."

@@ -354,9 +354,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         activation_key: activationKey
                     })
                 });
-                
-                const data = await response.json();
-                
+                const raw = await response.text();
+                const ct = (response.headers.get('content-type') || '').toLowerCase();
+                var data;
+                if (ct.indexOf('application/json') !== -1) {
+                    try { data = JSON.parse(raw); } catch (e) { throw new Error('Invalid response from server. Please reload the page.'); }
+                } else {
+                    var s = raw.trim(); if (s.indexOf('<!DOCTYPE') === 0 || s.indexOf('<html') === 0) {
+                        throw new Error('Session expired or server returned a page instead of data. Reload and try again.');
+                    }
+                    throw new Error('Could not activate. Check your network and try again.');
+                }
                 if (data.success && data.has_access) {
                     showActivationMessage('✅ ' + data.message + ' Access activated successfully!', 'success');
                     activationInput.value = '';
@@ -366,10 +374,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.reload();
                     }, 2000);
                 } else {
-                    showActivationMessage('❌ ' + (data.message || 'Invalid activation key'), 'error');
+                    showActivationMessage('❌ ' + (data.message || 'Invalid activation key for this plugin.'), 'error');
                 }
             } catch (error) {
-                showActivationMessage('❌ Error: ' + error.message, 'error');
+                showActivationMessage('❌ ' + (error && error.message ? error.message : 'Activation failed.'), 'error');
             } finally {
                 activateBtn.disabled = false;
                 activateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';

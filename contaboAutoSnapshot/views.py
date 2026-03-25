@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
+import hashlib
+import uuid
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
@@ -26,6 +28,7 @@ REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patre
 REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'
 REMOTE_VERIFICATION_PLUGIN_GRANT_URL = 'https://api.newstargeted.com/api/verify-plugin-grant.php'
 REMOTE_ACTIVATION_KEY_URL = 'https://api.newstargeted.com/api/activate-plugin-key.php'
+REMOTE_ENTITLEMENT_VERIFY_URL = 'https://api.newstargeted.com/api/verify-entitlement.php'
 
 # Payment URLs (from meta.xml)
 PATREON_TIER = 'CyberPanel Paid Plugin'
@@ -83,7 +86,56 @@ def _api_request(url, data, timeout=10):
         return {}
 
 
-def check_plugin_grant(user_email, user_ip='', domain=''):
+def get_server_fingerprint():
+    try:
+        parts = []
+        try:
+            with open('/etc/machine-id', 'r') as _mf:
+                mid = _mf.read().strip()
+                if mid:
+                    parts.append(mid)
+        except Exception:
+            pass
+        parts.append(str(uuid.getnode()))
+        return hashlib.sha256('|'.join(parts).encode('utf-8')).hexdigest()
+    except Exception:
+        return ''
+
+
+def _persist_entitlement_from_response(config, response_data):
+    if not config or not response_data:
+        return
+    try:
+        tok = response_data.get('entitlement_token')
+        if not tok:
+            return
+        exp = response_data.get('entitlement_expires_at')
+        config.entitlement_token = tok
+        fields = ['entitlement_token', 'updated_at']
+        if exp is not None:
+            try:
+                config.entitlement_expires_at = int(exp)
+            except (TypeError, ValueError):
+                config.entitlement_expires_at = None
+            fields.append('entitlement_expires_at')
+        config.save(update_fields=fields)
+    except Exception as ex:
+        logging.writeToFile(f"Contabo Auto Snapshot: Could not persist entitlement: {str(ex)}")
+
+
+def _clear_entitlement(config):
+    if not config:
+        return
+    try:
+        if getattr(config, 'entitlement_token', ''):
+            config.entitlement_token = ''
+            config.entitlement_expires_at = None
+            config.save(update_fields=['entitlement_token', 'entitlement_expires_at', 'updated_at'])
+    except Exception as ex:
+        logging.writeToFile(f"Contabo Auto Snapshot: Could not clear entitlement: {str(ex)}")
+
+
+def check_plugin_grant(user_email, user_ip='', domain='', server_fp=''):
     """Check Plugin Grants from api.newstargeted.com (manual grants from admin panel)"""
     try:
         # Normalize email to lowercase for matching
@@ -93,10 +145,12 @@ def check_plugin_grant(user_email, user_ip='', domain=''):
             'plugin_name': PLUGIN_NAME,
             'user_ip': user_ip,
             'domain': domain,
+            'server_fingerprint': server_fp,
         }
         data = _api_request(REMOTE_VERIFICATION_PLUGIN_GRANT_URL, request_data)
         if data.get('success') and data.get('has_access'):
             logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant access granted for {user_email_normalized}")
+            _persist_entitlement_from_response(ContaboConfig.get_config(), data)
             return {'has_access': True, 'message': data.get('message', 'Access granted via Plugin Grants')}
         logging.writeToFile(f"Contabo Auto Snapshot: Plugin grant check - no access for {user_email_normalized}: {data.get('message', 'No grant found')}")
         return {'has_access': False, 'message': data.get('message', '')}
@@ -105,7 +159,7 @@ def check_plugin_grant(user_email, user_ip='', domain=''):
         return {'has_access': False, 'message': ''}
 
 
-def check_patreon_membership(user_email, user_ip='', domain=''):
+def check_patreon_membership(user_email, user_ip='', domain='', server_fp=''):
     """Check Patreon membership via remote verification server"""
     try:
         request_data = {
@@ -114,10 +168,13 @@ def check_patreon_membership(user_email, user_ip='', domain=''):
             'plugin_version': PLUGIN_VERSION,
             'user_ip': user_ip,
             'domain': domain,
+            'server_fingerprint': server_fp,
             'tier_id': '27789984'  # CyberPanel Paid Plugin tier ID
         }
         response_data = _api_request(REMOTE_VERIFICATION_PATREON_URL, request_data)
         if response_data.get('success', False):
+            if response_data.get('has_access'):
+                _persist_entitlement_from_response(ContaboConfig.get_config(), response_data)
             return {
                 'has_access': response_data.get('has_access', False),
                 'patreon_tier': response_data.get('patreon_tier', PATREON_TIER),
@@ -152,7 +209,7 @@ def check_patreon_membership(user_email, user_ip='', domain=''):
         }
 
 
-def check_paypal_payment(user_email, user_ip='', domain=''):
+def check_paypal_payment(user_email, user_ip='', domain='', server_fp=''):
     """Check PayPal payment via remote verification server"""
     try:
         request_data = {
@@ -161,10 +218,13 @@ def check_paypal_payment(user_email, user_ip='', domain=''):
             'plugin_version': PLUGIN_VERSION,
             'user_ip': user_ip,
             'domain': domain,
+            'server_fingerprint': server_fp,
             'timestamp': int(datetime.now().timestamp())
         }
         response_data = _api_request(REMOTE_VERIFICATION_PAYPAL_URL, request_data)
         if response_data.get('success', False):
+            if response_data.get('has_access'):
+                _persist_entitlement_from_response(ContaboConfig.get_config(), response_data)
             return {
                 'has_access': response_data.get('has_access', False),
                 'paypal_me_url': response_data.get('paypal_me_url', PAYPAL_ME_URL),
@@ -232,9 +292,45 @@ def unified_verification_required(view_func):
             
             has_access = False
             verification_result = {}
+
+            user_ip = request.META.get('REMOTE_ADDR', '') or ''
+            domain = request.get_host() or ''
+            server_fp = get_server_fingerprint()
+
+            try:
+                cfg_ent = ContaboConfig.get_config()
+                ent_tok = (getattr(cfg_ent, 'entitlement_token', '') or '').strip()
+                if ent_tok:
+                    ent_resp = _api_request(REMOTE_ENTITLEMENT_VERIFY_URL, {
+                        'entitlement_token': ent_tok,
+                        'plugin_name': PLUGIN_NAME,
+                        'user_email': user_email,
+                        'server_fingerprint': server_fp,
+                        'domain': domain,
+                    })
+                    if ent_resp.get('success') and ent_resp.get('has_access'):
+                        _persist_entitlement_from_response(cfg_ent, ent_resp)
+                        request.session['contabo_premium_access_via'] = 'entitlement'
+                        return view_func(request, *args, **kwargs)
+                    _clear_entitlement(ContaboConfig.get_config())
+            except Exception as _ent_e:
+                logging.writeToFile(f"Contabo Auto Snapshot: Entitlement verify error: {str(_ent_e)}")
             
             # First check for activation key (from request or stored in config)
             activation_key = request.GET.get('activation_key') or request.POST.get('activation_key')
+            if (
+                not activation_key
+                and request.method == 'POST'
+                and request.content_type
+                and 'application/json' in request.content_type
+                and request.body
+            ):
+                try:
+                    _payload = json.loads(request.body)
+                    if isinstance(_payload, dict):
+                        activation_key = _payload.get('activation_key') or activation_key
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    pass
             if not activation_key:
                 try:
                     config = ContaboConfig.get_config()
@@ -246,7 +342,9 @@ def unified_verification_required(view_func):
                     request_data = {
                         'activation_key': activation_key.strip(),
                         'plugin_name': PLUGIN_NAME,
-                        'user_email': user_email
+                        'user_email': user_email,
+                        'server_fingerprint': server_fp,
+                        'domain': domain,
                     }
                     response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
                     if response_data.get('success', False) and response_data.get('has_access', False):
@@ -261,6 +359,7 @@ def unified_verification_required(view_func):
                             config = ContaboConfig.get_config()
                             config.activation_key = activation_key.strip()
                             config.save(update_fields=['activation_key', 'updated_at'])
+                            _persist_entitlement_from_response(config, response_data)
                         except Exception as persist_err:
                             logging.writeToFile(f"Contabo Auto Snapshot: Could not persist activation key: {str(persist_err)}")
                     elif not response_data.get('success') and activation_key:
@@ -278,8 +377,9 @@ def unified_verification_required(view_func):
             if not has_access:
                 grant_result = check_plugin_grant(
                     user_email,
-                    request.META.get('REMOTE_ADDR', ''),
-                    request.get_host()
+                    user_ip,
+                    domain,
+                    server_fp,
                 )
                 if grant_result.get('has_access'):
                     has_access = True
@@ -295,8 +395,9 @@ def unified_verification_required(view_func):
                     if payment_method == 'patreon':
                         result = check_patreon_membership(
                             user_email,
-                            request.META.get('REMOTE_ADDR', ''),
-                            request.get_host()
+                            user_ip,
+                            domain,
+                            server_fp,
                         )
                         has_access = result.get('has_access', False)
                         verification_result = {
@@ -310,8 +411,9 @@ def unified_verification_required(view_func):
                     elif payment_method == 'paypal':
                         result = check_paypal_payment(
                             user_email,
-                            request.META.get('REMOTE_ADDR', ''),
-                            request.get_host()
+                            user_ip,
+                            domain,
+                            server_fp,
                         )
                         has_access = result.get('has_access', False)
                         verification_result = {
@@ -325,13 +427,15 @@ def unified_verification_required(view_func):
                     else:  # 'both' - check both methods
                         patreon_result = check_patreon_membership(
                             user_email,
-                            request.META.get('REMOTE_ADDR', ''),
-                            request.get_host()
+                            user_ip,
+                            domain,
+                            server_fp,
                         )
                         paypal_result = check_paypal_payment(
                             user_email,
-                            request.META.get('REMOTE_ADDR', ''),
-                            request.get_host()
+                            user_ip,
+                            domain,
+                            server_fp,
                         )
                         
                         has_access = patreon_result.get('has_access', False) or paypal_result.get('has_access', False)
@@ -476,7 +580,7 @@ def settings_view(request):
         
         # Hide activation/payment UI when whitelisted (Plugin Grants or activation key)
         access_via = request.session.get('contabo_premium_access_via', '')
-        show_payment_ui = access_via not in ('plugin_grant', 'activation_key')
+        show_payment_ui = access_via not in ('plugin_grant', 'activation_key', 'entitlement')
         
         context = {
             'title': 'Auto Snapshot for Contabo',
@@ -542,7 +646,9 @@ def activate_key(request):
         request_data = {
             'activation_key': activation_key,
             'plugin_name': PLUGIN_NAME,
-            'user_email': user_email
+            'user_email': user_email,
+            'server_fingerprint': get_server_fingerprint(),
+            'domain': request.get_host() or '',
         }
         response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
         if response_data.get('success', False) and response_data.get('has_access', False):
@@ -550,6 +656,7 @@ def activate_key(request):
                 config = ContaboConfig.get_config()
                 config.activation_key = activation_key
                 config.save(update_fields=['activation_key', 'updated_at'])
+                _persist_entitlement_from_response(config, response_data)
             except Exception as persist_err:
                 logging.writeToFile(f"Contabo Auto Snapshot: Could not persist activation key: {str(persist_err)}")
             return JsonResponse({

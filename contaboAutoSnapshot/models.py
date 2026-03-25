@@ -54,6 +54,16 @@ class ContaboConfig(models.Model):
         default='',
         help_text="Validated activation key - grants access without re-entering on each page load"
     )
+    entitlement_token = models.TextField(
+        blank=True,
+        default='',
+        help_text="Short-lived API entitlement; requires phone-home refresh."
+    )
+    entitlement_expires_at = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Unix expiry for entitlement_token (from API)."
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
