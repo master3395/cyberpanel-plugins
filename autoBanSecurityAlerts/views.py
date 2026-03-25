@@ -195,6 +195,19 @@ def unified_verification_required(view_func):
             verification_result = {}
 
             activation_key = request.GET.get('activation_key') or request.POST.get('activation_key')
+            if (
+                not activation_key
+                and request.method == 'POST'
+                and request.content_type
+                and 'application/json' in request.content_type
+                and request.body
+            ):
+                try:
+                    _payload = json.loads(request.body)
+                    if isinstance(_payload, dict):
+                        activation_key = _payload.get('activation_key') or activation_key
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    pass
             if not activation_key:
                 try:
                     config = AutoBanConfig.get_config()
@@ -508,10 +521,15 @@ def remove_whitelist_ip(request):
 
 
 @cyberpanel_login_required
-@unified_verification_required
 @require_http_methods(["POST"])
 def activate_key(request):
-    """Activate plugin with activation key"""
+    """Activate plugin with activation key.
+
+    Must NOT use unified_verification_required: the subscription UI POSTs JSON
+    (activation_key in body). Django leaves request.POST empty for JSON, so the
+    decorator would think there is no key and return HTML (subscription page),
+    which breaks fetch().json() in the browser.
+    """
     try:
         if request.content_type == 'application/json':
             data = json.loads(request.body)
