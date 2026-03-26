@@ -348,33 +348,62 @@ def unified_verification_required(view_func):
 
             if activation_key:
                 try:
-                    request_data = {
-                        'activation_key': activation_key.strip(),
-                        'plugin_name': PLUGIN_NAME,
-                        'user_email': user_email,
-                        'server_fingerprint': server_fp,
-                        'domain': domain,
-                    }
-                    response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
-                    if response_data.get('success', False) and response_data.get('has_access', False):
+                    activation_key_str = activation_key.strip()
+
+                    # 1) Local verification using CyberPanel DB-backed activation keys.
+                    # This prevents re-locking when upgrades/remote activation state becomes inconsistent.
+                    activation_ok = False
+                    try:
+                        from pluginHolder.plugin_access import verify_saved_activation_key
+                        activation_ok = verify_saved_activation_key(PLUGIN_NAME, user_email, activation_key_str)
+                        logging.writeToFile(
+                            f"Auto Ban Plugin: local activation DB verify result: ok={activation_ok} "
+                            f"plugin={PLUGIN_NAME} user={user_email[:3] + '***' if user_email else ''} "
+                            f"key_last4={activation_key_str[-4:] if len(activation_key_str) >= 4 else ''}"
+                        )
+                    except Exception as _db_e:
+                        activation_ok = False
+                        logging.writeToFile(f"Auto Ban Plugin: local activation DB verify error: {str(_db_e)}")
+
+                    if activation_ok:
                         has_access = True
-                        verification_result = {'method': 'activation_key', 'has_access': True, 'message': response_data.get('message', 'Access activated via key')}
-                        try:
-                            config = AutoBanConfig.get_config()
-                            config.activation_key = activation_key.strip()
-                            config.save(update_fields=['activation_key', 'updated_at'])
-                            _persist_entitlement_from_response(config, response_data)
-                            _persist_activation_in_cyberpanel_db(request, activation_key.strip())
-                        except Exception as e:
-                            logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
-                    elif not response_data.get('success') and activation_key:
-                        try:
-                            config = AutoBanConfig.get_config()
-                            if getattr(config, 'activation_key', '') == activation_key.strip():
-                                config.activation_key = ''
+                        verification_result = {
+                            'method': 'activation_key',
+                            'has_access': True,
+                            'message': 'Access granted via saved activation key'
+                        }
+                    else:
+                        request_data = {
+                            'activation_key': activation_key_str,
+                            'plugin_name': PLUGIN_NAME,
+                            'user_email': user_email,
+                            'server_fingerprint': server_fp,
+                            'domain': domain,
+                        }
+                        response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+                        if response_data.get('success', False) and response_data.get('has_access', False):
+                            has_access = True
+                            verification_result = {
+                                'method': 'activation_key',
+                                'has_access': True,
+                                'message': response_data.get('message', 'Access activated via key'),
+                            }
+                            try:
+                                config = AutoBanConfig.get_config()
+                                config.activation_key = activation_key_str
                                 config.save(update_fields=['activation_key', 'updated_at'])
-                        except Exception:
-                            pass
+                                _persist_entitlement_from_response(config, response_data)
+                                _persist_activation_in_cyberpanel_db(request, activation_key_str)
+                            except Exception as e:
+                                logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
+                        elif not response_data.get('success') and activation_key_str:
+                            try:
+                                config = AutoBanConfig.get_config()
+                                if getattr(config, 'activation_key', '') == activation_key_str:
+                                    config.activation_key = ''
+                                    config.save(update_fields=['activation_key', 'updated_at'])
+                            except Exception:
+                                pass
                 except Exception as e:
                     logging.writeToFile(f"Auto Ban Plugin: Activation key check error: {str(e)}")
 
