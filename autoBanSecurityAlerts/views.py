@@ -57,6 +57,19 @@ def _resolve_user_identity(request, override_email=''):
     for item in candidates:
         if item:
             return item.lower()
+    # CyberPanel commonly stores only userID in session (not email). Fall back to Administrator.
+    try:
+        from loginSystem.models import Administrator
+        uid = request.session.get('userID') if hasattr(request, 'session') else None
+        if uid:
+            admin = Administrator.objects.filter(pk=uid).only('email', 'userName').first()
+            if admin:
+                if getattr(admin, 'email', '') and str(admin.email).lower() != 'none':
+                    return str(admin.email).strip().lower()
+                if getattr(admin, 'userName', ''):
+                    return str(admin.userName).strip().lower()
+    except Exception:
+        pass
     return ''
 
 
