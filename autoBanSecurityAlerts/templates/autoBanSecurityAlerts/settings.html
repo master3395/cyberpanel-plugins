@@ -171,6 +171,53 @@
     input:checked + .toggle-slider:before {
         transform: translateX(26px);
     }
+
+    .auto-ban-pagination {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    .auto-ban-pagination label {
+        margin: 0;
+        font-weight: 600;
+        color: #495057;
+    }
+    .auto-ban-pagination select,
+    .auto-ban-pagination input[type="number"] {
+        padding: 6px 10px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        min-width: 4rem;
+    }
+    .auto-ban-pagination .page-nav a {
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 0 2px;
+        border-radius: 6px;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .auto-ban-pagination .page-nav a:hover {
+        background: #e9ecef;
+    }
+    .auto-ban-pagination .page-nav span.current {
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 0 2px;
+        border-radius: 6px;
+        background: #5856d6;
+        color: #fff;
+        font-weight: 600;
+    }
 </style>
 {% endblock %}
 
@@ -329,7 +376,32 @@
         <!-- Recent Auto-Bans -->
         <h2 style="margin-top: 40px; margin-bottom: 20px;"><i class="fas fa-history"></i> {% trans "Recent Auto-Bans" %}</h2>
         <div class="settings-card" style="padding: 20px;">
-            {% if recent_bans %}
+            {% if recent_bans_page.paginator.count %}
+            <div class="auto-ban-pagination">
+                <div>
+                    <label for="auto-ban-per-page">{% trans "Per page" %}</label>
+                    <select id="auto-ban-per-page" onchange="autoBanChangePerPage(this)">
+                        {% for n in per_page_choices %}
+                        <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="page-nav">
+                    {% if recent_bans_page.has_previous %}
+                    <a href="?page={{ recent_bans_page.previous_page_number }}&amp;per_page={{ per_page }}">{% trans "Previous" %}</a>
+                    {% endif %}
+                    <span class="current">{{ recent_bans_page.number }}</span>
+                    <span style="color:#6c757d;">/ {{ recent_bans_page.paginator.num_pages }}</span>
+                    {% if recent_bans_page.has_next %}
+                    <a href="?page={{ recent_bans_page.next_page_number }}&amp;per_page={{ per_page }}">{% trans "Next" %}</a>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="auto-ban-goto">{% trans "Go to page" %}</label>
+                    <input type="number" id="auto-ban-goto" min="1" max="{{ recent_bans_page.paginator.num_pages }}" value="{{ recent_bans_page.number }}" />
+                    <button type="button" class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="autoBanGotoPage()">{% trans "Go" %}</button>
+                </div>
+            </div>
             <table class="whitelist-table">
                 <thead>
                     <tr>
@@ -338,16 +410,26 @@
                         <th>{% trans "Duration" %}</th>
                         <th>{% trans "Alert Type" %}</th>
                         <th>{% trans "Banned At" %}</th>
+                        <th>{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for ban in recent_bans %}
-                    <tr>
+                    {% for ban in recent_bans_page %}
+                    <tr data-ban-log-id="{{ ban.id }}">
                         <td><code>{{ ban.ip_address }}</code></td>
                         <td>{{ ban.ban_reason }}</td>
                         <td>{{ ban.ban_duration }}</td>
                         <td>{{ ban.security_alert_type|default:"—" }}</td>
-                        <td>{{ ban.banned_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ ban.banned_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if machine_ip and ban.ip_address == machine_ip %}
+                            <span style="color: #6c757d; font-size: 12px;">{% trans "Cannot remove" %}</span>
+                            {% else %}
+                            <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="removeAutoBan({{ ban.id }})">
+                                <i class="fas fa-unlock"></i> {% trans "Remove ban" %}
+                            </button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -504,6 +586,55 @@ function removeWhitelistIP(ipId) {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to remove IP from whitelist');
+    });
+}
+
+function autoBanChangePerPage(sel) {
+    var per = parseInt(sel.value, 10) || 5;
+    window.location.href = '?page=1&per_page=' + per;
+}
+
+function autoBanGotoPage() {
+    var inp = document.getElementById('auto-ban-goto');
+    if (!inp) return;
+    var max = parseInt(inp.getAttribute('max'), 10) || 1;
+    var p = parseInt(inp.value, 10);
+    if (isNaN(p) || p < 1) p = 1;
+    if (p > max) p = max;
+    var perSelect = document.getElementById('auto-ban-per-page');
+    var per = perSelect ? perSelect.value : {{ per_page|default:5 }};
+    window.location.href = '?page=' + p + '&per_page=' + per;
+}
+
+function removeAutoBan(logId) {
+    if (!confirm("{% trans 'Remove this ban from the firewall? The IP will be allowed again.' %}")) {
+        return;
+    }
+    fetch('/plugins/autoBanSecurityAlerts/remove_auto_ban/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ log_id: logId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            if (typeof PNotify !== 'undefined') {
+                new PNotify({ title: 'Success', text: data.message || 'Ban removed', type: 'success' });
+            }
+            window.location.reload();
+        } else {
+            if (typeof PNotify !== 'undefined') {
+                new PNotify({ title: 'Error', text: data.error_message || 'Failed to remove ban', type: 'error' });
+            } else {
+                alert(data.error_message || 'Failed to remove ban');
+            }
+        }
+    })
+    .catch(function() {
+        alert('Failed to remove ban');
     });
 }
 

@@ -10,5 +10,6 @@ urlpatterns = [
     path('update_config/', views.update_config, name='update_config'),
     path('add_whitelist_ip/', views.add_whitelist_ip, name='add_whitelist_ip'),
     path('remove_whitelist_ip/', views.remove_whitelist_ip, name='remove_whitelist_ip'),
+    path('remove_auto_ban/', views.remove_auto_ban, name='remove_auto_ban'),
     path('activate_key/', views.activate_key, name='activate_key'),
 ]

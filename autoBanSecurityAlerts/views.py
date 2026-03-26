@@ -6,6 +6,7 @@ Automatically bans IPs from Security Alerts Detected in Recent SSH Logs
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
+from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from plogical.mailUtilities import mailUtilities
@@ -28,6 +29,9 @@ from . import api_encryption
 PLUGIN_NAME = 'autoBanSecurityAlerts'
 PLUGIN_VERSION = '1.0.0'
 
+AUTO_BAN_PER_PAGE_CHOICES = (5, 10, 15, 30, 50)
+AUTO_BAN_DEFAULT_PER_PAGE = 5
+
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
 REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'
 REMOTE_VERIFICATION_PLUGIN_GRANT_URL = 'https://api.newstargeted.com/api/verify-plugin-grant.php'
@@ -42,6 +46,23 @@ PAYPAL_PAYMENT_LINK = ''
 # Global monitoring thread
 _monitoring_thread = None
 _monitoring_lock = threading.Lock()
+
+
+def _parse_firewall_http_response(result):
+    """Parse JsonResponse/HttpResponse/dict from FirewallManager methods."""
+    if result is None:
+        return {}
+    if isinstance(result, dict):
+        return result
+    try:
+        raw = getattr(result, 'content', None)
+        if raw is None:
+            return {}
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8', errors='replace')
+        return json.loads(raw)
+    except Exception:
+        return {}
 
 
 def _resolve_user_identity(request, override_email=''):
@@ -595,8 +616,25 @@ def settings_view(request):
     show_payment_ui = access_via not in ('plugin_grant', 'activation_key', 'entitlement')
 
     whitelisted_ips = WhitelistedIP.objects.all()
-    recent_bans = AutoBanLog.objects.all()[:50]  # Last 50 bans
     machine_ip = get_machine_ip()
+
+    try:
+        per_page = int(request.GET.get('per_page', str(AUTO_BAN_DEFAULT_PER_PAGE)))
+    except (TypeError, ValueError):
+        per_page = AUTO_BAN_DEFAULT_PER_PAGE
+    if per_page not in AUTO_BAN_PER_PAGE_CHOICES:
+        per_page = AUTO_BAN_DEFAULT_PER_PAGE
+
+    try:
+        page_num = int(request.GET.get('page', '1'))
+    except (TypeError, ValueError):
+        page_num = 1
+    if page_num < 1:
+        page_num = 1
+
+    bans_qs = AutoBanLog.objects.all().order_by('-banned_at')
+    paginator = Paginator(bans_qs, per_page)
+    recent_bans_page = paginator.get_page(page_num)
 
     context = {
         'plugin_name': 'Auto Ban Security Alerts',
@@ -612,7 +650,9 @@ def settings_view(request):
         'paypal_payment_link': PAYPAL_PAYMENT_LINK,
         'description': 'Automatically ban IP addresses from Security Alerts Detected in Recent SSH Logs.',
         'whitelisted_ips': whitelisted_ips,
-        'recent_bans': recent_bans,
+        'recent_bans_page': recent_bans_page,
+        'per_page': per_page,
+        'per_page_choices': AUTO_BAN_PER_PAGE_CHOICES,
         'machine_ip': machine_ip,
     }
     proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'managePlugins')
@@ -721,6 +761,65 @@ def remove_whitelist_ip(request):
     except Exception as e:
         logging.writeToFile(f"Auto Ban Plugin: Error removing whitelist IP: {str(e)}")
         return JsonResponse({'status': 0, 'error_message': str(e)})
+
+
+@cyberpanel_login_required
+@require_manage_plugins_api
+@unified_verification_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def remove_auto_ban(request):
+    """Unban IP in firewall and remove the AutoBanLog row."""
+    try:
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        log_id = data.get('log_id')
+        if log_id in (None, ''):
+            return JsonResponse({'status': 0, 'error_message': 'log_id is required'})
+        try:
+            log_id = int(log_id)
+        except (TypeError, ValueError):
+            return JsonResponse({'status': 0, 'error_message': 'Invalid log_id'})
+
+        log_entry = AutoBanLog.objects.filter(pk=log_id).first()
+        if not log_entry:
+            return JsonResponse({'status': 0, 'error_message': 'Log entry not found'})
+
+        ip = str(log_entry.ip_address).strip()
+        machine_ip = get_machine_ip()
+        if machine_ip and ip == str(machine_ip).strip():
+            return JsonResponse({'status': 0, 'error_message': 'Cannot remove ban for the CyberPanel machine IP'})
+
+        from firewall.firewallManager import FirewallManager
+        from loginSystem.models import Administrator
+
+        admin = Administrator.objects.filter(acl__adminStatus=1).first()
+        if not admin:
+            return JsonResponse({'status': 0, 'error_message': 'No admin user found'})
+
+        fm = FirewallManager()
+        result = fm.removeBannedIP(admin.pk, {'ip': ip})
+        parsed = _parse_firewall_http_response(result)
+        err_raw = (parsed.get('error_message') or parsed.get('error') or '')
+        err_msg = err_raw.strip().lower()
+
+        if parsed.get('status') == 1:
+            log_entry.delete()
+            return JsonResponse({'status': 1, 'message': parsed.get('message', 'IP unbanned successfully')})
+
+        if 'not found' in err_msg:
+            log_entry.delete()
+            return JsonResponse({
+                'status': 1,
+                'message': 'Log cleared (ban was already removed or not found in firewall)',
+            })
+
+        return JsonResponse({
+            'status': 0,
+            'error_message': err_raw or 'Failed to remove ban',
+        })
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: Error removing auto-ban: {str(e)}")
+        return JsonResponse({'status': 0, 'error_message': 'Could not remove ban'})
 
 
 @cyberpanel_login_required
