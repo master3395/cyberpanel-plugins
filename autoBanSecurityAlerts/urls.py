@@ -7,6 +7,7 @@ app_name = 'autoBanSecurityAlerts'
 urlpatterns = [
     path('', views.main_view, name='main'),
     path('settings/', views.settings_view, name='settings'),
+    path('recent_bans_fragment/', views.recent_bans_fragment, name='recent_bans_fragment'),
     path('update_config/', views.update_config, name='update_config'),
     path('add_whitelist_ip/', views.add_whitelist_ip, name='add_whitelist_ip'),
     path('remove_whitelist_ip/', views.remove_whitelist_ip, name='remove_whitelist_ip'),

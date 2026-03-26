@@ -588,6 +588,35 @@ def ensure_machine_ip_whitelisted():
         logging.writeToFile(f"Auto Ban Plugin: Error ensuring machine IP whitelisted: {str(e)}")
 
 
+def _recent_bans_pagination_context(request):
+    """Build context for Recent Auto-Bans table (settings page + AJAX fragment)."""
+    machine_ip = get_machine_ip()
+    try:
+        per_page = int(request.GET.get('per_page', str(AUTO_BAN_DEFAULT_PER_PAGE)))
+    except (TypeError, ValueError):
+        per_page = AUTO_BAN_DEFAULT_PER_PAGE
+    if per_page not in AUTO_BAN_PER_PAGE_CHOICES:
+        per_page = AUTO_BAN_DEFAULT_PER_PAGE
+
+    try:
+        page_num = int(request.GET.get('page', '1'))
+    except (TypeError, ValueError):
+        page_num = 1
+    if page_num < 1:
+        page_num = 1
+
+    bans_qs = AutoBanLog.objects.all().order_by('-banned_at')
+    paginator = Paginator(bans_qs, per_page)
+    recent_bans_page = paginator.get_page(page_num)
+
+    return {
+        'recent_bans_page': recent_bans_page,
+        'per_page': per_page,
+        'per_page_choices': AUTO_BAN_PER_PAGE_CHOICES,
+        'machine_ip': machine_ip,
+    }
+
+
 @cyberpanel_login_required
 def main_view(request):
     mailUtilities.checkHome()
@@ -616,25 +645,7 @@ def settings_view(request):
     show_payment_ui = access_via not in ('plugin_grant', 'activation_key', 'entitlement')
 
     whitelisted_ips = WhitelistedIP.objects.all()
-    machine_ip = get_machine_ip()
-
-    try:
-        per_page = int(request.GET.get('per_page', str(AUTO_BAN_DEFAULT_PER_PAGE)))
-    except (TypeError, ValueError):
-        per_page = AUTO_BAN_DEFAULT_PER_PAGE
-    if per_page not in AUTO_BAN_PER_PAGE_CHOICES:
-        per_page = AUTO_BAN_DEFAULT_PER_PAGE
-
-    try:
-        page_num = int(request.GET.get('page', '1'))
-    except (TypeError, ValueError):
-        page_num = 1
-    if page_num < 1:
-        page_num = 1
-
-    bans_qs = AutoBanLog.objects.all().order_by('-banned_at')
-    paginator = Paginator(bans_qs, per_page)
-    recent_bans_page = paginator.get_page(page_num)
+    ban_ctx = _recent_bans_pagination_context(request)
 
     context = {
         'plugin_name': 'Auto Ban Security Alerts',
@@ -650,13 +661,40 @@ def settings_view(request):
         'paypal_payment_link': PAYPAL_PAYMENT_LINK,
         'description': 'Automatically ban IP addresses from Security Alerts Detected in Recent SSH Logs.',
         'whitelisted_ips': whitelisted_ips,
-        'recent_bans_page': recent_bans_page,
-        'per_page': per_page,
-        'per_page_choices': AUTO_BAN_PER_PAGE_CHOICES,
-        'machine_ip': machine_ip,
+        **ban_ctx,
     }
     proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'managePlugins')
     return proc.render()
+
+
+@cyberpanel_login_required
+@unified_verification_required
+def recent_bans_fragment(request):
+    """Return HTML fragment for Recent Auto-Bans (AJAX pagination without full page reload)."""
+    if request.method != 'GET':
+        return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        from django.template.loader import render_to_string
+        ctx = _recent_bans_pagination_context(request)
+        html = render_to_string(
+            'autoBanSecurityAlerts/_recent_bans_fragment.html',
+            ctx,
+            request=request,
+        )
+        rp = ctx['recent_bans_page']
+        return JsonResponse(
+            {
+                'ok': True,
+                'html': html,
+                'page': rp.number,
+                'per_page': ctx['per_page'],
+                'num_pages': rp.paginator.num_pages,
+            },
+            json_dumps_params={'ensure_ascii': False},
+        )
+    except Exception as e:
+        logging.writeToFile('Auto Ban Plugin: recent_bans_fragment failed: %s' % str(e))
+        return JsonResponse({'ok': False, 'error': 'Failed to load'}, status=500)
 
 
 @cyberpanel_login_required
