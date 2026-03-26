@@ -323,6 +323,21 @@
 <script>
 // Activation Key Form Handler
 document.addEventListener('DOMContentLoaded', function() {
+    async function persistActivationInCyberPanel(pluginName, activationKey) {
+        try {
+            if (!activationKey) return;
+            await fetch('/plugins/api/store-activation/' + encodeURIComponent(pluginName) + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ activation_key: activationKey })
+            });
+        } catch (e) {
+            console.warn('Activation persistence hook failed:', e);
+        }
+    }
     const activationForm = document.getElementById('activation-key-form');
     const activationInput = document.getElementById('activation-key-input');
     const activateBtn = document.getElementById('activate-btn');
@@ -366,6 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error('Could not activate. Check your network and try again.');
                 }
                 if (data.success && data.has_access) {
+                    await persistActivationInCyberPanel('contaboAutoSnapshot', activationKey);
                     showActivationMessage('✅ ' + data.message + ' Access activated successfully!', 'success');
                     activationInput.value = '';
                     

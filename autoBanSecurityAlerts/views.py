@@ -115,6 +115,18 @@ def _persist_activation_in_cyberpanel_db(request, activation_key):
     ]:
         if identity:
             identities.add(identity)
+    try:
+        from loginSystem.models import Administrator
+        uid = request.session.get('userID') if hasattr(request, 'session') else None
+        if uid:
+            admin = Administrator.objects.filter(pk=uid).only('email', 'userName').first()
+            if admin:
+                if getattr(admin, 'email', '') and str(admin.email).lower() != 'none':
+                    identities.add(str(admin.email).strip().lower())
+                if getattr(admin, 'userName', ''):
+                    identities.add(str(admin.userName).strip().lower())
+    except Exception:
+        pass
 
     saved_any = False
     for identity in identities:

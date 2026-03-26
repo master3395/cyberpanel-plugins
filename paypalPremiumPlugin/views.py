@@ -37,6 +37,81 @@ PAYPAL_ME_URL = 'https://paypal.me/KimBS?locale.x=en_US&country.x=NO'
 PAYPAL_PAYMENT_LINK = ''
 
 
+def _resolve_user_identity(request, override_email=''):
+    """
+    Resolve a stable user identity for premium verification/persistence.
+    """
+    candidates = [
+        (override_email or '').strip(),
+        (request.session.get('email', '') if hasattr(request, 'session') else '').strip(),
+        (getattr(getattr(request, 'user', None), 'email', '') or '').strip(),
+        (getattr(getattr(request, 'user', None), 'username', '') or '').strip(),
+    ]
+    for item in candidates:
+        if item:
+            return item.lower()
+    try:
+        from loginSystem.models import Administrator
+        uid = request.session.get('userID') if hasattr(request, 'session') else None
+        if uid:
+            admin = Administrator.objects.filter(pk=uid).only('email', 'userName').first()
+            if admin:
+                if getattr(admin, 'email', '') and str(admin.email).lower() != 'none':
+                    return str(admin.email).strip().lower()
+                if getattr(admin, 'userName', ''):
+                    return str(admin.userName).strip().lower()
+    except Exception:
+        pass
+    return ''
+
+
+def _persist_activation_in_cyberpanel_db(request, activation_key):
+    """
+    Save activation key in CyberPanel pluginHolder DB storage for upgrade resilience.
+    """
+    key_value = (activation_key or '').strip()
+    if not key_value:
+        return False
+    try:
+        from pluginHolder.plugin_access import save_activation_key
+    except Exception as e:
+        logging.writeToFile(f"PayPal Premium Plugin: pluginHolder save_activation_key import failed: {str(e)}")
+        return False
+
+    identities = set()
+    resolved = _resolve_user_identity(request)
+    if resolved:
+        identities.add(resolved)
+    for identity in [
+        (request.session.get('email', '') if hasattr(request, 'session') else '').strip().lower(),
+        (getattr(getattr(request, 'user', None), 'email', '') or '').strip().lower(),
+        (getattr(getattr(request, 'user', None), 'username', '') or '').strip().lower(),
+    ]:
+        if identity:
+            identities.add(identity)
+    try:
+        from loginSystem.models import Administrator
+        uid = request.session.get('userID') if hasattr(request, 'session') else None
+        if uid:
+            admin = Administrator.objects.filter(pk=uid).only('email', 'userName').first()
+            if admin:
+                if getattr(admin, 'email', '') and str(admin.email).lower() != 'none':
+                    identities.add(str(admin.email).strip().lower())
+                if getattr(admin, 'userName', ''):
+                    identities.add(str(admin.userName).strip().lower())
+    except Exception:
+        pass
+
+    saved_any = False
+    for identity in identities:
+        try:
+            if save_activation_key(PLUGIN_NAME, identity, key_value, source='paypal_premium_plugin'):
+                saved_any = True
+        except Exception as e:
+            logging.writeToFile(f"PayPal Premium Plugin: save_activation_key failed for {identity}: {str(e)}")
+    return saved_any
+
+
 def cyberpanel_login_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
@@ -218,11 +293,7 @@ def unified_verification_required(view_func):
                 from loginSystem.views import loadLoginPage
                 return redirect(loadLoginPage)
 
-            # Get user email and normalize to lowercase for matching (match contaboAutoSnapshot method)
-            user_email = getattr(request.user, 'email', None) if hasattr(request, 'user') and request.user else None
-            if not user_email:
-                user_email = request.session.get('email', '') or getattr(request.user, 'username', '')
-            user_email = user_email.strip().lower() if user_email else ''
+            user_email = _resolve_user_identity(request)
             logging.writeToFile(f"PayPal Premium Plugin: Checking access for email: {user_email}, IP: {request.META.get('REMOTE_ADDR', '')}, Host: {request.get_host()}")
 
             try:
@@ -280,34 +351,74 @@ def unified_verification_required(view_func):
 
             if activation_key:
                 try:
-                    request_data = {
-                        'activation_key': activation_key.strip(),
-                        'plugin_name': PLUGIN_NAME,
-                        'user_email': user_email,
-                        'server_fingerprint': server_fp,
-                        'domain': domain,
-                    }
-                    response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
-                    if response_data.get('success', False) and response_data.get('has_access', False):
+                    activation_key_str = activation_key.strip()
+                    activation_ok = False
+                    try:
+                        from pluginHolder.plugin_access import verify_saved_activation_key
+                        activation_ok = verify_saved_activation_key(PLUGIN_NAME, user_email, activation_key_str)
+                        logging.writeToFile(
+                            f"PayPal Premium Plugin: local activation DB verify result: ok={activation_ok} "
+                            f"plugin={PLUGIN_NAME} user={user_email[:3] + '***' if user_email else ''} "
+                            f"key_last4={activation_key_str[-4:] if len(activation_key_str) >= 4 else ''}"
+                        )
+                    except Exception as _db_e:
+                        activation_ok = False
+                        logging.writeToFile(f"PayPal Premium Plugin: local activation DB verify error: {str(_db_e)}")
+
+                    if activation_ok:
                         has_access = True
-                        verification_result = {'method': 'activation_key', 'has_access': True, 'message': response_data.get('message', 'Access activated via key')}
-                        try:
-                            config = PaypalPremiumPluginConfig.get_config()
-                            config.activation_key = activation_key.strip()
-                            config.save(update_fields=['activation_key', 'updated_at'])
-                            _persist_entitlement_from_response(config, response_data)
-                        except Exception as e:
-                            logging.writeToFile(f"PayPal Premium Plugin: Could not persist activation key: {str(e)}")
-                    elif not response_data.get('success') and activation_key:
-                        try:
-                            config = PaypalPremiumPluginConfig.get_config()
-                            if getattr(config, 'activation_key', '') == activation_key.strip():
-                                config.activation_key = ''
+                        verification_result = {
+                            'method': 'activation_key',
+                            'has_access': True,
+                            'message': 'Access granted via saved activation key',
+                        }
+                    else:
+                        request_data = {
+                            'activation_key': activation_key_str,
+                            'plugin_name': PLUGIN_NAME,
+                            'user_email': user_email,
+                            'server_fingerprint': server_fp,
+                            'domain': domain,
+                        }
+                        response_data = _api_request(REMOTE_ACTIVATION_KEY_URL, request_data)
+                        if response_data.get('success', False) and response_data.get('has_access', False):
+                            has_access = True
+                            verification_result = {
+                                'method': 'activation_key',
+                                'has_access': True,
+                                'message': response_data.get('message', 'Access activated via key'),
+                            }
+                            try:
+                                config = PaypalPremiumPluginConfig.get_config()
+                                config.activation_key = activation_key_str
                                 config.save(update_fields=['activation_key', 'updated_at'])
-                        except Exception:
-                            pass
+                                _persist_entitlement_from_response(config, response_data)
+                                _persist_activation_in_cyberpanel_db(request, activation_key_str)
+                            except Exception as e:
+                                logging.writeToFile(f"PayPal Premium Plugin: Could not persist activation key: {str(e)}")
+                        elif not response_data.get('success') and activation_key_str:
+                            try:
+                                config = PaypalPremiumPluginConfig.get_config()
+                                if getattr(config, 'activation_key', '') == activation_key_str:
+                                    config.activation_key = ''
+                                    config.save(update_fields=['activation_key', 'updated_at'])
+                            except Exception:
+                                pass
                 except Exception as e:
                     logging.writeToFile(f"PayPal Premium Plugin: Activation key check error: {str(e)}")
+
+            if not has_access and user_email and activation_key:
+                try:
+                    from pluginHolder.plugin_access import has_saved_activation
+                    if has_saved_activation(PLUGIN_NAME, user_email):
+                        has_access = True
+                        verification_result = {
+                            'method': 'activation_key',
+                            'has_access': True,
+                            'message': 'Access granted via saved activation key',
+                        }
+                except Exception as _hs_e:
+                    logging.writeToFile(f"PayPal Premium Plugin: has_saved_activation check error: {str(_hs_e)}")
 
             if not has_access:
                 grant_result = check_plugin_grant(user_email, user_ip, domain, server_fp)
@@ -438,9 +549,7 @@ def activate_key(request):
             data = request.POST
 
         activation_key = data.get('activation_key', '').strip()
-        user_email = data.get('user_email', '').strip()
-        if not user_email:
-            user_email = request.session.get('email', '') or (getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else '')
+        user_email = _resolve_user_identity(request, data.get('user_email', '') or '')
 
         if not activation_key:
             return JsonResponse({'success': False, 'message': 'Activation key is required'}, status=400)
@@ -460,6 +569,7 @@ def activate_key(request):
                 config.activation_key = activation_key
                 config.save(update_fields=['activation_key', 'updated_at'])
                 _persist_entitlement_from_response(config, response_data)
+                _persist_activation_in_cyberpanel_db(request, activation_key)
             except Exception as e:
                 logging.writeToFile(f"PayPal Premium Plugin: Could not persist activation key: {str(e)}")
 

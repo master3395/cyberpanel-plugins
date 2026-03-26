@@ -659,6 +659,89 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// Activation key on settings page (same flow as subscription + pluginHolder store-activation hook)
+document.addEventListener('DOMContentLoaded', function() {
+    async function persistActivationInCyberPanel(pluginName, activationKey) {
+        try {
+            if (!activationKey) return;
+            await fetch('/plugins/api/store-activation/' + encodeURIComponent(pluginName) + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ activation_key: activationKey })
+            });
+        } catch (e) {
+            console.warn('Activation persistence hook failed:', e);
+        }
+    }
+    const activationForm = document.getElementById('activation-key-form');
+    const activationInput = document.getElementById('activation-key-input');
+    const activateBtn = document.getElementById('activate-btn');
+    const activationMessage = document.getElementById('activation-message');
+    if (!activationForm || !activationInput || !activateBtn) {
+        return;
+    }
+    activationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const activationKey = activationInput.value.trim().toUpperCase();
+            if (!activationKey) return;
+            activateBtn.disabled = true;
+            activateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Activating...';
+            try {
+                const response = await fetch('/plugins/contaboAutoSnapshot/activate-key/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ activation_key: activationKey })
+                });
+                const raw = await response.text();
+                const ct = (response.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (ct.indexOf('application/json') !== -1) {
+                    try { data = JSON.parse(raw); } catch (_parseErr) { throw new Error('Invalid response from server. Please reload the page.'); }
+                } else {
+                    const s = raw.trim();
+                    if (s.indexOf('<!DOCTYPE') === 0 || s.indexOf('<html') === 0) {
+                        throw new Error('Session expired or server returned a page instead of data. Reload and try again.');
+                    }
+                    throw new Error('Could not activate. Check your network and try again.');
+                }
+                if (data.success && data.has_access) {
+                    await persistActivationInCyberPanel('contaboAutoSnapshot', activationKey);
+                    if (activationMessage) {
+                        activationMessage.textContent = '✅ ' + (data.message || 'Access activated successfully');
+                        activationMessage.style.display = 'block';
+                        activationMessage.style.background = '#d4edda';
+                        activationMessage.style.border = '1px solid #c3e6cb';
+                        activationMessage.style.color = '#155724';
+                    }
+                    activationInput.value = '';
+                    setTimeout(function() { window.location.reload(); }, 2000);
+                } else if (activationMessage) {
+                    activationMessage.textContent = '❌ ' + (data.message || 'Invalid activation key for this plugin.');
+                    activationMessage.style.display = 'block';
+                    activationMessage.style.background = '#f8d7da';
+                    activationMessage.style.border = '1px solid #f5c6cb';
+                    activationMessage.style.color = '#721c24';
+                }
+            } catch (error) {
+                if (activationMessage) {
+                    activationMessage.textContent = '❌ ' + (error && error.message ? error.message : 'Activation failed.');
+                    activationMessage.style.display = 'block';
+                    activationMessage.style.background = '#f8d7da';
+                    activationMessage.style.color = '#721c24';
+                }
+            } finally {
+                activateBtn.disabled = false;
+                activateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+            }
+    });
+});
+
 // Toggle cron expression field
 function toggleCronExpression() {
     const scheduleType = document.getElementById('schedule-type').value;
