@@ -318,6 +318,9 @@ def unified_verification_required(view_func):
                         'domain': domain,
                     })
                     if ent_resp.get('success') and ent_resp.get('has_access'):
+                        logging.writeToFile(
+                            f"Auto Ban Plugin: entitlement verification granted method=entitlement user={user_email[:3] + '***' if user_email else ''}"
+                        )
                         _persist_entitlement_from_response(cfg_ent, ent_resp)
                         request.session['auto_ban_plugin_access_via'] = 'entitlement'
                         return view_func(request, *args, **kwargs)
@@ -477,7 +480,16 @@ def unified_verification_required(view_func):
                 return proc.render()
 
             if has_access and verification_result:
-                request.session['auto_ban_plugin_access_via'] = verification_result.get('method', '')
+                method = verification_result.get('method', '') or ''
+                request.session['auto_ban_plugin_access_via'] = method
+                logging.writeToFile(
+                    f"Auto Ban Plugin: granted has_access=True method={method} user={user_email[:3] + '***' if user_email else ''}"
+                )
+            else:
+                # If has_access is true but verification_result is empty, UI may remain on payment page.
+                logging.writeToFile(
+                    f"Auto Ban Plugin: granted has_access={has_access} verification_result_empty={not bool(verification_result)}"
+                )
 
             return view_func(request, *args, **kwargs)
         except Exception as e:
