@@ -21,7 +21,7 @@ from . import api_encryption
 
 # Plugin configuration
 PLUGIN_NAME = 'contaboAutoSnapshot'
-PLUGIN_VERSION = '1.0.0'
+PLUGIN_VERSION = '1.0.3'
 
 # Remote verification URLs
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
@@ -694,7 +694,7 @@ def settings_view(request):
         context = {
             'title': 'Auto Snapshot for Contabo',
             'plugin_name': 'Auto Snapshot for Contabo',
-            'version': '1.0.0',
+            'version': PLUGIN_VERSION,
             'status': 'Active',
             'config': config,
             'config_form': ContaboConfigForm(instance=config),

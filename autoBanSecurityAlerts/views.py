@@ -27,7 +27,7 @@ from .models import AutoBanConfig, WhitelistedIP, AutoBanLog
 from . import api_encryption
 
 PLUGIN_NAME = 'autoBanSecurityAlerts'
-PLUGIN_VERSION = '1.0.0'
+PLUGIN_VERSION = '1.0.1'
 
 AUTO_BAN_PER_PAGE_CHOICES = (5, 10, 15, 30, 50)
 AUTO_BAN_DEFAULT_PER_PAGE = 5

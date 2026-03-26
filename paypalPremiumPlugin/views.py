@@ -23,7 +23,7 @@ from .models import PaypalPremiumPluginConfig
 from . import api_encryption
 
 PLUGIN_NAME = 'paypalPremiumPlugin'
-PLUGIN_VERSION = '1.0.2'
+PLUGIN_VERSION = '1.0.3'
 
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
 REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'

@@ -2,7 +2,7 @@
 <plugin>
     <name>Premium Plugin Example</name>
     <type>Utility</type>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <description>An example paid plugin that requires Patreon subscription to "CyberPanel Paid Plugin" tier. Users can install it but cannot run it without subscription.</description>
     <author>master3395</author>
     <website>https://github.com/master3395/cyberpanel-plugins</website>
