@@ -423,6 +423,20 @@ def unified_verification_required(view_func):
                 except Exception as e:
                     logging.writeToFile(f"Auto Ban Plugin: Activation key check error: {str(e)}")
 
+            # Prefer local DB activation keys over remote "plugin grant" checks when both could match.
+            if not has_access and user_email and activation_key:
+                try:
+                    from pluginHolder.plugin_access import has_saved_activation
+                    if has_saved_activation(PLUGIN_NAME, user_email):
+                        has_access = True
+                        verification_result = {
+                            'method': 'activation_key',
+                            'has_access': True,
+                            'message': 'Access granted via saved activation key'
+                        }
+                except Exception as _hs_e:
+                    logging.writeToFile(f"Auto Ban Plugin: has_saved_activation check error: {str(_hs_e)}")
+
             if not has_access:
                 grant_result = check_plugin_grant(user_email, user_ip, domain, server_fp)
                 if grant_result.get('has_access'):
