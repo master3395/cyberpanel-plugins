@@ -235,6 +235,49 @@
     .auto-ban-pagination .page-nav button.auto-ban-nav-btn:hover {
         background: #e9ecef;
     }
+
+    #auto-ban-remove-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 16px;
+    }
+    #auto-ban-remove-modal.is-open {
+        display: flex;
+    }
+    .auto-ban-remove-modal-box {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        max-width: 440px;
+        width: 100%;
+        padding: 24px;
+    }
+    .auto-ban-remove-modal-box h3 {
+        margin: 0 0 12px 0;
+        font-size: 1.15rem;
+        color: #2f3640;
+    }
+    .auto-ban-remove-modal-box p {
+        margin: 0 0 20px 0;
+        color: #495057;
+        line-height: 1.5;
+    }
+    .auto-ban-remove-modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    .auto-ban-remove-modal-actions .btn-secondary {
+        background: #e9ecef;
+        color: #495057;
+        border: 1px solid #ced4da;
+    }
 </style>
 {% endblock %}
 
@@ -395,6 +438,17 @@
         <div class="settings-card" style="padding: 20px;">
             <div id="auto-ban-recent-root">
             {% include 'autoBanSecurityAlerts/_recent_bans_fragment.html' %}
+            </div>
+        </div>
+    </div>
+
+    <div id="auto-ban-remove-modal" role="dialog" aria-modal="true" aria-labelledby="auto-ban-remove-title" aria-hidden="true">
+        <div class="auto-ban-remove-modal-box">
+            <h3 id="auto-ban-remove-title">{% trans "Remove ban?" %}</h3>
+            <p>{% trans "This will unban the IP in the firewall. The address will be allowed again until blocked by another rule." %}</p>
+            <div class="auto-ban-remove-modal-actions">
+                <button type="button" class="btn btn-secondary" id="auto-ban-remove-cancel">{% trans "Cancel" %}</button>
+                <button type="button" class="btn btn-danger" id="auto-ban-remove-confirm">{% trans "Confirm removal" %}</button>
             </div>
         </div>
     </div>
@@ -616,8 +670,34 @@ function autoBanGotoPage() {
     autoBanLoadRecentBans(p, per);
 }
 
+window.autoBanPendingRemoveLogId = null;
+
+function autoBanOpenRemoveModal() {
+    var el = document.getElementById('auto-ban-remove-modal');
+    if (!el) return;
+    el.classList.add('is-open');
+    el.setAttribute('aria-hidden', 'false');
+    var confirmBtn = document.getElementById('auto-ban-remove-confirm');
+    if (confirmBtn) confirmBtn.focus();
+}
+
+function autoBanCloseRemoveModal() {
+    var el = document.getElementById('auto-ban-remove-modal');
+    if (!el) return;
+    el.classList.remove('is-open');
+    el.setAttribute('aria-hidden', 'true');
+    window.autoBanPendingRemoveLogId = null;
+}
+
 function removeAutoBan(logId) {
-    if (!confirm("{% trans 'Remove this ban from the firewall? The IP will be allowed again.' %}")) {
+    window.autoBanPendingRemoveLogId = logId;
+    autoBanOpenRemoveModal();
+}
+
+function autoBanExecuteRemoveBan() {
+    var logId = window.autoBanPendingRemoveLogId;
+    autoBanCloseRemoveModal();
+    if (!logId) {
         return;
     }
     fetch('/plugins/autoBanSecurityAlerts/remove_auto_ban/', {
@@ -649,6 +729,35 @@ function removeAutoBan(logId) {
         alert('Failed to remove ban');
     });
 }
+
+(function autoBanRemoveModalInit() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var modal = document.getElementById('auto-ban-remove-modal');
+        var cancel = document.getElementById('auto-ban-remove-cancel');
+        var confirmBtn = document.getElementById('auto-ban-remove-confirm');
+        if (cancel) {
+            cancel.addEventListener('click', autoBanCloseRemoveModal);
+        }
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', autoBanExecuteRemoveBan);
+        }
+        if (modal) {
+            modal.addEventListener('click', function(ev) {
+                if (ev.target === modal) {
+                    autoBanCloseRemoveModal();
+                }
+            });
+        }
+        document.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Escape') {
+                var m = document.getElementById('auto-ban-remove-modal');
+                if (m && m.classList.contains('is-open')) {
+                    autoBanCloseRemoveModal();
+                }
+            }
+        });
+    });
+})();
 
 {% if show_payment_ui %}
 document.getElementById('activation-form').addEventListener('submit', async function(e) {
