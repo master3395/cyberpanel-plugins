@@ -375,6 +375,22 @@ function getCookie(name) {
     return cookieValue;
 }
 
+async function persistActivationInCyberPanel(pluginName, activationKey) {
+    try {
+        if (!activationKey) return;
+        await fetch('/plugins/api/store-activation/' + encodeURIComponent(pluginName) + '/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ activation_key: activationKey })
+        });
+    } catch (e) {
+        console.warn('Activation persistence hook failed:', e);
+    }
+}
+
 function saveConfig() {
     const form = document.getElementById('config-form');
     const data = {
@@ -521,7 +537,8 @@ document.getElementById('activation-form').addEventListener('submit', async func
         msg.style.display = 'block';
         msg.style.background = data.status === 1 ? '#d4edda' : '#f8d7da';
         msg.style.color = data.status === 1 ? '#155724' : '#721c24';
-        if (data.status === 1) { 
+        if (data.status === 1) {
+            await persistActivationInCyberPanel('autoBanSecurityAlerts', key);
             document.getElementById('activation-key').value = ''; 
             setTimeout(function() { location.reload(); }, 2000); 
         }

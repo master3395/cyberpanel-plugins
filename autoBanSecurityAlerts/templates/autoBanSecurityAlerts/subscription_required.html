@@ -101,6 +101,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    async function persistActivationInCyberPanel(pluginName, activationKey) {
+        try {
+            if (!activationKey) return;
+            const csrfInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+            await fetch('/plugins/api/store-activation/' + encodeURIComponent(pluginName) + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                },
+                body: JSON.stringify({ activation_key: activationKey })
+            });
+        } catch (e) {
+            console.warn('Activation persistence hook failed:', e);
+        }
+    }
+
     const form = document.getElementById('activation-key-form');
     const input = document.getElementById('activation-key-input');
     const btn = document.getElementById('activate-btn');
@@ -133,7 +150,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 msg.style.display = 'block';
                 msg.style.background = data.status === 1 ? '#d4edda' : '#f8d7da';
                 msg.style.color = data.status === 1 ? '#155724' : '#721c24';
-                if (data.status === 1) { input.value = ''; setTimeout(function() { location.reload(); }, 2000); }
+                if (data.status === 1) {
+                    await persistActivationInCyberPanel('autoBanSecurityAlerts', key);
+                    input.value = '';
+                    setTimeout(function() { location.reload(); }, 2000);
+                }
             } catch (err) {
                 msg.textContent = '❌ ' + (err && err.message ? err.message : 'Activation failed.');
                 msg.style.display = 'block';

@@ -44,6 +44,54 @@ _monitoring_thread = None
 _monitoring_lock = threading.Lock()
 
 
+def _resolve_user_identity(request, override_email=''):
+    """
+    Resolve a stable user identity for premium verification/persistence.
+    """
+    candidates = [
+        (override_email or '').strip(),
+        (request.session.get('email', '') if hasattr(request, 'session') else '').strip(),
+        (getattr(getattr(request, 'user', None), 'email', '') or '').strip(),
+        (getattr(getattr(request, 'user', None), 'username', '') or '').strip(),
+    ]
+    for item in candidates:
+        if item:
+            return item.lower()
+    return ''
+
+
+def _persist_activation_in_cyberpanel_db(request, activation_key):
+    """
+    Save activation key in CyberPanel pluginHolder DB storage for upgrade resilience.
+    """
+    key_value = (activation_key or '').strip()
+    if not key_value:
+        return False
+    try:
+        from pluginHolder.plugin_access import save_activation_key
+    except Exception as e:
+        logging.writeToFile(f"Auto Ban Plugin: pluginHolder save_activation_key import failed: {str(e)}")
+        return False
+
+    identities = set()
+    for identity in [
+        (request.session.get('email', '') if hasattr(request, 'session') else '').strip().lower(),
+        (getattr(getattr(request, 'user', None), 'email', '') or '').strip().lower(),
+        (getattr(getattr(request, 'user', None), 'username', '') or '').strip().lower(),
+    ]:
+        if identity:
+            identities.add(identity)
+
+    saved_any = False
+    for identity in identities:
+        try:
+            if save_activation_key(PLUGIN_NAME, identity, key_value, source='autoban_plugin'):
+                saved_any = True
+        except Exception as e:
+            logging.writeToFile(f"Auto Ban Plugin: save_activation_key failed for {identity}: {str(e)}")
+    return saved_any
+
+
 def cyberpanel_login_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
@@ -242,8 +290,7 @@ def unified_verification_required(view_func):
                 return redirect(loadLoginPage)
 
             # Get user email from session or user object, normalize to lowercase
-            user_email = request.session.get('email', '') or (getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else '') or getattr(request.user, 'username', '')
-            user_email = user_email.strip().lower() if user_email else ''
+            user_email = _resolve_user_identity(request)
             logging.writeToFile(f"Auto Ban Plugin: Checking access for email: {user_email}")
 
             try:
@@ -317,6 +364,7 @@ def unified_verification_required(view_func):
                             config.activation_key = activation_key.strip()
                             config.save(update_fields=['activation_key', 'updated_at'])
                             _persist_entitlement_from_response(config, response_data)
+                            _persist_activation_in_cyberpanel_db(request, activation_key.strip())
                         except Exception as e:
                             logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
                     elif not response_data.get('success') and activation_key:
@@ -624,9 +672,7 @@ def activate_key(request):
             data = request.POST
 
         activation_key = data.get('activation_key', '').strip()
-        user_email = data.get('user_email', '').strip()
-        if not user_email:
-            user_email = request.session.get('email', '') or (getattr(request.user, 'email', '') if hasattr(request, 'user') and request.user else '')
+        user_email = _resolve_user_identity(request, data.get('user_email', ''))
 
         if not activation_key:
             return JsonResponse({'status': 0, 'error_message': 'Activation key is required'})
@@ -646,6 +692,7 @@ def activate_key(request):
                 config.activation_key = activation_key
                 config.save(update_fields=['activation_key', 'updated_at'])
                 _persist_entitlement_from_response(config, response_data)
+                _persist_activation_in_cyberpanel_db(request, activation_key)
             except Exception as e:
                 logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
 
