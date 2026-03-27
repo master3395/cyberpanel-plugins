@@ -23,7 +23,7 @@ from .models import PaypalPremiumPluginConfig
 from . import api_encryption
 
 PLUGIN_NAME = 'paypalPremiumPlugin'
-PLUGIN_VERSION = '1.0.3'
+PLUGIN_VERSION = '1.0.4'
 
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
 REMOTE_VERIFICATION_PAYPAL_URL = 'https://api.newstargeted.com/api/verify-paypal-payment.php'
@@ -552,7 +552,12 @@ def activate_key(request):
         user_email = _resolve_user_identity(request, data.get('user_email', '') or '')
 
         if not activation_key:
-            return JsonResponse({'success': False, 'message': 'Activation key is required'}, status=400)
+            return JsonResponse({
+                'status': 0,
+                'success': False,
+                'error_message': 'Activation key is required',
+                'has_access': False,
+            })
 
         request_data = {
             'activation_key': activation_key,
@@ -574,20 +579,29 @@ def activate_key(request):
                 logging.writeToFile(f"PayPal Premium Plugin: Could not persist activation key: {str(e)}")
 
             return JsonResponse({
+                'status': 1,
                 'success': True,
                 'has_access': True,
-                'message': response_data.get('message', 'Access activated successfully')
+                'message': response_data.get('message', 'Access activated successfully'),
             })
 
         return JsonResponse({
+            'status': 0,
             'success': False,
             'has_access': False,
-            'message': response_data.get('message', 'Invalid activation key')
+            'error_message': response_data.get('message', 'Invalid activation key'),
+            'message': response_data.get('message', 'Invalid activation key'),
         })
 
     except Exception as e:
         logging.writeToFile(f"PayPal Premium Plugin: activate_key error: {str(e)}")
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({
+            'status': 0,
+            'success': False,
+            'has_access': False,
+            'error_message': str(e),
+            'message': str(e),
+        }, status=500)
 
 
 @cyberpanel_login_required

@@ -30,5 +30,6 @@ urlpatterns = [
     re_path(r'^api/snapshots/$', views.api_snapshots, name='api_snapshots'),
     re_path(r'^api/test-connection/$', views.test_connection, name='test_connection'),
     re_path(r'^config/save/$', views.save_config, name='save_config'),
-    re_path(r'^activate-key/$', views.activate_key, name='activate_key'),
+    re_path(r'^activate_key/$', views.activate_key, name='activate_key'),
+    re_path(r'^activate-key/$', views.activate_key),
 ]

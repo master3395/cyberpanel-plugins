@@ -19,7 +19,7 @@ import json
 # Remote verification server (YOUR server, not user's server)
 REMOTE_VERIFICATION_URL = 'https://api.newstargeted.com/api/verify-patreon-membership'
 PLUGIN_NAME = 'premiumPlugin'
-PLUGIN_VERSION = '1.0.3'
+PLUGIN_VERSION = '1.0.4'
 
 def cyberpanel_login_required(view_func):
     """
@@ -65,8 +65,11 @@ def remote_verification_required(view_func):
             context = {
                 'plugin_name': 'Premium Plugin Example',
                 'is_paid': True,
+                'payment_method': 'patreon',
                 'patreon_tier': verification_result.get('patreon_tier', 'CyberPanel Paid Plugin'),
                 'patreon_url': verification_result.get('patreon_url', 'https://www.patreon.com/c/newstargeted/membership'),
+                'paypal_me_url': '',
+                'paypal_payment_link': '',
                 'message': verification_result.get('message', 'Patreon subscription required'),
                 'error': verification_result.get('error')
             }

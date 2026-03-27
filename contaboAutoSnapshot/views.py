@@ -21,7 +21,7 @@ from . import api_encryption
 
 # Plugin configuration
 PLUGIN_NAME = 'contaboAutoSnapshot'
-PLUGIN_VERSION = '1.0.3'
+PLUGIN_VERSION = '1.0.4'
 
 # Remote verification URLs
 REMOTE_VERIFICATION_PATREON_URL = 'https://api.newstargeted.com/api/verify-patreon-membership.php'
@@ -744,10 +744,12 @@ def activate_key(request):
         
         if not activation_key:
             return JsonResponse({
+                'status': 0,
                 'success': False,
-                'message': 'Activation key is required'
-            }, status=400)
-        
+                'error_message': 'Activation key is required',
+                'has_access': False,
+            })
+
         request_data = {
             'activation_key': activation_key,
             'plugin_name': PLUGIN_NAME,
@@ -766,26 +768,32 @@ def activate_key(request):
             except Exception as persist_err:
                 logging.writeToFile(f"Contabo Auto Snapshot: Could not persist activation key: {str(persist_err)}")
             return JsonResponse({
+                'status': 1,
                 'success': True,
                 'has_access': True,
                 'message': response_data.get('message', 'Access activated successfully'),
                 'grant_type': response_data.get('grant_type', 'manual'),
-                'expires_at': response_data.get('expires_at')
+                'expires_at': response_data.get('expires_at'),
             })
+        _msg = response_data.get('message', 'Invalid activation key')
         return JsonResponse({
+            'status': 0,
             'success': False,
             'has_access': False,
-            'message': response_data.get('message', 'Invalid activation key'),
-            'error': response_data.get('error')
-        }, status=400)
-                
+            'error_message': response_data.get('error') or _msg,
+            'message': _msg,
+            'error': response_data.get('error'),
+        })
+
     except urllib.error.URLError as e:
         logging.writeToFile(f"Error activating key: {str(e)}")
         return JsonResponse({
+            'status': 0,
             'success': False,
             'has_access': False,
+            'error_message': 'Unable to activate. Please try again later.',
             'message': 'Unable to activate. Please try again later.',
-            'error': str(e)
+            'error': str(e),
         }, status=500)
     except Exception as e:
         logging.writeToFile(f"Error activating key: {str(e)}")
@@ -793,10 +801,12 @@ def activate_key(request):
         error_trace = traceback.format_exc()
         logging.writeToFile(f"Activation traceback: {error_trace}")
         return JsonResponse({
+            'status': 0,
             'success': False,
             'has_access': False,
+            'error_message': 'Error activating access',
             'message': 'Error activating access',
-            'error': str(e)
+            'error': str(e),
         }, status=500)
 
 
