@@ -96,7 +96,8 @@ def _save_policy(policy):
             json.dump(policy, f, ensure_ascii=False)
             f.write('\n')
         os.replace(tmp, POLICY_FILE_PRIMARY)
-        os.chmod(POLICY_FILE_PRIMARY, 0o600)
+        # phpMyAdmin (lsphp/lscpd/site user) must read this; it is not a secret (only booleans).
+        os.chmod(POLICY_FILE_PRIMARY, 0o644)
         return True
     except Exception as exc:
         logging.writeToFile('limitedPhpmyAdmin save policy: %s' % str(exc))
