@@ -19,7 +19,7 @@ import json
 # Remote verification server (YOUR server, not user's server)
 REMOTE_VERIFICATION_URL = 'https://api.newstargeted.com/api/verify-patreon-membership'
 PLUGIN_NAME = 'premiumPlugin'
-PLUGIN_VERSION = '1.0.0'
+PLUGIN_VERSION = '1.0.3'
 
 def cyberpanel_login_required(view_func):
     """
