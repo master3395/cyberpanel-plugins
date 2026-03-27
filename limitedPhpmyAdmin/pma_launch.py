@@ -5,6 +5,7 @@ One-time phpMyAdmin launch URLs (POST into CyberPanel phpmyadminsignin.php signo
 import html
 import json
 import secrets
+import os
 from datetime import timedelta
 from functools import wraps
 
@@ -22,6 +23,11 @@ from .models import LimitedPhpmyAdminGrant, PmaLaunchToken
 
 LAUNCH_TOKEN_TTL_HOURS = 24
 SIGNON_PATH = '/phpmyadmin/phpmyadminsignin.php'
+POLICY_PATHS = (
+    '/usr/local/CyberCP/pluginState/limited_phpmyadmin_policy.json',
+    '/var/lib/cyberpanel-panelstate/limited_phpmyadmin_policy.json',
+    '/etc/cyberpanel/limited_phpmyadmin_policy.json',
+)
 
 
 def _json(data, status=200):
@@ -75,6 +81,20 @@ def _purge_expired_tokens():
         PmaLaunchToken.objects.filter(expires_at__lt=timezone.now()).delete()
     except Exception as exc:
         logging.writeToFile('limitedPhpmyAdmin purge launch tokens: %s' % str(exc))
+
+
+def _is_strict_mode_enabled():
+    for path in POLICY_PATHS:
+        try:
+            if not os.path.exists(path):
+                continue
+            with open(path, 'r') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return bool(data.get('strict_mode', True))
+        except Exception as exc:
+            logging.writeToFile('limitedPhpmyAdmin policy read %s: %s' % (path, str(exc)))
+    return True
 
 
 @_cyberpanel_api_login_required
@@ -170,6 +190,8 @@ def pma_launch(request, token):
         + esc_attr(g.mysql_username)
         + '"><input type="hidden" name="password" value="'
         + esc_attr(plain)
+        + '"><input type="hidden" name="lpma_strict" value="'
+        + ('1' if _is_strict_mode_enabled() else '0')
         + '"></form>'
         '<script>document.getElementById("pma").submit();</script>'
         '<noscript><button type="submit" form="pma">Continue to phpMyAdmin</button></noscript>'

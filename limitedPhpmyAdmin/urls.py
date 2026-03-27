@@ -19,7 +19,10 @@ urlpatterns = [
     path('api/grants/delete/', views.api_delete_grant, name='api_delete_grant'),
     path('api/grants/rotate-password/', views.api_rotate_password, name='api_rotate_password'),
     path('api/grants/change-database/', views.api_change_database, name='api_change_database'),
+    path('api/grants/update-privileges/', views.api_update_privileges, name='api_update_privileges'),
     path('api/grants/notes/', views.api_update_notes, name='api_update_notes'),
+    path('api/policy/', views.api_get_policy, name='api_get_policy'),
+    path('api/policy/update/', views.api_update_policy, name='api_update_policy'),
     path('api/grants/pma-launch-link/', pma_launch.api_create_pma_launch_link, name='api_pma_launch_link'),
     path('launch/<str:token>/', pma_launch.pma_launch, name='pma_launch'),
 ]

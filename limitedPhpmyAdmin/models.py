@@ -23,6 +23,11 @@ class LimitedPhpmyAdminGrant(models.Model):
     administrator_id = models.IntegerField(null=True, blank=True, help_text='Administrator.pk when subject_type=cpuser')
     mysql_username = models.CharField(max_length=32, unique=True)
     password_encrypted = models.TextField()
+    privilege_profile = models.CharField(
+        max_length=300,
+        default='ALL',
+        help_text='Comma-separated MySQL privileges for this database, or ALL',
+    )
     enabled = models.BooleanField(default=True)
     notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

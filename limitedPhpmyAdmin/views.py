@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import secrets
 import string
 import traceback
@@ -19,6 +20,32 @@ from . import crypto_util
 from . import mysql_grant
 from .models import LimitedPhpmyAdminGrant
 
+# Django (lswsgi) runs as user `cyberpanel`, not `lscpd`. Panel state under
+# /var/lib/cyberpanel-panelstate/ is often root:lscpd and not writable — use
+# CyberCP pluginState (owned by cyberpanel) for saves. Older paths remain as read fallbacks.
+POLICY_FILE_PRIMARY = '/usr/local/CyberCP/pluginState/limited_phpmyadmin_policy.json'
+POLICY_FILE_READ_FALLBACKS = (
+    '/var/lib/cyberpanel-panelstate/limited_phpmyadmin_policy.json',
+    '/etc/cyberpanel/limited_phpmyadmin_policy.json',
+)
+PREFERENCE_TAB_KEYS = (
+    'manage',
+    'two_factor',
+    'features',
+    'sql',
+    'navigation',
+    'main_panel',
+    'export',
+    'import',
+)
+
+
+def _default_policy():
+    return {
+        'strict_mode': True,
+        'blocked_tabs': {k: True for k in PREFERENCE_TAB_KEYS},
+    }
+
 
 def cyberpanel_login_required(view_func):
     @wraps(view_func)
@@ -34,6 +61,46 @@ def cyberpanel_login_required(view_func):
 
 def _json(data, status=200):
     return JsonResponse(data, status=status, json_dumps_params={'ensure_ascii': False})
+
+
+def _load_policy():
+    data = _default_policy()
+    for path in (POLICY_FILE_PRIMARY,) + POLICY_FILE_READ_FALLBACKS:
+        try:
+            if not os.path.exists(path):
+                continue
+            with open(path, 'r') as f:
+                loaded = json.load(f)
+            if not isinstance(loaded, dict):
+                continue
+            data['strict_mode'] = bool(loaded.get('strict_mode', True))
+            blocked_tabs = loaded.get('blocked_tabs', {})
+            if isinstance(blocked_tabs, dict):
+                normalized = {}
+                for key in PREFERENCE_TAB_KEYS:
+                    normalized[key] = bool(blocked_tabs.get(key, True))
+                data['blocked_tabs'] = normalized
+            break
+        except Exception as exc:
+            logging.writeToFile('limitedPhpmyAdmin load policy %s: %s' % (path, str(exc)))
+    return data
+
+
+def _save_policy(policy):
+    try:
+        d = os.path.dirname(POLICY_FILE_PRIMARY)
+        if d and not os.path.exists(d):
+            os.makedirs(d, 0o755)
+        tmp = POLICY_FILE_PRIMARY + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(policy, f, ensure_ascii=False)
+            f.write('\n')
+        os.replace(tmp, POLICY_FILE_PRIMARY)
+        os.chmod(POLICY_FILE_PRIMARY, 0o600)
+        return True
+    except Exception as exc:
+        logging.writeToFile('limitedPhpmyAdmin save policy: %s' % str(exc))
+        return False
 
 
 def cyberpanel_api_login_required(view_func):
@@ -119,6 +186,8 @@ def main_view(request):
             'version': '1.1.3',
             'is_paid': False,
             'sites_json': json.dumps(site_opts, ensure_ascii=False),
+            'supported_privileges_json': json.dumps(list(mysql_grant.SUPPORTED_PRIVILEGES), ensure_ascii=False),
+            'policy_json': json.dumps(_load_policy(), ensure_ascii=False),
             'api_grants_url': api_grants_url,
         }
         proc = httpProc(request, 'limitedPhpmyAdmin/index.html', context)
@@ -215,6 +284,7 @@ def api_list_cpusers(request):
 
 
 def _grant_to_dict(g):
+    privileges = mysql_grant.deserialize_privileges(getattr(g, 'privilege_profile', 'ALL'))
     return {
         'id': g.pk,
         'website_id': g.website_id,
@@ -223,6 +293,7 @@ def _grant_to_dict(g):
         'subject_type': g.subject_type,
         'subject_label': g.subject_label,
         'mysql_username': g.mysql_username,
+        'privileges': privileges,
         'enabled': g.enabled,
         'notes': g.notes or '',
         'created_at': g.created_at.isoformat() if g.created_at else '',
@@ -282,11 +353,17 @@ def api_create_grant(request):
     else:
         return _json({'success': False, 'error': 'subject_type must be ftp or cpuser'}, 400)
     notes = (body.get('notes') or '')[:2000]
+    selected_privileges = mysql_grant.normalize_privileges(body.get('privileges'))
     mysql_user = _gen_mysql_username()
     if LimitedPhpmyAdminGrant.objects.filter(mysql_username=mysql_user).exists():
         mysql_user = _gen_mysql_username()
     plain_pw = _gen_password()
-    ok, err = mysql_grant.provision_mysql_user(db_name, mysql_user, plain_pw)
+    ok, err = mysql_grant.provision_mysql_user(
+        db_name,
+        mysql_user,
+        plain_pw,
+        selected_privileges,
+    )
     if not ok:
         logging.writeToFile('limitedPhpmyAdmin api_create_grant MySQL: %s' % (err or ''))
         return _json({'success': False, 'error': err or 'MySQL error'}, 500)
@@ -300,6 +377,7 @@ def api_create_grant(request):
             administrator_id=adm_id,
             mysql_username=mysql_user,
             password_encrypted=crypto_util.encrypt_password(plain_pw),
+            privilege_profile=mysql_grant.serialize_privileges(selected_privileges),
             enabled=True,
             notes=notes,
         )
@@ -378,7 +456,12 @@ def api_enable_grant(request):
         plain = crypto_util.decrypt_password(g.password_encrypted)
     except Exception:
         return _json({'success': False, 'error': 'Could not decrypt stored password; rotate password.'}, 500)
-    ok, err = mysql_grant.grant_database_only(g.database_name, g.mysql_username, plain)
+    ok, err = mysql_grant.grant_database_only(
+        g.database_name,
+        g.mysql_username,
+        plain,
+        mysql_grant.deserialize_privileges(getattr(g, 'privilege_profile', 'ALL')),
+    )
     if not ok:
         return _json({'success': False, 'error': err or 'Grant failed'}, 500)
     g.enabled = True
@@ -519,3 +602,85 @@ def api_update_notes(request):
     g.notes = (body.get('notes') or '')[:2000]
     g.save(update_fields=['notes', 'updated_at'])
     return _json({'success': True, 'grant': _grant_to_dict(g)})
+
+
+@cyberpanel_api_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+@catch_json_api_errors
+def api_update_privileges(request):
+    sess = _require_api_session(request)
+    if not sess:
+        return _json({'success': False, 'error': 'Unauthorized'}, 401)
+    _, admin, acl = sess
+    try:
+        body = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return _json({'success': False, 'error': 'Invalid JSON'}, 400)
+    try:
+        gid = int(body.get('grant_id'))
+    except (TypeError, ValueError):
+        return _json({'success': False, 'error': 'Invalid grant_id'}, 400)
+    try:
+        g = LimitedPhpmyAdminGrant.objects.get(pk=gid)
+    except LimitedPhpmyAdminGrant.DoesNotExist:
+        return _json({'success': False, 'error': 'Not found'}, 404)
+    if acl_helpers.resolve_owned_website(admin, acl, g.website_id) is None:
+        return _json({'success': False, 'error': 'Forbidden'}, 403)
+
+    selected_privileges = mysql_grant.normalize_privileges(body.get('privileges'))
+    if g.enabled:
+        try:
+            plain = crypto_util.decrypt_password(g.password_encrypted)
+        except Exception:
+            return _json({'success': False, 'error': 'Could not decrypt stored password; rotate password first.'}, 500)
+        ok, err = mysql_grant.grant_database_only(
+            g.database_name,
+            g.mysql_username,
+            plain,
+            selected_privileges,
+        )
+        if not ok:
+            return _json({'success': False, 'error': err or 'Failed to apply MySQL privileges'}, 500)
+
+    g.privilege_profile = mysql_grant.serialize_privileges(selected_privileges)
+    g.save(update_fields=['privilege_profile', 'updated_at'])
+    return _json({'success': True, 'grant': _grant_to_dict(g)})
+
+
+@cyberpanel_api_login_required
+@csrf_exempt
+@require_http_methods(['GET'])
+@catch_json_api_errors
+def api_get_policy(request):
+    sess = _require_api_session(request)
+    if not sess:
+        return _json({'success': False, 'error': 'Unauthorized'}, 401)
+    return _json({'success': True, 'policy': _load_policy()})
+
+
+@cyberpanel_api_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+@catch_json_api_errors
+def api_update_policy(request):
+    sess = _require_api_session(request)
+    if not sess:
+        return _json({'success': False, 'error': 'Unauthorized'}, 401)
+    try:
+        body = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return _json({'success': False, 'error': 'Invalid JSON'}, 400)
+    strict_mode = bool(body.get('strict_mode', True))
+    incoming_tabs = body.get('blocked_tabs', {})
+    blocked_tabs = {k: True for k in PREFERENCE_TAB_KEYS}
+    if isinstance(incoming_tabs, dict):
+        for key in PREFERENCE_TAB_KEYS:
+            blocked_tabs[key] = bool(incoming_tabs.get(key, True))
+    policy = {
+        'strict_mode': strict_mode,
+        'blocked_tabs': blocked_tabs,
+    }
+    if not _save_policy(policy):
+        return _json({'success': False, 'error': 'Failed to save policy'}, 500)
+    return _json({'success': True, 'policy': policy})

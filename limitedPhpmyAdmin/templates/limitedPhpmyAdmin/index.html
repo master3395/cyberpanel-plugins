@@ -18,6 +18,10 @@
 #lpma-table{width:100%;margin-bottom:0;background:var(--bg-secondary,#fff)}
 #lpma-table thead th{background:#e8e9f5;color:var(--text-primary,#2f3640);border-color:#cdd0e8}
 #lpma-table td{border-color:#dee2e6}
+/* High-contrast save (avoid dark-theme orange-on-blue from .btn-primary) */
+#lpma-save-policy{background:#f1f3f5 !important;color:#111 !important;border:2px solid #343a40 !important;font-weight:600 !important;text-shadow:none !important;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+#lpma-save-policy:hover,#lpma-save-policy:focus{background:#e2e6ea !important;color:#000 !important;border-color:#212529 !important}
+#lpma-save-policy:disabled{opacity:.72;cursor:not-allowed}
 </style>
 <div class="container-fluid" ng-non-bindable>
     <div class="row">
@@ -30,6 +34,22 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">{% trans "Create MySQL users that can only access one database via phpMyAdmin (sign in at /phpmyadmin/ with the issued credentials). Disable access without deleting the grant." %}</p>
+                    <div class="alert alert-warning" style="margin-top:10px;">
+                        <strong>{% trans "Strict mode" %}</strong>:
+                        {% trans "When enabled, plugin-issued cpma users are redirected away from phpMyAdmin preferences/settings pages." %}
+                        <div class="mt-2">
+                            <label style="font-weight:600;margin-right:10px;">
+                                <input type="checkbox" id="lpma-strict-mode-toggle">
+                                {% trans "Enable strict mode" %}
+                            </label>
+                            <button type="button" class="btn btn-sm" id="lpma-save-policy">{% trans "Save security policy" %}</button>
+                        </div>
+                        <div class="mt-3">
+                            <strong>{% trans "phpMyAdmin preference tabs" %}</strong>
+                            <p class="text-muted small mb-2" style="margin-top:6px;">{% trans "Unchecked = blocked for plugin users (cpma_*). Check only the tabs you want to allow. Default: all unchecked (fully locked down)." %}</p>
+                            <div class="row" id="lpma-blocked-tabs-wrap" style="margin-top:8px;"></div>
+                        </div>
+                    </div>
                     <p class="text-muted small mb-2">{% trans "Pick a domain to load its grants in the table below. After adding a grant, the list refreshes automatically. If you stay on the same domain, use “Refresh grants” to reload from the server. For enabled grants, use “Copy phpMyAdmin link” to get a one-time URL (24 hours, HTTPS) that signs the user into phpMyAdmin, or “Open phpMyAdmin” to use it immediately in a new tab." %}</p>
 
                     <div class="form-row align-items-end">
@@ -75,6 +95,8 @@
     </div>
 </div>
 <script type="application/json" id="lpma-sites-json">{{ sites_json|safe }}</script>
+<script type="application/json" id="lpma-supported-privileges-json">{{ supported_privileges_json|safe }}</script>
+<script type="application/json" id="lpma-policy-json">{{ policy_json|safe }}</script>
 
 <!-- Modal: add grant -->
 <div class="modal fade" id="lpma-modal-add" tabindex="-1" role="dialog">
@@ -160,19 +182,77 @@
     </div>
 </div>
 
+<!-- Modal: modify MySQL privileges -->
+<div class="modal fade" id="lpma-modal-perms" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Modify permissions" %}</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="lpma-perms-grant-id">
+                <p class="text-muted small mb-2">{% trans "Choose MySQL privileges for this grant. Leave all checked for full access on this single database only." %}</p>
+                <div class="form-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-all">{% trans "Select all" %}</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-ro">{% trans "Read only" %}</button>
+                </div>
+                <div id="lpma-perms-list" class="border rounded p-2" style="max-height:280px;overflow:auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                <button type="button" class="btn btn-primary" id="lpma-perms-save">{% trans "Save permissions" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
     var apiGrantsUrl = "{{ api_grants_url|escapejs }}";
     var API_BASE = (apiGrantsUrl && apiGrantsUrl.indexOf('api/grants') !== -1)
         ? apiGrantsUrl.replace(/api\/grants\/?$/, '')
         : ((window.location.pathname || '').replace(/\/?$/, '') + '/');
-    var CSRF = '{{ csrf_token }}';
+    function getCookie(name) {
+        var m = document.cookie.match(new RegExp('(^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+        return m ? decodeURIComponent(m[2]) : '';
+    }
+    var CSRF = getCookie('csrftoken') || '{{ csrf_token }}';
     var sites = [];
+    var supportedPrivileges = [];
+    var policy = { strict_mode: true };
+    var policyTabKeys = ['manage','two_factor','features','sql','navigation','main_panel','export','import'];
+    var policyTabLabels = {
+        manage: 'Manage your settings',
+        two_factor: 'Two-factor authentication',
+        features: 'Features',
+        sql: 'SQL queries',
+        navigation: 'Navigation panel',
+        main_panel: 'Main panel',
+        export: 'Export',
+        import: 'Import'
+    };
     try {
         var _sj = document.getElementById('lpma-sites-json');
         if (_sj && _sj.textContent) sites = JSON.parse(_sj.textContent);
     } catch (e) {}
+    try {
+        var _pj = document.getElementById('lpma-supported-privileges-json');
+        if (_pj && _pj.textContent) supportedPrivileges = JSON.parse(_pj.textContent);
+    } catch (e) {}
+    try {
+        var _pol = document.getElementById('lpma-policy-json');
+        if (_pol && _pol.textContent) policy = JSON.parse(_pol.textContent);
+    } catch (e) {}
     if (!Array.isArray(sites)) sites = [];
+    if (!Array.isArray(supportedPrivileges) || !supportedPrivileges.length) {
+        supportedPrivileges = ['SELECT','INSERT','UPDATE','DELETE','CREATE','ALTER','INDEX','DROP','CREATE TEMPORARY TABLES','LOCK TABLES'];
+    }
+    if (!policy || typeof policy !== 'object') policy = { strict_mode: true };
+    if (!policy.blocked_tabs || typeof policy.blocked_tabs !== 'object') policy.blocked_tabs = {};
+    policyTabKeys.forEach(function(k) {
+        if (typeof policy.blocked_tabs[k] === 'undefined') policy.blocked_tabs[k] = true;
+    });
 
     function showMsg(text, isError) {
         var el = document.getElementById('lpma-msg');
@@ -282,6 +362,7 @@
             } else {
                 tdAct.appendChild(btn('{% trans "Enable" %}', 'btn-sm btn-success', function() { enableGrant(g.id); }));
             }
+            tdAct.appendChild(btn('{% trans "Modify permissions" %}', 'btn-sm btn-dark', function() { openPerms(g); }));
             tdAct.appendChild(btn('{% trans "Delete" %}', 'btn-sm btn-danger', function() { deleteGrant(g.id); }));
             tb.appendChild(tr);
         });
@@ -391,6 +472,15 @@
         });
     }
 
+    function getSelectedPrivilegesFromModal() {
+        var boxes = document.querySelectorAll('.lpma-perm-checkbox');
+        var selected = [];
+        boxes.forEach(function(cb) {
+            if (cb.checked) selected.push(cb.value);
+        });
+        return selected;
+    }
+
     document.getElementById('lpma-subject-type').addEventListener('change', function() {
         var t = document.getElementById('lpma-subject-type').value;
         document.getElementById('lpma-wrap-ftp').classList.toggle('lpma-hidden', t !== 'ftp');
@@ -407,7 +497,13 @@
     document.getElementById('lpma-add-submit').addEventListener('click', function() {
         var wid = parseInt(currentSiteId(), 10);
         var st = document.getElementById('lpma-subject-type').value;
-        var body = { website_id: wid, database_name: document.getElementById('lpma-db').value, subject_type: st, notes: document.getElementById('lpma-notes').value };
+        var body = {
+            website_id: wid,
+            database_name: document.getElementById('lpma-db').value,
+            subject_type: st,
+            notes: document.getElementById('lpma-notes').value,
+            privileges: supportedPrivileges.slice()
+        };
         if (st === 'ftp') body.ftp_user_id = parseInt(document.getElementById('lpma-ftp').value, 10);
         else body.administrator_id = parseInt(document.getElementById('lpma-cp').value, 10);
         api('api/grants/create/', {
@@ -504,6 +600,129 @@
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     });
+
+    function renderPermsModal(selectedPrivileges) {
+        var wrap = document.getElementById('lpma-perms-list');
+        if (!wrap) return;
+        var selected = selectedPrivileges || [];
+        if (selected.indexOf('ALL') !== -1) selected = supportedPrivileges.slice();
+        var selectedSet = {};
+        selected.forEach(function(p) { selectedSet[String(p)] = true; });
+        wrap.innerHTML = '';
+        supportedPrivileges.forEach(function(priv) {
+            var id = 'lpma-perm-' + priv.replace(/[^A-Za-z0-9]+/g, '_');
+            var row = document.createElement('div');
+            row.className = 'form-check';
+            row.innerHTML =
+                '<input class="form-check-input lpma-perm-checkbox" type="checkbox" id="' + id + '" value="' + escapeHtml(priv) + '"' + (selectedSet[priv] ? ' checked' : '') + '>' +
+                '<label class="form-check-label" for="' + id + '">' + escapeHtml(priv) + '</label>';
+            wrap.appendChild(row);
+        });
+    }
+
+    function openPerms(g) {
+        document.getElementById('lpma-perms-grant-id').value = g.id;
+        var current = Array.isArray(g.privileges) && g.privileges.length ? g.privileges : supportedPrivileges.slice();
+        renderPermsModal(current);
+        $('#lpma-modal-perms').modal('show');
+    }
+
+    document.getElementById('lpma-perms-all').addEventListener('click', function() {
+        renderPermsModal(supportedPrivileges.slice());
+    });
+
+    document.getElementById('lpma-perms-ro').addEventListener('click', function() {
+        renderPermsModal(['SELECT']);
+    });
+
+    document.getElementById('lpma-perms-save').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-perms-grant-id').value, 10);
+        var selected = getSelectedPrivilegesFromModal();
+        if (!selected.length) {
+            showMsg('{% trans "Select at least one privilege." %}', true);
+            return;
+        }
+        api('api/grants/update-privileges/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ grant_id: gid, privileges: selected })
+        }).then(function(d) {
+            if (!d.success) { showMsg(d.error || 'Error', true); return; }
+            $('#lpma-modal-perms').modal('hide');
+            showMsg('{% trans "Permissions updated." %}', false);
+            loadGrants();
+        }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
+    });
+
+    var strictToggle = document.getElementById('lpma-strict-mode-toggle');
+    var savePolicyBtn = document.getElementById('lpma-save-policy');
+    var blockedWrap = document.getElementById('lpma-blocked-tabs-wrap');
+    function renderBlockedTabs() {
+        if (!blockedWrap) return;
+        blockedWrap.innerHTML = '';
+        policyTabKeys.forEach(function(key) {
+            var blocked = !!(policy.blocked_tabs && policy.blocked_tabs[key]);
+            var allowChecked = !blocked;
+            var col = document.createElement('div');
+            col.className = 'col-md-6 col-sm-12';
+            var id = 'lpma-allow-tab-' + key;
+            col.innerHTML =
+                '<label style="display:block;font-weight:500;">' +
+                '<input type="checkbox" class="lpma-allow-tab" data-key="' + key + '" id="' + id + '"' + (allowChecked ? ' checked' : '') + '> ' +
+                '{% trans "Allow" %}: ' + escapeHtml(policyTabLabels[key] || key) +
+                '</label>';
+            blockedWrap.appendChild(col);
+        });
+    }
+    function collectBlockedTabsFromUI() {
+        var blocked = {};
+        var boxes = document.querySelectorAll('.lpma-allow-tab');
+        boxes.forEach(function(cb) {
+            var key = cb.getAttribute('data-key');
+            if (key) blocked[key] = !cb.checked;
+        });
+        policyTabKeys.forEach(function(k) {
+            if (typeof blocked[k] === 'undefined') blocked[k] = true;
+        });
+        return blocked;
+    }
+    if (strictToggle) strictToggle.checked = !!policy.strict_mode;
+    renderBlockedTabs();
+    if (savePolicyBtn) {
+        savePolicyBtn.addEventListener('click', function() {
+            var btn = savePolicyBtn;
+            var prevText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '{% trans "Saving…" %}';
+            api('api/policy/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    strict_mode: !!(strictToggle && strictToggle.checked),
+                    blocked_tabs: collectBlockedTabsFromUI()
+                })
+            }).then(function(d) {
+                btn.disabled = false;
+                btn.textContent = prevText;
+                if (!d.success) { showMsg(d.error || 'Error', true); return; }
+                policy = d.policy || policy;
+                if (!policy.blocked_tabs) policy.blocked_tabs = {};
+                policyTabKeys.forEach(function(k) {
+                    if (typeof policy.blocked_tabs[k] === 'undefined') policy.blocked_tabs[k] = true;
+                });
+                renderBlockedTabs();
+                showMsg('{% trans "Security policy saved." %}', false);
+            }).catch(function(e) {
+                btn.disabled = false;
+                btn.textContent = prevText;
+                showMsg(e.message || 'Request failed', true);
+            });
+        });
+    }
 
     initSiteSelectionAndLoadGrants();
 })();
