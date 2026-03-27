@@ -3,8 +3,13 @@
     <name>Limited phpMyAdmin</name>
     <type>Utility</type>
     <description>Issue dedicated MySQL users with access to a single database for phpMyAdmin. Label grants by FTP or CyberPanel user; disable without deleting. Optional MySQL privilege profiles, strict mode and per-tab preference blocking for cpma users, global and per-grant phpMyAdmin launch links (validity hours and single- or multi-use), tabbed Modify grant UI, and policy saved under CyberCP pluginState. Free plugin.</description>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <author>master3395</author>
+    <website>https://github.com/master3395/cyberpanel-plugins</website>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
     <url>/plugins/limitedPhpmyAdmin/</url>
     <settings_url>/plugins/limitedPhpmyAdmin/</settings_url>
     <paid>false</paid>
