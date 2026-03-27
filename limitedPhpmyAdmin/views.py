@@ -39,11 +39,24 @@ PREFERENCE_TAB_KEYS = (
     'import',
 )
 
+PMA_LAUNCH_TTL_MIN_HOURS = 1
+PMA_LAUNCH_TTL_MAX_HOURS = 720  # 30 days
+
+
+def _clamp_pma_launch_ttl_hours(raw):
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        v = 24
+    return max(PMA_LAUNCH_TTL_MIN_HOURS, min(PMA_LAUNCH_TTL_MAX_HOURS, v))
+
 
 def _default_policy():
     return {
         'strict_mode': True,
         'blocked_tabs': {k: True for k in PREFERENCE_TAB_KEYS},
+        'pma_launch_ttl_hours': 24,
+        'pma_launch_single_use': True,
     }
 
 
@@ -80,6 +93,12 @@ def _load_policy():
                 for key in PREFERENCE_TAB_KEYS:
                     normalized[key] = bool(blocked_tabs.get(key, True))
                 data['blocked_tabs'] = normalized
+            data['pma_launch_ttl_hours'] = _clamp_pma_launch_ttl_hours(
+                loaded.get('pma_launch_ttl_hours', data['pma_launch_ttl_hours'])
+            )
+            data['pma_launch_single_use'] = bool(
+                loaded.get('pma_launch_single_use', data['pma_launch_single_use'])
+            )
             break
         except Exception as exc:
             logging.writeToFile('limitedPhpmyAdmin load policy %s: %s' % (path, str(exc)))
@@ -678,10 +697,13 @@ def api_update_policy(request):
     if isinstance(incoming_tabs, dict):
         for key in PREFERENCE_TAB_KEYS:
             blocked_tabs[key] = bool(incoming_tabs.get(key, True))
-    policy = {
-        'strict_mode': strict_mode,
-        'blocked_tabs': blocked_tabs,
-    }
+    policy = _load_policy()
+    policy['strict_mode'] = strict_mode
+    policy['blocked_tabs'] = blocked_tabs
+    if 'pma_launch_ttl_hours' in body:
+        policy['pma_launch_ttl_hours'] = _clamp_pma_launch_ttl_hours(body.get('pma_launch_ttl_hours'))
+    if 'pma_launch_single_use' in body:
+        policy['pma_launch_single_use'] = bool(body.get('pma_launch_single_use'))
     if not _save_policy(policy):
         return _json({'success': False, 'error': 'Failed to save policy'}, 500)
     return _json({'success': True, 'policy': policy})

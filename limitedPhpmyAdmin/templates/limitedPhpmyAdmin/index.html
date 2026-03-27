@@ -45,12 +45,26 @@
                             <button type="button" class="btn btn-sm" id="lpma-save-policy">{% trans "Save security policy" %}</button>
                         </div>
                         <div class="mt-3">
+                            <strong>{% trans "phpMyAdmin launch links" %}</strong>
+                            <p class="text-muted small mb-2" style="margin-top:6px;">{% trans "Validity and reuse apply to links created with Copy phpMyAdmin link or Open phpMyAdmin. Values are stored with the security policy (same Save button)." %}</p>
+                            <div class="form-inline" style="margin-top:8px;">
+                                <label class="mr-3 mb-2" style="font-weight:600;">
+                                    {% trans "Valid for (hours)" %}
+                                    <input type="number" class="form-control input-sm" id="lpma-launch-ttl" min="1" max="720" style="width:5.5em;margin-left:6px;display:inline-block;vertical-align:middle;" title="1–720">
+                                </label>
+                                <label class="mb-2" style="font-weight:600;">
+                                    <input type="checkbox" id="lpma-launch-single-use">
+                                    {% trans "Single-use link (recommended)" %}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mt-3">
                             <strong>{% trans "phpMyAdmin preference tabs" %}</strong>
                             <p class="text-muted small mb-2" style="margin-top:6px;">{% trans "Unchecked = blocked for plugin users (cpma_*). SQL, Export, and Import also remove the matching top menu tabs (server, database, and table levels). Main panel and Features hide server overview tabs (Databases, Status, Variables, Charsets, Engines, Plugins, etc.). Default: all unchecked (fully locked down)." %}</p>
                             <div class="row" id="lpma-blocked-tabs-wrap" style="margin-top:8px;"></div>
                         </div>
                     </div>
-                    <p class="text-muted small mb-2">{% trans "Pick a domain to load its grants in the table below. After adding a grant, the list refreshes automatically. If you stay on the same domain, use “Refresh grants” to reload from the server. For enabled grants, use “Copy phpMyAdmin link” to get a one-time URL (24 hours, HTTPS) that signs the user into phpMyAdmin, or “Open phpMyAdmin” to use it immediately in a new tab." %}</p>
+                    <p class="text-muted small mb-2">{% trans "Pick a domain to load its grants in the table below. After adding a grant, the list refreshes automatically. If you stay on the same domain, use “Refresh grants” to reload from the server. For enabled grants, use “Copy phpMyAdmin link” or “Open phpMyAdmin” with the validity and single-use options set under Launch links above. Always share over HTTPS." %}</p>
 
                     <div class="form-row align-items-end">
                         <div class="form-group col-md-6">
@@ -253,6 +267,17 @@
     policyTabKeys.forEach(function(k) {
         if (typeof policy.blocked_tabs[k] === 'undefined') policy.blocked_tabs[k] = true;
     });
+    var launchTtlEl = document.getElementById('lpma-launch-ttl');
+    var launchSingleEl = document.getElementById('lpma-launch-single-use');
+    function syncLaunchControlsFromPolicy() {
+        if (launchTtlEl) {
+            var th = parseInt(policy.pma_launch_ttl_hours, 10);
+            if (isNaN(th)) th = 24;
+            launchTtlEl.value = String(Math.min(720, Math.max(1, th)));
+        }
+        if (launchSingleEl) launchSingleEl.checked = policy.pma_launch_single_use !== false;
+    }
+    syncLaunchControlsFromPolicy();
 
     function showMsg(text, isError) {
         var el = document.getElementById('lpma-msg');
@@ -397,7 +422,7 @@
             if (!d.success) { showMsg(d.error || 'Error', true); return; }
             var u = d.url;
             function okMsg() {
-                showMsg(d.message || '{% trans "Link copied. Single-use; share only over HTTPS; expires in 24 hours." %}', false);
+                showMsg(d.message || '{% trans "Link copied." %}', false);
             }
             if (navigator.clipboard && window.isSecureContext && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(u).then(okMsg).catch(function() {
@@ -413,7 +438,12 @@
         fetchPmaLaunchUrl(gid).then(function(d) {
             if (!d.success) { showMsg(d.error || 'Error', true); return; }
             window.open(d.url, '_blank', 'noopener,noreferrer');
-            showMsg('{% trans "Opening phpMyAdmin in a new tab. The link works once when the page loads." %}', false);
+            showMsg(
+                d.single_use === false
+                    ? '{% trans "Opening phpMyAdmin in a new tab. This launch link can be reused until it expires." %}'
+                    : '{% trans "Opening phpMyAdmin in a new tab. This launch link is single-use." %}',
+                false
+            );
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
 
@@ -703,7 +733,13 @@
                 },
                 body: JSON.stringify({
                     strict_mode: !!(strictToggle && strictToggle.checked),
-                    blocked_tabs: collectBlockedTabsFromUI()
+                    blocked_tabs: collectBlockedTabsFromUI(),
+                    pma_launch_ttl_hours: (function() {
+                        var v = launchTtlEl ? parseInt(launchTtlEl.value, 10) : 24;
+                        if (isNaN(v)) v = 24;
+                        return Math.min(720, Math.max(1, v));
+                    })(),
+                    pma_launch_single_use: !!(launchSingleEl && launchSingleEl.checked)
                 })
             }).then(function(d) {
                 btn.disabled = false;
@@ -714,6 +750,7 @@
                 policyTabKeys.forEach(function(k) {
                     if (typeof policy.blocked_tabs[k] === 'undefined') policy.blocked_tabs[k] = true;
                 });
+                syncLaunchControlsFromPolicy();
                 renderBlockedTabs();
                 showMsg('{% trans "Security policy saved." %}', false);
             }).catch(function(e) {

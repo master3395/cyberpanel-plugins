@@ -21,7 +21,6 @@ from . import acl_helpers
 from . import crypto_util
 from .models import LimitedPhpmyAdminGrant, PmaLaunchToken
 
-LAUNCH_TOKEN_TTL_HOURS = 24
 SIGNON_PATH = '/phpmyadmin/phpmyadminsignin.php'
 POLICY_PATHS = (
     '/usr/local/CyberCP/pluginState/limited_phpmyadmin_policy.json',
@@ -83,7 +82,7 @@ def _purge_expired_tokens():
         logging.writeToFile('limitedPhpmyAdmin purge launch tokens: %s' % str(exc))
 
 
-def _is_strict_mode_enabled():
+def _read_policy_dict():
     for path in POLICY_PATHS:
         try:
             if not os.path.exists(path):
@@ -91,10 +90,32 @@ def _is_strict_mode_enabled():
             with open(path, 'r') as f:
                 data = json.load(f)
             if isinstance(data, dict):
-                return bool(data.get('strict_mode', True))
+                return data
         except Exception as exc:
             logging.writeToFile('limitedPhpmyAdmin policy read %s: %s' % (path, str(exc)))
+    return {}
+
+
+def _is_strict_mode_enabled():
+    data = _read_policy_dict()
+    if data:
+        return bool(data.get('strict_mode', True))
     return True
+
+
+def _launch_ttl_and_single_use():
+    """TTL in hours (1–720) and whether consuming the link invalidates it."""
+    data = _read_policy_dict()
+    ttl = 24
+    single_use = True
+    if data:
+        try:
+            ttl = int(data.get('pma_launch_ttl_hours', 24))
+        except (TypeError, ValueError):
+            ttl = 24
+        ttl = max(1, min(720, ttl))
+        single_use = bool(data.get('pma_launch_single_use', True))
+    return ttl, single_use
 
 
 @_cyberpanel_api_login_required
@@ -128,19 +149,26 @@ def api_create_pma_launch_link(request):
         return _json({'success': False, 'error': 'Could not read stored password; rotate password first.'}, 500)
 
     _purge_expired_tokens()
+    ttl_hours, single_use = _launch_ttl_and_single_use()
     raw = secrets.token_urlsafe(32)
-    exp = timezone.now() + timedelta(hours=LAUNCH_TOKEN_TTL_HOURS)
+    exp = timezone.now() + timedelta(hours=ttl_hours)
     PmaLaunchToken.objects.create(grant=g, token=raw, expires_at=exp)
 
     rel = reverse('limitedPhpmyAdmin:pma_launch', kwargs={'token': raw})
     url = request.build_absolute_uri(rel)
+    use_msg = (
+        'Single-use; expires in %s hours. Send only over HTTPS.'
+        if single_use
+        else 'Multi-use until expiry; expires in %s hours. Send only over HTTPS (weaker than single-use).'
+    ) % ttl_hours
     return _json(
         {
             'success': True,
             'url': url,
             'expires_at': exp.isoformat(),
-            'ttl_hours': LAUNCH_TOKEN_TTL_HOURS,
-            'message': 'Single-use link; expires in %s hours. Send only over HTTPS.' % LAUNCH_TOKEN_TTL_HOURS,
+            'ttl_hours': ttl_hours,
+            'single_use': single_use,
+            'message': use_msg,
         }
     )
 
@@ -158,8 +186,11 @@ def pma_launch(request, token):
         return HttpResponse('This link is invalid or has expired.', status=410, content_type='text/plain; charset=utf-8')
 
     now = timezone.now()
-    if row.used_at is not None or row.expires_at < now:
-        return HttpResponse('This link has already been used or has expired.', status=410, content_type='text/plain; charset=utf-8')
+    if row.expires_at < now:
+        return HttpResponse('This link has expired.', status=410, content_type='text/plain; charset=utf-8')
+    _ttl_ignore, single_use = _launch_ttl_and_single_use()
+    if single_use and row.used_at is not None:
+        return HttpResponse('This link has already been used.', status=410, content_type='text/plain; charset=utf-8')
 
     g = row.grant
     if not g.enabled:
@@ -171,8 +202,9 @@ def pma_launch(request, token):
         logging.writeToFile('limitedPhpmyAdmin pma_launch decrypt: %s' % str(exc))
         return HttpResponse('Could not unlock credentials.', status=500, content_type='text/plain; charset=utf-8')
 
-    row.used_at = now
-    row.save(update_fields=['used_at'])
+    if single_use:
+        row.used_at = now
+        row.save(update_fields=['used_at'])
 
     action = request.build_absolute_uri(SIGNON_PATH)
 
