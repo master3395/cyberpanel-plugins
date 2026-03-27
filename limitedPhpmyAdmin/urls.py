@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/grants/rotate-password/', views.api_rotate_password, name='api_rotate_password'),
     path('api/grants/change-database/', views.api_change_database, name='api_change_database'),
     path('api/grants/update-privileges/', views.api_update_privileges, name='api_update_privileges'),
+    path('api/grants/update-launch-link/', views.api_update_grant_launch, name='api_update_grant_launch'),
     path('api/grants/notes/', views.api_update_notes, name='api_update_notes'),
     path('api/policy/', views.api_get_policy, name='api_get_policy'),
     path('api/policy/update/', views.api_update_policy, name='api_update_policy'),

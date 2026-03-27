@@ -203,7 +203,7 @@ def main_view(request):
         context = {
             'title': 'Limited phpMyAdmin',
             'plugin_name': 'Limited phpMyAdmin',
-            'version': '1.1.3',
+            'version': '1.4.0',
             'is_paid': False,
             'sites_json': json.dumps(site_opts, ensure_ascii=False),
             'supported_privileges_json': json.dumps(list(mysql_grant.SUPPORTED_PRIVILEGES), ensure_ascii=False),
@@ -317,6 +317,8 @@ def _grant_to_dict(g):
         'enabled': g.enabled,
         'notes': g.notes or '',
         'created_at': g.created_at.isoformat() if g.created_at else '',
+        'launch_link_ttl_hours': getattr(g, 'launch_link_ttl_hours', None),
+        'launch_link_single_use': getattr(g, 'launch_link_single_use', None),
     }
 
 
@@ -665,6 +667,42 @@ def api_update_privileges(request):
 
     g.privilege_profile = mysql_grant.serialize_privileges(selected_privileges)
     g.save(update_fields=['privilege_profile', 'updated_at'])
+    return _json({'success': True, 'grant': _grant_to_dict(g)})
+
+
+@cyberpanel_api_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+@catch_json_api_errors
+def api_update_grant_launch(request):
+    sess = _require_api_session(request)
+    if not sess:
+        return _json({'success': False, 'error': 'Unauthorized'}, 401)
+    _, admin, acl = sess
+    try:
+        body = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return _json({'success': False, 'error': 'Invalid JSON'}, 400)
+    try:
+        gid = int(body.get('grant_id'))
+    except (TypeError, ValueError):
+        return _json({'success': False, 'error': 'Invalid grant_id'}, 400)
+    try:
+        g = LimitedPhpmyAdminGrant.objects.get(pk=gid)
+    except LimitedPhpmyAdminGrant.DoesNotExist:
+        return _json({'success': False, 'error': 'Not found'}, 404)
+    if acl_helpers.resolve_owned_website(admin, acl, g.website_id) is None:
+        return _json({'success': False, 'error': 'Forbidden'}, 403)
+    use_policy = bool(body.get('use_policy_launch_defaults', False))
+    if use_policy:
+        g.launch_link_ttl_hours = None
+        g.launch_link_single_use = None
+    else:
+        g.launch_link_ttl_hours = _clamp_pma_launch_ttl_hours(body.get('launch_link_ttl_hours', 24))
+        g.launch_link_single_use = bool(body.get('launch_link_single_use', True))
+    g.save(
+        update_fields=['launch_link_ttl_hours', 'launch_link_single_use', 'updated_at']
+    )
     return _json({'success': True, 'grant': _grant_to_dict(g)})
 
 

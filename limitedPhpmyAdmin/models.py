@@ -30,6 +30,16 @@ class LimitedPhpmyAdminGrant(models.Model):
     )
     enabled = models.BooleanField(default=True)
     notes = models.TextField(blank=True, default='')
+    launch_link_ttl_hours = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text='Override panel policy link validity (hours); null = use global policy',
+    )
+    launch_link_single_use = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text='Override single-use launch links; null = use global policy',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

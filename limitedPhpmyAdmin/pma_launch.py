@@ -104,7 +104,7 @@ def _is_strict_mode_enabled():
 
 
 def _launch_ttl_and_single_use():
-    """TTL in hours (1–720) and whether consuming the link invalidates it."""
+    """Panel policy only: TTL in hours (1–720) and single-use default."""
     data = _read_policy_dict()
     ttl = 24
     single_use = True
@@ -115,6 +115,25 @@ def _launch_ttl_and_single_use():
             ttl = 24
         ttl = max(1, min(720, ttl))
         single_use = bool(data.get('pma_launch_single_use', True))
+    return ttl, single_use
+
+
+def _effective_launch_for_grant(grant):
+    """Apply per-grant overrides when set (null = fall back to panel policy)."""
+    pol_ttl, pol_single = _launch_ttl_and_single_use()
+    raw_ttl = getattr(grant, 'launch_link_ttl_hours', None)
+    if raw_ttl is not None:
+        try:
+            ttl = max(1, min(720, int(raw_ttl)))
+        except (TypeError, ValueError):
+            ttl = pol_ttl
+    else:
+        ttl = pol_ttl
+    raw_su = getattr(grant, 'launch_link_single_use', None)
+    if raw_su is None:
+        single_use = pol_single
+    else:
+        single_use = bool(raw_su)
     return ttl, single_use
 
 
@@ -149,7 +168,7 @@ def api_create_pma_launch_link(request):
         return _json({'success': False, 'error': 'Could not read stored password; rotate password first.'}, 500)
 
     _purge_expired_tokens()
-    ttl_hours, single_use = _launch_ttl_and_single_use()
+    ttl_hours, single_use = _effective_launch_for_grant(g)
     raw = secrets.token_urlsafe(32)
     exp = timezone.now() + timedelta(hours=ttl_hours)
     PmaLaunchToken.objects.create(grant=g, token=raw, expires_at=exp)
@@ -188,7 +207,7 @@ def pma_launch(request, token):
     now = timezone.now()
     if row.expires_at < now:
         return HttpResponse('This link has expired.', status=410, content_type='text/plain; charset=utf-8')
-    _ttl_ignore, single_use = _launch_ttl_and_single_use()
+    _ttl_ignore, single_use = _effective_launch_for_grant(row.grant)
     if single_use and row.used_at is not None:
         return HttpResponse('This link has already been used.', status=410, content_type='text/plain; charset=utf-8')
 

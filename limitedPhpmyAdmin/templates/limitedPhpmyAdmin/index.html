@@ -64,7 +64,7 @@
                             <div class="row" id="lpma-blocked-tabs-wrap" style="margin-top:8px;"></div>
                         </div>
                     </div>
-                    <p class="text-muted small mb-2">{% trans "Pick a domain to load its grants in the table below. After adding a grant, the list refreshes automatically. If you stay on the same domain, use “Refresh grants” to reload from the server. For enabled grants, use “Copy phpMyAdmin link” or “Open phpMyAdmin” with the validity and single-use options set under Launch links above. Always share over HTTPS." %}</p>
+                    <p class="text-muted small mb-2">{% trans "Pick a domain to load its grants in the table below. After adding a grant, the list refreshes automatically. Use “Modify” for launch links, database, permissions, password, and notes. “Open phpMyAdmin”, “Disable”, and “Delete” stay on each row (delete asks for confirmation). Global launch defaults are under Launch links in the security policy; per-grant overrides default to 24 hours when you turn off “Use site-wide launch settings”. Always share links over HTTPS." %}</p>
 
                     <div class="form-row align-items-end">
                         <div class="form-group col-md-6">
@@ -173,49 +173,79 @@
     </div>
 </div>
 
-<!-- Modal: change database -->
-<div class="modal fade" id="lpma-modal-chdb" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+<!-- Modal: modify grant (tabs) -->
+<div class="modal fade" id="lpma-modal-edit-grant" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{% trans "Change database" %}</h5>
+                <h5 class="modal-title">{% trans "Modify grant" %}</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="lpma-chdb-grant-id">
-                <div class="form-group">
-                    <label>{% trans "Database" %}</label>
-                    <select id="lpma-chdb-select" class="form-control"></select>
+                <input type="hidden" id="lpma-edit-grant-id">
+                <p class="text-muted small mb-2" id="lpma-edit-grant-summary"></p>
+                <ul class="nav nav-tabs" id="lpma-edit-tabs">
+                    <li class="active"><a href="#lpma-tab-link" data-toggle="tab">{% trans "Launch link" %}</a></li>
+                    <li><a href="#lpma-tab-database" data-toggle="tab">{% trans "Database" %}</a></li>
+                    <li><a href="#lpma-tab-perms" data-toggle="tab">{% trans "Permissions" %}</a></li>
+                    <li><a href="#lpma-tab-password" data-toggle="tab">{% trans "Password" %}</a></li>
+                    <li><a href="#lpma-tab-notes" data-toggle="tab">{% trans "Notes" %}</a></li>
+                </ul>
+                <div class="tab-content" style="margin-top:15px;">
+                    <div class="tab-pane active" id="lpma-tab-link">
+                        <p class="text-muted small">{% trans "Override the site-wide launch settings for this grant only, or use the policy from the panel section above." %}</p>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="lpma-edit-launch-use-policy">
+                                {% trans "Use site-wide launch settings (security policy)" %}
+                            </label>
+                        </div>
+                        <div class="form-inline flex-wrap" style="gap:8px;">
+                            <label class="mb-2">{% trans "Valid for (hours)" %}
+                                <input type="number" class="form-control input-sm" id="lpma-edit-launch-ttl" min="1" max="720" style="width:5.5em;margin-left:6px;">
+                            </label>
+                            <label class="mb-2" style="margin-left:12px;">
+                                <input type="checkbox" id="lpma-edit-launch-single">
+                                {% trans "Single-use link" %}
+                            </label>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" id="lpma-edit-launch-save">{% trans "Save link settings" %}</button>
+                        <hr style="margin:12px 0;">
+                        <p class="text-muted small mb-2">{% trans "Generate a link with the effective settings (grant override or site-wide)." %}</p>
+                        <button type="button" class="btn btn-default btn-sm" id="lpma-edit-launch-copy" disabled>{% trans "Copy phpMyAdmin link" %}</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="lpma-edit-launch-open" disabled>{% trans "Open phpMyAdmin" %}</button>
+                    </div>
+                    <div class="tab-pane" id="lpma-tab-database">
+                        <div class="form-group">
+                            <label>{% trans "Database" %}</label>
+                            <select id="lpma-edit-chdb-select" class="form-control"></select>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" id="lpma-edit-chdb-save">{% trans "Save database" %}</button>
+                    </div>
+                    <div class="tab-pane" id="lpma-tab-perms">
+                        <p class="text-muted small mb-2">{% trans "Choose MySQL privileges for this grant. Leave all checked for full access on this single database only." %}</p>
+                        <div class="form-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-all">{% trans "Select all" %}</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-ro">{% trans "Read only" %}</button>
+                        </div>
+                        <div id="lpma-perms-list" class="border rounded p-2" style="max-height:280px;overflow:auto;"></div>
+                        <button type="button" class="btn btn-primary btn-sm mt-2" id="lpma-perms-save">{% trans "Save permissions" %}</button>
+                    </div>
+                    <div class="tab-pane" id="lpma-tab-password">
+                        <p class="text-muted small">{% trans "Generate a new MySQL password. The old password stops working immediately." %}</p>
+                        <button type="button" class="btn btn-warning btn-sm" id="lpma-edit-rotate-pw">{% trans "Generate new password" %}</button>
+                    </div>
+                    <div class="tab-pane" id="lpma-tab-notes">
+                        <div class="form-group">
+                            <label>{% trans "Notes (optional)" %}</label>
+                            <textarea id="lpma-edit-notes" class="form-control" rows="4" maxlength="2000"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" id="lpma-edit-notes-save">{% trans "Save notes" %}</button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                <button type="button" class="btn btn-primary" id="lpma-chdb-save">{% trans "Save" %}</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: modify MySQL privileges -->
-<div class="modal fade" id="lpma-modal-perms" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{% trans "Modify permissions" %}</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="lpma-perms-grant-id">
-                <p class="text-muted small mb-2">{% trans "Choose MySQL privileges for this grant. Leave all checked for full access on this single database only." %}</p>
-                <div class="form-group">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-all">{% trans "Select all" %}</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="lpma-perms-ro">{% trans "Read only" %}</button>
-                </div>
-                <div id="lpma-perms-list" class="border rounded p-2" style="max-height:280px;overflow:auto;"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                <button type="button" class="btn btn-primary" id="lpma-perms-save">{% trans "Save permissions" %}</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
             </div>
         </div>
     </div>
@@ -352,6 +382,64 @@
         return siteSel.value || '';
     }
 
+    var currentEditGrant = null;
+
+    function policyLaunchTtl() {
+        var th = parseInt(policy.pma_launch_ttl_hours, 10);
+        if (isNaN(th)) th = 24;
+        return Math.min(720, Math.max(1, th));
+    }
+    function policyLaunchSingle() {
+        return policy.pma_launch_single_use !== false;
+    }
+
+    function toggleLaunchOverrideFields() {
+        var use = document.getElementById('lpma-edit-launch-use-policy').checked;
+        document.getElementById('lpma-edit-launch-ttl').disabled = use;
+        document.getElementById('lpma-edit-launch-single').disabled = use;
+    }
+
+    function fillEditGrantModal(g) {
+        currentEditGrant = g;
+        document.getElementById('lpma-edit-grant-id').value = String(g.id);
+        var sum = document.getElementById('lpma-edit-grant-summary');
+        if (sum) {
+            sum.innerHTML = '<code>' + escapeHtml(g.mysql_username) + '</code> <span class="text-muted">·</span> <code>' + escapeHtml(g.database_name) + '</code>';
+        }
+        var polTtl = policyLaunchTtl();
+        var polSingle = policyLaunchSingle();
+        var bothNull = (g.launch_link_ttl_hours == null && g.launch_link_single_use == null);
+        document.getElementById('lpma-edit-launch-use-policy').checked = bothNull;
+        var ttlDisplay = bothNull ? polTtl : (g.launch_link_ttl_hours != null ? g.launch_link_ttl_hours : polTtl);
+        var singleDisplay = bothNull ? polSingle : (g.launch_link_single_use != null ? g.launch_link_single_use : polSingle);
+        document.getElementById('lpma-edit-launch-ttl').value = String(Math.min(720, Math.max(1, parseInt(ttlDisplay, 10) || 24)));
+        document.getElementById('lpma-edit-launch-single').checked = !!singleDisplay;
+        toggleLaunchOverrideFields();
+        var en = g.enabled;
+        document.getElementById('lpma-edit-launch-copy').disabled = !en;
+        document.getElementById('lpma-edit-launch-open').disabled = !en;
+        var sel = document.getElementById('lpma-edit-chdb-select');
+        sel.innerHTML = '';
+        api('api/databases/?website_id=' + encodeURIComponent(g.website_id)).then(function(d) {
+            (d.databases || []).forEach(function(row) {
+                var o = document.createElement('option');
+                o.value = row.dbName;
+                o.textContent = row.dbName;
+                if (row.dbName === g.database_name) o.selected = true;
+                sel.appendChild(o);
+            });
+        }).catch(function() {});
+        var curPriv = Array.isArray(g.privileges) && g.privileges.length ? g.privileges : supportedPrivileges.slice();
+        renderPermsModal(curPriv);
+        document.getElementById('lpma-edit-notes').value = g.notes || '';
+    }
+
+    function openModifyGrant(g) {
+        fillEditGrantModal(g);
+        $('#lpma-modal-edit-grant .nav-tabs a:first').tab('show');
+        $('#lpma-modal-edit-grant').modal('show');
+    }
+
     function renderGrants(rows) {
         var tb = document.getElementById('lpma-tbody');
         tb.innerHTML = '';
@@ -378,16 +466,13 @@
                 '<td>' + statusHtml + '</td>' +
                 '<td class="lpma-actions"></td>';
             var tdAct = tr.querySelector('.lpma-actions');
-            tdAct.appendChild(btn('{% trans "Password" %}', 'btn-sm btn-secondary', function() { rotatePw(g.id); }));
-            tdAct.appendChild(btn('{% trans "Database" %}', 'btn-sm btn-info', function() { openChDb(g); }));
+            tdAct.appendChild(btn('{% trans "Modify" %}', 'btn-sm btn-primary', function() { openModifyGrant(g); }));
             if (g.enabled) {
-                tdAct.appendChild(btn('{% trans "Copy phpMyAdmin link" %}', 'btn-sm btn-default', function() { copyPmaLoginLink(g.id); }));
-                tdAct.appendChild(btn('{% trans "Open phpMyAdmin" %}', 'btn-sm btn-primary', function() { openPmaLoginLink(g.id); }));
+                tdAct.appendChild(btn('{% trans "Open phpMyAdmin" %}', 'btn-sm btn-info', function() { openPmaLoginLink(g.id); }));
                 tdAct.appendChild(btn('{% trans "Disable" %}', 'btn-sm btn-warning', function() { disableGrant(g.id); }));
             } else {
                 tdAct.appendChild(btn('{% trans "Enable" %}', 'btn-sm btn-success', function() { enableGrant(g.id); }));
             }
-            tdAct.appendChild(btn('{% trans "Modify permissions" %}', 'btn-sm btn-dark', function() { openPerms(g); }));
             tdAct.appendChild(btn('{% trans "Delete" %}', 'btn-sm btn-danger', function() { deleteGrant(g.id); }));
             tb.appendChild(tr);
         });
@@ -446,6 +531,52 @@
             );
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
+
+    document.getElementById('lpma-edit-launch-use-policy').addEventListener('change', function() {
+        if (!this.checked && currentEditGrant &&
+                currentEditGrant.launch_link_ttl_hours == null && currentEditGrant.launch_link_single_use == null) {
+            document.getElementById('lpma-edit-launch-ttl').value = '24';
+            document.getElementById('lpma-edit-launch-single').checked = policyLaunchSingle();
+        }
+        toggleLaunchOverrideFields();
+    });
+
+    document.getElementById('lpma-edit-launch-save').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        var usePol = document.getElementById('lpma-edit-launch-use-policy').checked;
+        var v = parseInt(document.getElementById('lpma-edit-launch-ttl').value, 10);
+        if (isNaN(v)) v = 24;
+        v = Math.min(720, Math.max(1, v));
+        api('api/grants/update-launch-link/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({
+                grant_id: gid,
+                use_policy_launch_defaults: usePol,
+                launch_link_ttl_hours: v,
+                launch_link_single_use: !!document.getElementById('lpma-edit-launch-single').checked
+            })
+        }).then(function(d) {
+            if (!d.success) { showMsg(d.error || 'Error', true); return; }
+            if (d.grant) {
+                currentEditGrant = d.grant;
+                fillEditGrantModal(d.grant);
+            }
+            showMsg('{% trans "Launch link settings saved." %}', false);
+            loadGrants();
+        }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
+    });
+
+    document.getElementById('lpma-edit-launch-copy').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        if (!currentEditGrant || !currentEditGrant.enabled) return;
+        copyPmaLoginLink(gid);
+    });
+    document.getElementById('lpma-edit-launch-open').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        if (!currentEditGrant || !currentEditGrant.enabled) return;
+        openPmaLoginLink(gid);
+    });
 
     function loadGrants() {
         var wid = currentSiteId();
@@ -558,6 +689,7 @@
             body: JSON.stringify({ grant_id: id })
         }).then(function(d) {
             showMsg(d.success ? '{% trans "Disabled." %}' : (d.error || 'Error'), !d.success);
+            try { $('#lpma-modal-edit-grant').modal('hide'); } catch (e2) {}
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
@@ -569,6 +701,7 @@
             body: JSON.stringify({ grant_id: id })
         }).then(function(d) {
             showMsg(d.success ? '{% trans "Enabled." %}' : (d.error || 'Error'), !d.success);
+            try { $('#lpma-modal-edit-grant').modal('hide'); } catch (e2) {}
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
@@ -581,6 +714,7 @@
             body: JSON.stringify({ grant_id: id })
         }).then(function(d) {
             showMsg(d.success ? '{% trans "Deleted." %}' : (d.error || 'Error'), !d.success);
+            try { $('#lpma-modal-edit-grant').modal('hide'); } catch (e2) {}
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
@@ -596,36 +730,27 @@
             document.getElementById('lpma-pw-text').textContent = d.password || '';
             document.getElementById('lpma-pw-user').textContent = (d.grant && d.grant.mysql_username) || '';
             $('#lpma-modal-pw').modal('show');
+            if (d.grant) {
+                currentEditGrant = d.grant;
+                fillEditGrantModal(d.grant);
+            }
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
     }
 
-    function openChDb(g) {
-        document.getElementById('lpma-chdb-grant-id').value = g.id;
-        var sel = document.getElementById('lpma-chdb-select');
-        sel.innerHTML = '';
-        api('api/databases/?website_id=' + encodeURIComponent(g.website_id)).then(function(d) {
-            (d.databases || []).forEach(function(row) {
-                var o = document.createElement('option');
-                o.value = row.dbName;
-                o.textContent = row.dbName;
-                if (row.dbName === g.database_name) o.selected = true;
-                sel.appendChild(o);
-            });
-            $('#lpma-modal-chdb').modal('show');
-        });
-    }
-
-    document.getElementById('lpma-chdb-save').addEventListener('click', function() {
-        var gid = parseInt(document.getElementById('lpma-chdb-grant-id').value, 10);
-        var dbn = document.getElementById('lpma-chdb-select').value;
+    document.getElementById('lpma-edit-chdb-save').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        var dbn = document.getElementById('lpma-edit-chdb-select').value;
         api('api/grants/change-database/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
             body: JSON.stringify({ grant_id: gid, database_name: dbn })
         }).then(function(d) {
             if (!d.success) { showMsg(d.error || 'Error', true); return; }
-            $('#lpma-modal-chdb').modal('hide');
+            if (d.grant) {
+                currentEditGrant = d.grant;
+                fillEditGrantModal(d.grant);
+            }
             showMsg('{% trans "Database updated." %}', false);
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
@@ -650,12 +775,28 @@
         });
     }
 
-    function openPerms(g) {
-        document.getElementById('lpma-perms-grant-id').value = g.id;
-        var current = Array.isArray(g.privileges) && g.privileges.length ? g.privileges : supportedPrivileges.slice();
-        renderPermsModal(current);
-        $('#lpma-modal-perms').modal('show');
-    }
+    document.getElementById('lpma-edit-rotate-pw').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        rotatePw(gid);
+    });
+
+    document.getElementById('lpma-edit-notes-save').addEventListener('click', function() {
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
+        var notes = document.getElementById('lpma-edit-notes').value;
+        api('api/grants/notes/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ grant_id: gid, notes: notes })
+        }).then(function(d) {
+            if (!d.success) { showMsg(d.error || 'Error', true); return; }
+            if (d.grant) {
+                currentEditGrant = d.grant;
+                document.getElementById('lpma-edit-notes').value = d.grant.notes || '';
+            }
+            showMsg('{% trans "Notes saved." %}', false);
+            loadGrants();
+        }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
+    });
 
     document.getElementById('lpma-perms-all').addEventListener('click', function() {
         renderPermsModal(supportedPrivileges.slice());
@@ -666,7 +807,7 @@
     });
 
     document.getElementById('lpma-perms-save').addEventListener('click', function() {
-        var gid = parseInt(document.getElementById('lpma-perms-grant-id').value, 10);
+        var gid = parseInt(document.getElementById('lpma-edit-grant-id').value, 10);
         var selected = getSelectedPrivilegesFromModal();
         if (!selected.length) {
             showMsg('{% trans "Select at least one privilege." %}', true);
@@ -678,7 +819,10 @@
             body: JSON.stringify({ grant_id: gid, privileges: selected })
         }).then(function(d) {
             if (!d.success) { showMsg(d.error || 'Error', true); return; }
-            $('#lpma-modal-perms').modal('hide');
+            if (d.grant) {
+                currentEditGrant = d.grant;
+                renderPermsModal(Array.isArray(d.grant.privileges) && d.grant.privileges.length ? d.grant.privileges : supportedPrivileges.slice());
+            }
             showMsg('{% trans "Permissions updated." %}', false);
             loadGrants();
         }).catch(function(e) { showMsg(e.message || 'Request failed', true); });
