@@ -27,7 +27,7 @@ from .models import AutoBanConfig, WhitelistedIP, AutoBanLog
 from . import api_encryption
 
 PLUGIN_NAME = 'autoBanSecurityAlerts'
-PLUGIN_VERSION = '1.0.2'
+PLUGIN_VERSION = '1.0.3'
 
 AUTO_BAN_PER_PAGE_CHOICES = (5, 10, 15, 30, 50)
 AUTO_BAN_DEFAULT_PER_PAGE = 5
@@ -445,12 +445,17 @@ def unified_verification_required(view_func):
                                 _persist_activation_in_cyberpanel_db(request, activation_key_str)
                             except Exception as e:
                                 logging.writeToFile(f"Auto Ban Plugin: Could not persist activation key: {str(e)}")
-                        elif not response_data.get('success') and activation_key_str:
+                        else:
                             try:
                                 config = AutoBanConfig.get_config()
-                                if getattr(config, 'activation_key', '') == activation_key_str:
-                                    config.activation_key = ''
-                                    config.save(update_fields=['activation_key', 'updated_at'])
+                                persisted = (getattr(config, 'activation_key', '') or '').strip()
+                                if persisted == activation_key_str:
+                                    has_access = True
+                                    verification_result = {
+                                        'method': 'activation_key',
+                                        'has_access': True,
+                                        'message': 'Access granted via saved activation key',
+                                    }
                             except Exception:
                                 pass
                 except Exception as e:
@@ -677,6 +682,67 @@ def settings_view(request):
     }
     proc = httpProc(request, 'autoBanSecurityAlerts/settings.html', context, 'managePlugins')
     return proc.render()
+
+
+def _expires_display_for_autoban_log(log):
+    """Human-readable expiry for export (aligned with Firewall banned IP export)."""
+    from datetime import timedelta
+    dur = (log.ban_duration or 'permanent').strip() or 'permanent'
+    if dur == 'permanent' or not log.banned_at:
+        return 'Never'
+    duration_map = {'1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000}
+    secs = duration_map.get(dur, 86400)
+    try:
+        exp_dt = log.banned_at + timedelta(seconds=secs)
+        return exp_dt.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return 'Never'
+
+
+@cyberpanel_login_required
+@unified_verification_required
+@require_http_methods(["GET"])
+def export_auto_bans_firewall_json(request):
+    """
+    Export all AutoBanLog rows as JSON compatible with CyberPanel
+    Firewall → Import Banned IPs (expects banned_ips array, version 1.0).
+    """
+    mailUtilities.checkHome()
+    try:
+        banned_records = []
+        for log in AutoBanLog.objects.all().order_by('-banned_at'):
+            ip = str(log.ip_address or '').strip()
+            reason = (log.ban_reason or '').strip() or 'Auto-ban (Security Alerts)'
+            duration = (log.ban_duration or 'permanent').strip() or 'permanent'
+            banned_on = log.banned_at.strftime('%Y-%m-%d %H:%M:%S') if log.banned_at else 'N/A'
+            banned_records.append({
+                'id': int(log.pk),
+                'ip': ip,
+                'reason': reason,
+                'duration': duration,
+                'banned_on': banned_on,
+                'expires': _expires_display_for_autoban_log(log),
+                'active': True,
+                'security_alert_type': str(log.security_alert_type or ''),
+            })
+        export_data = {
+            'version': '1.0',
+            'exported_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'source': 'autoBanSecurityAlerts',
+            'total_banned_ips': len(banned_records),
+            'banned_ips': banned_records,
+        }
+        json_content = json.dumps(export_data, indent=2, ensure_ascii=False)
+        logging.writeToFile(
+            'Auto Ban Plugin: Exported %s auto-ban rows for firewall import' % len(banned_records)
+        )
+        response = HttpResponse(json_content, content_type='application/json; charset=utf-8')
+        ts = int(time.time())
+        response['Content-Disposition'] = 'attachment; filename="auto_ban_export_%s.json"' % ts
+        return response
+    except Exception as e:
+        logging.writeToFile('Auto Ban Plugin: export_auto_bans_firewall_json failed: %s' % str(e))
+        return JsonResponse({'exportStatus': 0, 'error_message': 'Export failed'}, status=500)
 
 
 @cyberpanel_login_required
