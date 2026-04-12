@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import uuid
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -7,10 +8,22 @@ from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from functools import wraps
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-from plogical.plugin_acl import require_manage_plugins_api
+from plogical.acl import ACLManager
 from .models import DiscordWebhook, WebhookSettings
 from .forms import DiscordWebhookForm, WebhookSettingsForm
 from .utils import send_discord_webhook, format_server_usage_embed, get_server_metrics
+
+
+def _webhooks_json_server_error(exc=None):
+    error_id = str(uuid.uuid4())[:12]
+    if exc is not None:
+        logging.writeToFile('Discord Webhooks error_id=%s: %s' % (error_id, str(exc)))
+    else:
+        logging.writeToFile('Discord Webhooks error_id=%s' % error_id)
+    return JsonResponse(
+        {'success': False, 'error': 'Internal server error', 'error_id': error_id},
+        status=500,
+    )
 
 
 def cyberpanel_login_required(view_func):
@@ -30,7 +43,38 @@ def cyberpanel_login_required(view_func):
     return _wrapped_view
 
 
+def cyberpanel_admin_required(view_func):
+    """Require CyberPanel ACL admin (global webhooks are server-wide sensitive)."""
+
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            user_id = request.session['userID']
+        except KeyError:
+            from loginSystem.views import loadLoginPage
+
+            return redirect(loadLoginPage)
+        try:
+            acl = ACLManager.loadedACL(user_id)
+        except Exception:
+            acl = {}
+        if acl.get('admin') != 1:
+            if view_func.__name__ in ('settings_view', 'discord_webhooks_plugin'):
+                return HttpResponse(
+                    '<div style="padding:20px;font-family:sans-serif">403 Forbidden: admin access required for Discord Webhooks.</div>',
+                    status=403,
+                )
+            return JsonResponse(
+                {'success': False, 'error': 'Admin access required'},
+                status=403,
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
+
 @cyberpanel_login_required
+@cyberpanel_admin_required
 def discord_webhooks_plugin(request):
     """Main plugin page (required by CyberPanel)"""
     try:
@@ -38,36 +82,20 @@ def discord_webhooks_plugin(request):
         return redirect('discordWebhooks:settings')
     except Exception as e:
         logging.writeToFile(f"Discord Webhooks plugin error: {str(e)}")
-        return HttpResponse(f"<div>Plugin Error: {str(e)}</div>")
+        return HttpResponse('<div>Plugin error</div>', status=500)
 
 
 @cyberpanel_login_required
+@cyberpanel_admin_required
 def settings_view(request):
     """Main settings page"""
     try:
         from plogical.mailUtilities import mailUtilities
         from plogical.httpProc import httpProc
-        from django.db.utils import OperationalError, ProgrammingError
-        from django.core.management import call_command
         
         mailUtilities.checkHome()
-        try:
-            webhooks = DiscordWebhook.objects.all().order_by('name')
-            settings = WebhookSettings.get_settings()
-        except (OperationalError, ProgrammingError) as db_err:
-            logging.writeToFile(f"Discord Webhooks settings DB error: {db_err}")
-            try:
-                call_command('migrate', 'discordWebhooks', verbosity=0, interactive=False)
-                webhooks = DiscordWebhook.objects.all().order_by('name')
-                settings = WebhookSettings.get_settings()
-            except Exception as migrate_err:
-                logging.writeToFile(f"Discord Webhooks migrate error: {migrate_err}")
-                return HttpResponse(
-                    '<div style="padding:20px;">'
-                    '<h2>Discord Webhooks</h2><p>Database tables missing. Run: '
-                    'cd /usr/local/CyberCP && python3 manage.py migrate discordWebhooks</p>'
-                    '<p>Error: %s</p></div>' % str(db_err)
-                )
+        webhooks = DiscordWebhook.objects.all().order_by('name')
+        settings = WebhookSettings.get_settings()
         
         context = {
             'title': 'Discord Webhooks Settings',
@@ -80,16 +108,16 @@ def settings_view(request):
             'settings_form': WebhookSettingsForm(instance=settings)
         }
         
-        proc = httpProc(request, 'discordWebhooks/settings.html', context, 'managePlugins')
+        proc = httpProc(request, 'discordWebhooks/settings.html', context, 'admin')
         return proc.render()
         
     except Exception as e:
         logging.writeToFile(f"Discord Webhooks settings error: {str(e)}")
-        return HttpResponse(f"<div>Settings Error: {str(e)}</div>")
+        return HttpResponse('<div>Settings error</div>', status=500)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
+@cyberpanel_admin_required
 @require_http_methods(["POST"])
 def add_webhook(request):
     """Add new webhook"""
@@ -105,12 +133,11 @@ def add_webhook(request):
             return JsonResponse({'success': False, 'errors': errors}, status=400)
             
     except Exception as e:
-        logging.writeToFile(f"Error adding webhook: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _webhooks_json_server_error(e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
+@cyberpanel_admin_required
 @require_http_methods(["GET", "POST"])
 def edit_webhook(request, webhook_id):
     """Edit webhook"""
@@ -140,12 +167,11 @@ def edit_webhook(request, webhook_id):
             })
             
     except Exception as e:
-        logging.writeToFile(f"Error editing webhook: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _webhooks_json_server_error(e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
+@cyberpanel_admin_required
 @require_http_methods(["POST"])
 def delete_webhook(request, webhook_id):
     """Delete webhook"""
@@ -158,12 +184,11 @@ def delete_webhook(request, webhook_id):
         return JsonResponse({'success': True, 'message': 'Webhook deleted successfully'})
         
     except Exception as e:
-        logging.writeToFile(f"Error deleting webhook: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _webhooks_json_server_error(e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
+@cyberpanel_admin_required
 @require_http_methods(["POST"])
 def test_webhook(request, webhook_id):
     """Test webhook"""
@@ -201,18 +226,24 @@ def test_webhook(request, webhook_id):
                 'message': f'Test webhook sent successfully to {webhook.name}'
             })
         else:
-            return JsonResponse({
-                'success': False,
-                'error': result['message']
-            }, status=400)
+            logging.writeToFile(
+                'Discord Webhooks test_webhook failed for id=%s: %s'
+                % (webhook_id, result.get('message', ''))
+            )
+            return JsonResponse(
+                {
+                    'success': False,
+                    'error': 'Could not send test webhook',
+                },
+                status=400,
+            )
             
     except Exception as e:
-        logging.writeToFile(f"Error testing webhook: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _webhooks_json_server_error(e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
+@cyberpanel_admin_required
 @require_http_methods(["POST"])
 def save_settings(request):
     """Save plugin settings"""
@@ -247,5 +278,4 @@ def save_settings(request):
             return JsonResponse({'success': False, 'errors': errors}, status=400)
             
     except Exception as e:
-        logging.writeToFile(f"Error saving settings: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _webhooks_json_server_error(e)

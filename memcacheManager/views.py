@@ -4,16 +4,30 @@ Memcache Manager Views - status, control, stats, flush, config.
 Supports both standard Memcached and LiteSpeed LSMCD.
 """
 from django.shortcuts import redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from plogical.httpProc import httpProc
-from plogical.plugin_acl import require_manage_plugins_api
 from plogical.mailUtilities import mailUtilities
 from functools import wraps
 import json
+import uuid
 
 from . import utils
+
+
+def _memcache_json_server_error(request, log_prefix, exc=None):
+    error_id = str(uuid.uuid4())[:12]
+    from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+
+    if exc is not None:
+        logging.writeToFile('%s [error_id=%s] %s' % (log_prefix, error_id, str(exc)))
+    else:
+        logging.writeToFile('%s [error_id=%s]' % (log_prefix, error_id))
+    return JsonResponse(
+        {'success': False, 'error': 'Internal server error', 'error_id': error_id},
+        status=500,
+    )
 
 
 def cyberpanel_login_required(view_func):
@@ -29,6 +43,7 @@ def cyberpanel_login_required(view_func):
     return _wrapped_view
 
 
+@ensure_csrf_cookie
 @cyberpanel_login_required
 @require_http_methods(["GET"])
 def main_view(request):
@@ -83,18 +98,17 @@ def main_view(request):
             'connection_msg': connection_msg,
         }
         
-        proc = httpProc(request, 'memcacheManager/index.html', context, 'managePlugins')
+        proc = httpProc(request, 'memcacheManager/index.html', context, 'admin')
         return proc.render()
     
     except Exception as e:
         from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+
         logging.writeToFile('Memcache Manager main_view error: %s' % str(e))
-        return JsonResponse({'error': str(e)}, status=500)
+        return HttpResponse('Internal server error', status=500)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_control(request):
     """API: start, stop, restart, enable, disable memcache service."""
@@ -114,13 +128,10 @@ def api_control(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Memcache Manager api_control error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _memcache_json_server_error(request, 'Memcache Manager api_control error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_stats(request):
     """API: Get memcache statistics as JSON (for real-time updates)."""
@@ -161,14 +172,10 @@ def api_stats(request):
         })
     
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Memcache Manager api_stats error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _memcache_json_server_error(request, 'Memcache Manager api_stats error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_flush(request):
     """API: Flush all memcache data."""
@@ -177,13 +184,10 @@ def api_flush(request):
         return JsonResponse({'success': ok, 'message': msg})
     
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Memcache Manager api_flush error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _memcache_json_server_error(request, 'Memcache Manager api_flush error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_config(request):
     """API: Get memcache configuration as JSON."""
@@ -207,6 +211,4 @@ def api_config(request):
         })
     
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Memcache Manager api_config error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _memcache_json_server_error(request, 'Memcache Manager api_config error', e)

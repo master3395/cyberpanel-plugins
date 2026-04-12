@@ -3,16 +3,30 @@
 Redis Manager Views - status, control, stats, flush.
 """
 from django.shortcuts import redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from plogical.httpProc import httpProc
-from plogical.plugin_acl import require_manage_plugins_api
 from plogical.mailUtilities import mailUtilities
 from functools import wraps
 import json
+import uuid
 
 from . import utils
+
+
+def _redis_json_server_error(request, log_prefix, exc=None):
+    error_id = str(uuid.uuid4())[:12]
+    from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+
+    if exc is not None:
+        logging.writeToFile('%s [error_id=%s] %s' % (log_prefix, error_id, str(exc)))
+    else:
+        logging.writeToFile('%s [error_id=%s]' % (log_prefix, error_id))
+    return JsonResponse(
+        {'success': False, 'error': 'Internal server error', 'error_id': error_id},
+        status=500,
+    )
 
 
 def cyberpanel_login_required(view_func):
@@ -27,6 +41,7 @@ def cyberpanel_login_required(view_func):
     return _wrapped_view
 
 
+@ensure_csrf_cookie
 @cyberpanel_login_required
 @require_http_methods(["GET"])
 def main_view(request):
@@ -58,17 +73,16 @@ def main_view(request):
             'redis_config_defaults': config_defaults,
             'redis_config_defaults_json': json.dumps(config_defaults),
         }
-        proc = httpProc(request, 'redisManager/index.html', context, 'managePlugins')
+        proc = httpProc(request, 'redisManager/index.html', context, 'admin')
         return proc.render()
     except Exception as e:
         from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
+
         logging.writeToFile('Redis Manager main_view error: %s' % str(e))
-        return JsonResponse({'error': str(e)}, status=500)
+        return HttpResponse('Internal server error', status=500)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_control(request):
     """API: start, stop, restart Redis."""
@@ -82,14 +96,10 @@ def api_control(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_control error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_control error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_flush(request):
     """API: FLUSHALL Redis."""
@@ -97,13 +107,10 @@ def api_flush(request):
         ok, msg = utils.redis_flush_all()
         return JsonResponse({'success': ok, 'message': msg})
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_flush error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_flush error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_config(request):
     """API: get Redis editable config (JSON)."""
@@ -111,16 +118,12 @@ def api_config(request):
         config_dict, config_path, config_error, _ = utils.get_editable_config()
         if config_error:
             return JsonResponse({'success': False, 'error': config_error}, status=404)
-        return JsonResponse({'success': True, 'config': config_dict, 'config_path': config_path})
+        return JsonResponse({'success': True, 'config': config_dict})
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_config error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_config error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_save_config(request):
     """API: save Redis config (JSON body: { key: value, ... })."""
@@ -135,13 +138,10 @@ def api_save_config(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_save_config error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_save_config error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
 @require_http_methods(["GET"])
 def api_detect_config(request):
     """API: auto-detect Redis config path from systemd / fallbacks. Returns path or error."""
@@ -154,14 +154,10 @@ def api_detect_config(request):
             'error': 'Could not detect config. Checked: running process, systemd, paths (%s), and find in /etc, /usr/local, /opt, /var. Set the path manually if Redis uses a custom location.' % ', '.join(utils.REDIS_CONF_PATHS)
         }, status=404)
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_detect_config error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_detect_config error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_save_config_path(request):
     """API: save custom Redis config path (JSON body: { path: "/etc/redis.conf" }). Empty path clears."""
@@ -173,14 +169,10 @@ def api_save_config_path(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_save_config_path error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_save_config_path error', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_fix_permissions(request):
     """API: fix permissions on Redis config file so the panel can read it (chmod 644)."""
@@ -191,6 +183,4 @@ def api_fix_permissions(request):
         ok, msg = utils.fix_redis_config_permissions(path)
         return JsonResponse({'success': ok, 'message': msg})
     except Exception as e:
-        from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
-        logging.writeToFile('Redis Manager api_fix_permissions error: %s' % str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return _redis_json_server_error(request, 'Redis Manager api_fix_permissions error', e)

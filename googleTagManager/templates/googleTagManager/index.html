@@ -196,6 +196,16 @@
 </div>
 
 <script>
+(function() {
+    var csrftoken = '{{ csrf_token }}';
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type || '') && !settings.crossDomain) {
+                xhr.setRequestHeader('X-CSRFToken', csrftoken);
+            }
+        }
+    });
+})();
 function viewGTMCode(domain) {
     $('#gtmCodeModal').modal('show');
     $('#gtmCodeContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p>{% trans "Loading code snippets..." %}</p></div>');

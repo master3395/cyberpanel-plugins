@@ -24,6 +24,18 @@ from .utils.discord_oauth import (
 )
 from .utils.config import get_config, save_config, is_enabled
 
+# Map Discord OAuth ?error= values to short internal query codes (avoid reflecting raw values).
+DISCORD_OAUTH_ERROR_PARAM_MAP = {
+    'access_denied': 'oauth_denied',
+    'invalid_request': 'oauth_invalid_request',
+    'unauthorized_client': 'oauth_unauthorized_client',
+    'unsupported_response_type': 'oauth_unsupported_response_type',
+    'invalid_scope': 'oauth_invalid_scope',
+    'server_error': 'oauth_server_error',
+    'temporarily_unavailable': 'oauth_unavailable',
+    'invalid_grant': 'oauth_invalid_grant',
+}
+
 
 def cyberpanel_login_required(view_func):
     """Decorator to check CyberPanel session"""
@@ -107,9 +119,13 @@ def discord_callback(request):
         # Get authorization code
         code = request.GET.get('code')
         if not code:
-            error = request.GET.get('error', 'unknown_error')
-            logging.writeToFile(f"Discord OAuth: Error from Discord - {error}")
-            return redirect(f'/login?error={error}')
+            raw_err = (request.GET.get('error') or 'unknown_error')[:200]
+            logging.writeToFile('Discord OAuth: Error from Discord - %s' % raw_err)
+            safe_code = DISCORD_OAUTH_ERROR_PARAM_MAP.get(
+                str(raw_err).lower().strip(),
+                'oauth_error',
+            )
+            return redirect('/login?error=%s' % safe_code)
         
         # Exchange code for token
         token_data = exchange_code_for_token(code, request)
@@ -289,12 +305,12 @@ def main_view(request):
             'has_discord': discord_account is not None
         }
         
-        proc = httpProc(request, 'discordAuth/index.html', context, 'managePlugins')
+        proc = httpProc(request, 'discordAuth/index.html', context, 'admin')
         return proc.render()
         
     except Exception as e:
-        logging.writeToFile(f"Discord auth main view error: {str(e)}")
-        return JsonResponse({'status': 0, 'error_message': str(e)})
+        logging.writeToFile('Discord auth main view error: %s' % str(e))
+        return JsonResponse({'status': 0, 'error_message': 'Internal server error'})
 
 
 @cyberpanel_login_required
@@ -306,12 +322,10 @@ def settings_view(request):
         userID = request.session['userID']
         currentACL = ACLManager.loadedACL(userID)
         
-        _ad = int(currentACL.get('admin', 0) or 0)
-        _mp = int(currentACL.get('managePlugins', 0) or 0)
-        if _ad != 1 and _mp != 1:
+        if currentACL['admin'] != 1:
             return JsonResponse({
                 'status': 0,
-                'error_message': 'Plugin management or administrator access required'
+                'error_message': 'Admin access required'
             })
         
         config = get_config()
@@ -342,10 +356,10 @@ def settings_view(request):
                     })
                     
             except Exception as e:
-                logging.writeToFile(f"Error saving Discord settings: {str(e)}")
+                logging.writeToFile('Error saving Discord settings: %s' % str(e))
                 return JsonResponse({
                     'status': 0,
-                    'error_message': str(e)
+                    'error_message': 'Could not save settings',
                 })
         
         # Get redirect URI suggestion
@@ -360,9 +374,9 @@ def settings_view(request):
             'suggested_redirect_uri': suggested_redirect
         }
         
-        proc = httpProc(request, 'discordAuth/settings.html', context, 'managePlugins')
+        proc = httpProc(request, 'discordAuth/settings.html', context, 'admin')
         return proc.render()
         
     except Exception as e:
-        logging.writeToFile(f"Discord auth settings error: {str(e)}")
-        return JsonResponse({'status': 0, 'error_message': str(e)})
+        logging.writeToFile('Discord auth settings error: %s' % str(e))
+        return JsonResponse({'status': 0, 'error_message': 'Internal server error'})

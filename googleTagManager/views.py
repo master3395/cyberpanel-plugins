@@ -5,16 +5,16 @@ Google Tag Manager Plugin Views
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from plogical.mailUtilities import mailUtilities
 from plogical.httpProc import httpProc
-from plogical.plugin_acl import require_manage_plugins_api
 from plogical.CyberCPLogFileWriter import CyberCPLogFileWriter as logging
 from plogical.acl import ACLManager
 from functools import wraps
 import json
 import re
+import uuid
 
 from .models import GTMSettings
 from .utils import get_user_domains, get_gtm_code_full, get_gtm_for_domain
@@ -35,6 +35,19 @@ def cyberpanel_login_required(view_func):
     return _wrapped_view
 
 
+def _gtm_json_server_error(request, log_msg, exc=None):
+    error_id = str(uuid.uuid4())[:12]
+    if exc is not None:
+        logging.writeToFile('%s [error_id=%s]: %s' % (log_msg, error_id, str(exc)))
+    else:
+        logging.writeToFile('%s [error_id=%s]' % (log_msg, error_id))
+    return JsonResponse(
+        {'success': False, 'error': 'Internal server error', 'error_id': error_id},
+        status=500,
+    )
+
+
+@ensure_csrf_cookie
 @cyberpanel_login_required
 def main_view(request):
     """
@@ -50,44 +63,20 @@ def main_view(request):
         # Get all user domains
         domains = get_user_domains(userID, currentACL)
         
-        # Get GTM settings for all domains (with defensive migrate if table missing)
+        # Get GTM settings for all domains
         gtm_settings = {}
-        try:
-            for domain_info in domains:
-                domain = domain_info['domain']
-                try:
-                    gtm_setting = GTMSettings.objects.get(domain=domain)
-                    gtm_settings[domain] = {
-                        'container_id': gtm_setting.gtm_container_id,
-                        'enabled': gtm_setting.enabled,
-                        'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                        'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
-                    }
-                except GTMSettings.DoesNotExist:
-                    gtm_settings[domain] = None
-        except Exception as db_err:
-            from django.db.utils import OperationalError, ProgrammingError
-            if isinstance(db_err, (OperationalError, ProgrammingError)):
-                try:
-                    from django.core.management import call_command
-                    call_command('migrate', 'googleTagManager', verbosity=0, interactive=False)
-                    for domain_info in domains:
-                        domain = domain_info['domain']
-                        try:
-                            gtm_setting = GTMSettings.objects.get(domain=domain)
-                            gtm_settings[domain] = {
-                                'container_id': gtm_setting.gtm_container_id,
-                                'enabled': gtm_setting.enabled,
-                                'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                                'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
-                            }
-                        except GTMSettings.DoesNotExist:
-                            gtm_settings[domain] = None
-                except Exception as migrate_err:
-                    logging.writeToFile(f"GTM main_view migrate error: {migrate_err}")
-                    raise db_err
-            else:
-                raise
+        for domain_info in domains:
+            domain = domain_info['domain']
+            try:
+                gtm_setting = GTMSettings.objects.get(domain=domain)
+                gtm_settings[domain] = {
+                    'container_id': gtm_setting.gtm_container_id,
+                    'enabled': gtm_setting.enabled,
+                    'created_at': gtm_setting.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'updated_at': gtm_setting.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                }
+            except GTMSettings.DoesNotExist:
+                gtm_settings[domain] = None
         
         # Statistics
         total_domains = len(domains)
@@ -105,7 +94,7 @@ def main_view(request):
             'is_admin': currentACL['admin'] == 1
         }
         
-        proc = httpProc(request, 'googleTagManager/index.html', context, 'managePlugins')
+        proc = httpProc(request, 'googleTagManager/index.html', context, 'admin')
         return proc.render()
         
     except Exception as e:
@@ -113,17 +102,18 @@ def main_view(request):
         context = {
             'plugin_name': 'Google Tag Manager',
             'version': '1.0.0',
-            'error': str(e),
+            'error': 'An error occurred loading this page.',
             'domains': [],
             'gtm_settings': {},
             'total_domains': 0,
             'configured_domains': 0,
             'enabled_domains': 0
         }
-        proc = httpProc(request, 'googleTagManager/index.html', context, 'managePlugins')
+        proc = httpProc(request, 'googleTagManager/index.html', context, 'admin')
         return proc.render()
 
 
+@ensure_csrf_cookie
 @cyberpanel_login_required
 def settings_view(request):
     """
@@ -138,7 +128,7 @@ def settings_view(request):
         # Get all user domains
         domains = get_user_domains(userID, currentACL)
         
-        # Get existing GTM settings (with defensive migrate if table missing)
+        # Get existing GTM settings
         gtm_settings = {}
         try:
             for domain_info in domains:
@@ -152,28 +142,10 @@ def settings_view(request):
                     }
                 except GTMSettings.DoesNotExist:
                     gtm_settings[domain] = None
-        except Exception as db_err:
-            from django.db.utils import OperationalError, ProgrammingError
-            if isinstance(db_err, (OperationalError, ProgrammingError)):
-                try:
-                    from django.core.management import call_command
-                    call_command('migrate', 'googleTagManager', verbosity=0, interactive=False)
-                    for domain_info in domains:
-                        domain = domain_info['domain']
-                        try:
-                            gtm_setting = GTMSettings.objects.get(domain=domain)
-                            gtm_settings[domain] = {
-                                'container_id': gtm_setting.gtm_container_id,
-                                'enabled': gtm_setting.enabled,
-                                'id': gtm_setting.id
-                            }
-                        except GTMSettings.DoesNotExist:
-                            gtm_settings[domain] = None
-                except Exception as migrate_err:
-                    logging.writeToFile(f"GTM settings_view migrate error: {migrate_err}")
-                    raise db_err
-            else:
-                raise
+        except Exception as db_error:
+            # If database error, log it but continue with empty settings
+            logging.writeToFile(f"Error loading GTM settings: {str(db_error)}")
+            gtm_settings = {}
         
         context = {
             'plugin_name': 'Google Tag Manager',
@@ -183,7 +155,7 @@ def settings_view(request):
             'is_admin': currentACL['admin'] == 1
         }
         
-        proc = httpProc(request, 'googleTagManager/settings.html', context, 'managePlugins')
+        proc = httpProc(request, 'googleTagManager/settings.html', context, 'admin')
         return proc.render()
         
     except Exception as e:
@@ -191,17 +163,15 @@ def settings_view(request):
         context = {
             'plugin_name': 'Google Tag Manager',
             'version': '1.0.0',
-            'error': str(e),
+            'error': 'An error occurred loading this page.',
             'domains': [],
             'gtm_settings': {}
         }
-        proc = httpProc(request, 'googleTagManager/settings.html', context, 'managePlugins')
+        proc = httpProc(request, 'googleTagManager/settings.html', context, 'admin')
         return proc.render()
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["GET"])
 def api_get_domains(request):
     """
@@ -233,16 +203,10 @@ def api_get_domains(request):
         })
         
     except Exception as e:
-        logging.writeToFile(f"Error in api_get_domains: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return _gtm_json_server_error(request, 'Error in api_get_domains', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_save_gtm(request):
     """
@@ -306,16 +270,10 @@ def api_save_gtm(request):
             'error': 'Invalid JSON data'
         }, status=400)
     except Exception as e:
-        logging.writeToFile(f"Error in api_save_gtm: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return _gtm_json_server_error(request, 'Error in api_save_gtm', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_delete_gtm(request):
     """
@@ -362,16 +320,10 @@ def api_delete_gtm(request):
             'error': 'Invalid JSON data'
         }, status=400)
     except Exception as e:
-        logging.writeToFile(f"Error in api_delete_gtm: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return _gtm_json_server_error(request, 'Error in api_delete_gtm', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["GET"])
 def api_get_gtm_code(request, domain):
     """
@@ -412,16 +364,10 @@ def api_get_gtm_code(request, domain):
         })
         
     except Exception as e:
-        logging.writeToFile(f"Error in api_get_gtm_code: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return _gtm_json_server_error(request, 'Error in api_get_gtm_code', e)
 
 
 @cyberpanel_login_required
-@require_manage_plugins_api
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_toggle_gtm(request):
     """
@@ -473,8 +419,4 @@ def api_toggle_gtm(request):
             'error': 'Invalid JSON data'
         }, status=400)
     except Exception as e:
-        logging.writeToFile(f"Error in api_toggle_gtm: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return _gtm_json_server_error(request, 'Error in api_toggle_gtm', e)
