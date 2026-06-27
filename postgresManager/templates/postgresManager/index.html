@@ -79,7 +79,18 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <a class="btn btn-primary" href="{{ adminer_url }}" target="_blank" rel="noopener">Open PostgreSQL Adminer</a>
+                            {% if admin_password %}
+                            <form id="pgm-adminer-login-form" action="{{ adminer_url }}" method="post" target="_blank" style="display:inline;">
+                                <input type="hidden" name="auth[driver]" value="pgsql">
+                                <input type="hidden" name="auth[server]" value="127.0.0.1">
+                                <input type="hidden" name="auth[username]" value="{{ admin_user }}">
+                                <input type="hidden" name="auth[password]" value="{{ admin_password }}">
+                                <input type="hidden" name="auth[db]" value="{{ admin_database }}">
+                                <button type="submit" class="btn btn-primary">Open PostgreSQL Adminer</button>
+                            </form>
+                            {% else %}
+                            <button type="button" class="btn btn-primary" id="pgm-open-disabled" disabled>Open PostgreSQL Adminer</button>
+                            {% endif %}
                             {% else %}
                             <div class="alert alert-warning">
                                 Adminer is not installed at <code>/usr/local/CyberCP/public/postgres-adminer/</code>. Re-run <code>bash install.sh</code> from this plugin.

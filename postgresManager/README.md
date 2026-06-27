@@ -2,7 +2,7 @@
 
 Author: KraoESPfan1n
 
-Free CyberPanel plugin that installs PostgreSQL, creates a dedicated local admin role, and exposes a PostgreSQL-only Adminer console at `/postgres-adminer/`.
+Free CyberPanel plugin that installs PostgreSQL, creates a dedicated local admin role, and exposes Adminer at `/postgres-adminer/` with an automatic PostgreSQL login button from the plugin page.
 
 ## What It Installs
 
