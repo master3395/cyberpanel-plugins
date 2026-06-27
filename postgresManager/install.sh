@@ -119,9 +119,6 @@ ensure_local_password_auth() {
         if [ -f "$candidate" ]; then hba="$candidate"; break; fi
     done
     [ -n "$hba" ] || return 0
-    if grep -q "cyberpanel-postgres-manager" "$hba"; then
-        return 0
-    fi
     cp -a "$hba" "${hba}.bak-postgresManager-$(date +%Y%m%d%H%M%S)"
     python3 - "$hba" "$ADMIN_ROLE" "$ADMIN_DB" <<'PY'
 import sys
@@ -136,13 +133,30 @@ host    all              {role}             ::1/128                 md5
 # cyberpanel-postgres-manager end
 
 """.format(db=db, role=role)
-marker = "# TYPE  DATABASE"
-idx = data.find(marker)
-if idx >= 0:
-    line_end = data.find("\n", idx)
-    data = data[:line_end + 1] + block + data[line_end + 1:]
+begin = "# cyberpanel-postgres-manager begin"
+end = "# cyberpanel-postgres-manager end"
+if begin in data and end in data:
+    start = data.find(begin)
+    finish = data.find(end, start) + len(end)
+    if finish < len(data) and data[finish:finish + 1] == "\n":
+        finish += 1
+    data = data[:start] + block + data[finish:]
 else:
-    data += "\n" + block
+    marker = "# TYPE  DATABASE"
+    idx = data.find(marker)
+    if idx >= 0:
+        line_end = data.find("\n", idx)
+        data = data[:line_end + 1] + block + data[line_end + 1:]
+    else:
+        data += "\n" + block
+data = data.replace(
+    "host    all             all             127.0.0.1/32            ident",
+    "host    all             all             127.0.0.1/32            md5",
+)
+data = data.replace(
+    "host    all             all             ::1/128                 ident",
+    "host    all             all             ::1/128                 md5",
+)
 with open(path, 'w', encoding='utf-8') as f:
     f.write(data)
 PY
