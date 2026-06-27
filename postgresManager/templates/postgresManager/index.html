@@ -1,0 +1,138 @@
+{% extends "baseTemplate/index.html" %}
+{% load i18n %}
+
+{% block title %}PostgreSQL Manager - {% trans "CyberPanel" %}{% endblock %}
+
+{% block content %}
+<style>
+.pgm-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.pgm-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.pgm-code{font-family:Menlo,Consolas,monospace;font-size:13px}
+.pgm-actions .btn{margin-right:6px;margin-bottom:6px}
+</style>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-database"></i> PostgreSQL Manager
+                        {% if not is_paid %}<span class="pgm-badge free">{% trans "Free" %}</span>{% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if not installed %}
+                    <div class="alert alert-warning">
+                        PostgreSQL is not installed. Install this plugin with <code>bash install.sh</code> or from the CyberPanel plugin store to auto-install PostgreSQL.
+                    </div>
+                    {% endif %}
+
+                    <div id="pgm-message" class="alert d-none"></div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">{% trans "Status" %}</h5>
+                                    <p>
+                                        <span class="badge {% if status_key == 'running' %}badge-success{% elif status_key == 'stopped' %}badge-danger{% else %}badge-secondary{% endif %}">
+                                            {{ status_msg }}
+                                        </span>
+                                    </p>
+                                    {% if postgres_version %}<p class="small text-muted mb-1">{{ postgres_version }}</p>{% endif %}
+                                    {% if listen_addresses %}
+                                    <pre class="bg-dark text-light p-2 rounded pgm-code" style="max-height:120px;overflow:auto;">{{ listen_addresses }}</pre>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">{% trans "Actions" %}</h5>
+                                    <div class="pgm-actions">
+                                        <button type="button" class="btn btn-success btn-sm pgm-action" data-action="start">Start</button>
+                                        <button type="button" class="btn btn-warning btn-sm pgm-action" data-action="stop">Stop</button>
+                                        <button type="button" class="btn btn-info btn-sm pgm-action" data-action="restart">Restart</button>
+                                        <button type="button" class="btn btn-primary btn-sm" id="pgm-init-admin">Prepare Admin Login</button>
+                                    </div>
+                                    <small class="text-muted">PostgreSQL remains bound to localhost by default.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-sign-in-alt"></i> PostgreSQL Web Admin</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if adminer_installed %}
+                            <p>Open Adminer and log in with these local PostgreSQL credentials.</p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered" style="max-width:760px;">
+                                    <tbody>
+                                        <tr><th style="width:180px;">System</th><td class="pgm-code">PostgreSQL</td></tr>
+                                        <tr><th>Server</th><td class="pgm-code">127.0.0.1</td></tr>
+                                        <tr><th>Username</th><td class="pgm-code">{{ admin_user }}</td></tr>
+                                        <tr><th>Password</th><td class="pgm-code">{% if admin_password %}{{ admin_password }}{% else %}<em>Click Prepare Admin Login</em>{% endif %}</td></tr>
+                                        <tr><th>Database</th><td class="pgm-code">{{ admin_database }}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <a class="btn btn-primary" href="{{ adminer_url }}" target="_blank" rel="noopener">Open PostgreSQL Adminer</a>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                Adminer is not installed at <code>/usr/local/CyberCP/public/postgres-adminer/</code>. Re-run <code>bash install.sh</code> from this plugin.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var msgEl = document.getElementById('pgm-message');
+    function showMsg(text, isError) {
+        if (!msgEl) return;
+        msgEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+        msgEl.classList.add(isError ? 'alert-danger' : 'alert-success');
+        msgEl.textContent = text;
+    }
+    function post(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(payload || {})
+        }).then(function(r) { return r.json().then(function(d) { d._ok = r.ok; return d; }); });
+    }
+    document.querySelectorAll('.pgm-action').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var action = btn.getAttribute('data-action');
+            if (!confirm('Confirm PostgreSQL ' + action + '?')) return;
+            btn.disabled = true;
+            post('{% url "postgresManager:api_control" %}', {action: action}).then(function(d) {
+                showMsg(d.message || d.error || 'Done', !d.success);
+                if (d.success) setTimeout(function(){ location.reload(); }, 1200);
+            }).catch(function(e) {
+                showMsg(e.message || 'Request failed', true);
+            }).finally(function() { btn.disabled = false; });
+        });
+    });
+    var initBtn = document.getElementById('pgm-init-admin');
+    if (initBtn) {
+        initBtn.addEventListener('click', function() {
+            initBtn.disabled = true;
+            post('{% url "postgresManager:api_init_admin" %}', {}).then(function(d) {
+                showMsg(d.message || d.error || 'Done', !d.success);
+                if (d.success) setTimeout(function(){ location.reload(); }, 1200);
+            }).catch(function(e) {
+                showMsg(e.message || 'Request failed', true);
+            }).finally(function() { initBtn.disabled = false; });
+        });
+    }
+})();
+</script>
+{% endblock %}

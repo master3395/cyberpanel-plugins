@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>PostgreSQL Manager</name>
+    <type>Utility</type>
+    <description>Install and manage PostgreSQL from CyberPanel, and open a bundled Adminer PostgreSQL web console similar to phpMyAdmin. Free plugin.</description>
+    <version>1.0.0</version>
+    <author>KraoESPfan1n</author>
+    <website>https://github.com/master3395/cyberpanel-plugins</website>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
+    <requirements>
+        <software>postgresql-server</software>
+        <software>lsphp*-pgsql or php-pgsql</software>
+    </requirements>
+    <url>/plugins/postgresManager/</url>
+    <settings_url>/plugins/postgresManager/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>
