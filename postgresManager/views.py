@@ -29,6 +29,10 @@ def _json(data, status=200):
     return JsonResponse(data, status=status, json_dumps_params={'ensure_ascii': False})
 
 
+def _body(request):
+    return json.loads(request.body.decode('utf-8') or '{}') if request.body else {}
+
+
 @ensure_csrf_cookie
 @cyberpanel_login_required
 @require_http_methods(['GET'])
@@ -67,7 +71,7 @@ def main_view(request):
 @require_http_methods(['POST'])
 def api_control(request):
     try:
-        data = json.loads(request.body) if request.body else {}
+        data = _body(request)
         action = (data.get('action') or '').strip().lower()
         ok, msg = utils.service_control(action)
         return _json({'success': ok, 'message': msg if ok else None, 'error': None if ok else msg}, 200 if ok else 400)
@@ -92,3 +96,90 @@ def api_init_admin(request):
     except Exception as exc:
         logging.writeToFile('postgresManager api_init_admin error: %s' % str(exc))
         return _json({'success': False, 'error': 'Internal server error.'}, 500)
+
+
+@cyberpanel_login_required
+@require_http_methods(['GET'])
+def api_websites(request):
+    try:
+        return _json({'success': True, 'websites': utils.list_websites_for_user(request.session['userID'])})
+    except Exception as exc:
+        logging.writeToFile('postgresManager api_websites error: %s' % str(exc))
+        return _json({'success': False, 'error': 'Internal server error.'}, 500)
+
+
+@cyberpanel_login_required
+@require_http_methods(['GET'])
+def api_databases(request):
+    try:
+        domain = (request.GET.get('domain') or '').strip() or None
+        return _json({'success': True, 'databases': utils.list_databases(request.session['userID'], domain)})
+    except Exception as exc:
+        logging.writeToFile('postgresManager api_databases error: %s' % str(exc))
+        return _json({'success': False, 'error': 'Internal server error.'}, 500)
+
+
+@cyberpanel_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_create_database(request):
+    try:
+        data = _body(request)
+        record = utils.create_database(
+            request.session['userID'],
+            (data.get('domain') or '').strip(),
+            data.get('database') or '',
+            data.get('username') or '',
+            data.get('password') or '',
+        )
+        return _json({'success': True, 'database': record, 'message': 'Database created.'})
+    except ValueError as exc:
+        return _json({'success': False, 'error': str(exc)}, 400)
+    except PermissionError as exc:
+        return _json({'success': False, 'error': str(exc)}, 403)
+    except Exception as exc:
+        logging.writeToFile('postgresManager api_create_database error: %s' % str(exc))
+        return _json({'success': False, 'error': str(exc)}, 500)
+
+
+@cyberpanel_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_change_password(request):
+    try:
+        data = _body(request)
+        record = utils.change_database_password(
+            request.session['userID'],
+            data.get('database') or '',
+            data.get('username') or '',
+            data.get('password') or '',
+        )
+        return _json({'success': True, 'database': record, 'message': 'Password changed.'})
+    except ValueError as exc:
+        return _json({'success': False, 'error': str(exc)}, 400)
+    except PermissionError as exc:
+        return _json({'success': False, 'error': str(exc)}, 403)
+    except Exception as exc:
+        logging.writeToFile('postgresManager api_change_password error: %s' % str(exc))
+        return _json({'success': False, 'error': str(exc)}, 500)
+
+
+@cyberpanel_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_delete_database(request):
+    try:
+        data = _body(request)
+        record = utils.delete_database(
+            request.session['userID'],
+            data.get('database') or '',
+            data.get('username') or '',
+        )
+        return _json({'success': True, 'database': record, 'message': 'Database deleted.'})
+    except ValueError as exc:
+        return _json({'success': False, 'error': str(exc)}, 400)
+    except PermissionError as exc:
+        return _json({'success': False, 'error': str(exc)}, 403)
+    except Exception as exc:
+        logging.writeToFile('postgresManager api_delete_database error: %s' % str(exc))
+        return _json({'success': False, 'error': str(exc)}, 500)

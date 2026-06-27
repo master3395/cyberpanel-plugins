@@ -5,145 +5,412 @@
 
 {% block content %}
 <style>
-.pgm-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
-.pgm-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-.pgm-code{font-family:Menlo,Consolas,monospace;font-size:13px}
-.pgm-actions .btn{margin-right:6px;margin-bottom:6px}
+.pgm-wrap{max-width:1280px;margin:0 auto;padding:22px}
+.pgm-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+.pgm-title{font-size:28px;font-weight:700;margin:0;color:#202636}
+.pgm-sub{margin:6px 0 0;color:#6b7280}
+.pgm-free{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#dcfce7;color:#166534;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;margin-left:8px;text-transform:uppercase}
+.pgm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0;border-bottom:1px solid #e5e7eb}
+.pgm-tab{border:0;background:transparent;color:#4b5563;padding:12px 14px;font-weight:700;border-bottom:3px solid transparent}
+.pgm-tab.active{color:#0f766e;border-bottom-color:#0f766e}
+.pgm-panel{display:none}
+.pgm-panel.active{display:block}
+.pgm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.pgm-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pgm-card h3{font-size:17px;font-weight:700;margin:0 0 12px;color:#202636}
+.pgm-status{display:inline-flex;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:700}
+.pgm-status.running{background:#dcfce7;color:#166534}
+.pgm-status.stopped{background:#fee2e2;color:#991b1b}
+.pgm-status.other{background:#e5e7eb;color:#374151}
+.pgm-code{font-family:Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+.pgm-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pgm-form{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px}
+.pgm-form .full{grid-column:1/-1}
+.pgm-label{display:block;font-weight:700;color:#374151;margin-bottom:6px}
+.pgm-input,.pgm-select{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:10px 11px;background:#fff;color:#111827}
+.pgm-help{font-size:12px;color:#6b7280;margin-top:6px}
+.pgm-table{width:100%;border-collapse:collapse;background:#fff}
+.pgm-table th,.pgm-table td{border-bottom:1px solid #e5e7eb;padding:11px;text-align:left;vertical-align:middle}
+.pgm-table th{font-size:12px;text-transform:uppercase;color:#6b7280;background:#f9fafb}
+.pgm-empty{border:1px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#64748b;background:#f8fafc}
+.pgm-msg{display:none;margin-bottom:14px}
+.pgm-msg.show{display:block}
+.pgm-password{display:flex;gap:8px;align-items:center}
+.pgm-password span{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:760px){.pgm-wrap{padding:14px}.pgm-head{display:block}.pgm-form{grid-template-columns:1fr}.pgm-table th,.pgm-table td{white-space:nowrap}.pgm-table-wrap{overflow-x:auto}}
 </style>
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-database"></i> PostgreSQL Manager
-                        {% if not is_paid %}<span class="pgm-badge free">{% trans "Free" %}</span>{% endif %}
-                    </h3>
+
+<div class="pgm-wrap">
+    <div class="pgm-head">
+        <div>
+            <h1 class="pgm-title">PostgreSQL Manager{% if not is_paid %}<span class="pgm-free">{% trans "Free" %}</span>{% endif %}</h1>
+            <p class="pgm-sub">Manage PostgreSQL service, databases, users, passwords, and Adminer access from CyberPanel.</p>
+        </div>
+        {% if adminer_installed and admin_password %}
+        <form action="{{ adminer_url }}" method="post" target="_blank">
+            <input type="hidden" name="auth[driver]" value="pgsql">
+            <input type="hidden" name="auth[server]" value="127.0.0.1">
+            <input type="hidden" name="auth[username]" value="{{ admin_user }}">
+            <input type="hidden" name="auth[password]" value="{{ admin_password }}">
+            <input type="hidden" name="auth[db]" value="{{ admin_database }}">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Adminer</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div id="pgm-message" class="alert pgm-msg"></div>
+
+    {% if not installed %}
+    <div class="alert alert-warning">PostgreSQL is not installed. Run this plugin install script to auto-install PostgreSQL.</div>
+    {% endif %}
+
+    <div class="pgm-tabs" role="tablist">
+        <button class="pgm-tab active" data-panel="overview" type="button"><i class="fas fa-server"></i> Overview</button>
+        <button class="pgm-tab" data-panel="all" type="button"><i class="fas fa-database"></i> All Databases</button>
+        <button class="pgm-tab" data-panel="create" type="button"><i class="fas fa-plus"></i> Create Database</button>
+        <button class="pgm-tab" data-panel="delete" type="button"><i class="fas fa-trash"></i> Delete Database</button>
+    </div>
+
+    <section id="pgm-panel-overview" class="pgm-panel active">
+        <div class="pgm-grid">
+            <div class="pgm-card">
+                <h3>Status</h3>
+                <p><span class="pgm-status {% if status_key == 'running' %}running{% elif status_key == 'stopped' %}stopped{% else %}other{% endif %}">{{ status_msg }}</span></p>
+                {% if postgres_version %}<p class="pgm-code">{{ postgres_version }}</p>{% endif %}
+                {% if listen_addresses %}<pre class="pgm-code" style="max-height:120px;overflow:auto;background:#111827;color:#f9fafb;padding:10px;border-radius:6px;">{{ listen_addresses }}</pre>{% endif %}
+            </div>
+            <div class="pgm-card">
+                <h3>Service Actions</h3>
+                <div class="pgm-actions">
+                    <button type="button" class="btn btn-success pgm-action" data-action="start">Start</button>
+                    <button type="button" class="btn btn-warning pgm-action" data-action="stop">Stop</button>
+                    <button type="button" class="btn btn-info pgm-action" data-action="restart">Restart</button>
+                    <button type="button" class="btn btn-primary" id="pgm-init-admin">Prepare Admin Login</button>
                 </div>
-                <div class="card-body">
-                    {% if not installed %}
-                    <div class="alert alert-warning">
-                        PostgreSQL is not installed. Install this plugin with <code>bash install.sh</code> or from the CyberPanel plugin store to auto-install PostgreSQL.
-                    </div>
-                    {% endif %}
+                <p class="pgm-help">PostgreSQL stays bound to localhost by default.</p>
+            </div>
+            <div class="pgm-card">
+                <h3>Admin Login</h3>
+                <table class="pgm-table">
+                    <tbody>
+                        <tr><th>Server</th><td class="pgm-code">127.0.0.1</td></tr>
+                        <tr><th>User</th><td class="pgm-code">{{ admin_user }}</td></tr>
+                        <tr><th>Password</th><td class="pgm-code">{% if admin_password %}{{ admin_password }}{% else %}Prepare Admin Login{% endif %}</td></tr>
+                        <tr><th>Database</th><td class="pgm-code">{{ admin_database }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
-                    <div id="pgm-message" class="alert d-none"></div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h5 class="card-title">{% trans "Status" %}</h5>
-                                    <p>
-                                        <span class="badge {% if status_key == 'running' %}badge-success{% elif status_key == 'stopped' %}badge-danger{% else %}badge-secondary{% endif %}">
-                                            {{ status_msg }}
-                                        </span>
-                                    </p>
-                                    {% if postgres_version %}<p class="small text-muted mb-1">{{ postgres_version }}</p>{% endif %}
-                                    {% if listen_addresses %}
-                                    <pre class="bg-dark text-light p-2 rounded pgm-code" style="max-height:120px;overflow:auto;">{{ listen_addresses }}</pre>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h5 class="card-title">{% trans "Actions" %}</h5>
-                                    <div class="pgm-actions">
-                                        <button type="button" class="btn btn-success btn-sm pgm-action" data-action="start">Start</button>
-                                        <button type="button" class="btn btn-warning btn-sm pgm-action" data-action="stop">Stop</button>
-                                        <button type="button" class="btn btn-info btn-sm pgm-action" data-action="restart">Restart</button>
-                                        <button type="button" class="btn btn-primary btn-sm" id="pgm-init-admin">Prepare Admin Login</button>
-                                    </div>
-                                    <small class="text-muted">PostgreSQL remains bound to localhost by default.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card mt-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-sign-in-alt"></i> PostgreSQL Web Admin</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if adminer_installed %}
-                            <p>Open Adminer and log in with these local PostgreSQL credentials.</p>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered" style="max-width:760px;">
-                                    <tbody>
-                                        <tr><th style="width:180px;">System</th><td class="pgm-code">PostgreSQL</td></tr>
-                                        <tr><th>Server</th><td class="pgm-code">127.0.0.1</td></tr>
-                                        <tr><th>Username</th><td class="pgm-code">{{ admin_user }}</td></tr>
-                                        <tr><th>Password</th><td class="pgm-code">{% if admin_password %}{{ admin_password }}{% else %}<em>Click Prepare Admin Login</em>{% endif %}</td></tr>
-                                        <tr><th>Database</th><td class="pgm-code">{{ admin_database }}</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% if admin_password %}
-                            <form id="pgm-adminer-login-form" action="{{ adminer_url }}" method="post" target="_blank" style="display:inline;">
-                                <input type="hidden" name="auth[driver]" value="pgsql">
-                                <input type="hidden" name="auth[server]" value="127.0.0.1">
-                                <input type="hidden" name="auth[username]" value="{{ admin_user }}">
-                                <input type="hidden" name="auth[password]" value="{{ admin_password }}">
-                                <input type="hidden" name="auth[db]" value="{{ admin_database }}">
-                                <button type="submit" class="btn btn-primary">Open PostgreSQL Adminer</button>
-                            </form>
-                            {% else %}
-                            <button type="button" class="btn btn-primary" id="pgm-open-disabled" disabled>Open PostgreSQL Adminer</button>
-                            {% endif %}
-                            {% else %}
-                            <div class="alert alert-warning">
-                                Adminer is not installed at <code>/usr/local/CyberCP/public/postgres-adminer/</code>. Re-run <code>bash install.sh</code> from this plugin.
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
+    <section id="pgm-panel-all" class="pgm-panel">
+        <div class="pgm-card">
+            <div class="pgm-form">
+                <div>
+                    <label class="pgm-label" for="pgm-all-domain">Domain</label>
+                    <select id="pgm-all-domain" class="pgm-select"></select>
+                </div>
+                <div style="display:flex;align-items:end;gap:8px;">
+                    <button type="button" class="btn btn-primary" id="pgm-refresh">Refresh</button>
                 </div>
             </div>
         </div>
-    </div>
+        <div class="pgm-card" style="margin-top:14px;">
+            <div class="pgm-table-wrap">
+                <table class="pgm-table">
+                    <thead><tr><th>Domain</th><th>Database</th><th>User</th><th>Password</th><th>Actions</th></tr></thead>
+                    <tbody id="pgm-db-rows"></tbody>
+                </table>
+            </div>
+            <div id="pgm-empty" class="pgm-empty">No PostgreSQL databases found for this domain.</div>
+        </div>
+    </section>
+
+    <section id="pgm-panel-create" class="pgm-panel">
+        <div class="pgm-card">
+            <form id="pgm-create-form" class="pgm-form">
+                <div>
+                    <label class="pgm-label" for="pgm-create-domain">Domain</label>
+                    <select id="pgm-create-domain" class="pgm-select" required></select>
+                </div>
+                <div>
+                    <label class="pgm-label" for="pgm-create-db">Database suffix</label>
+                    <input id="pgm-create-db" class="pgm-input" autocomplete="off" required pattern="[A-Za-z0-9_]{1,32}">
+                    <div class="pgm-help">Letters, numbers, underscore. Domain prefix is added automatically.</div>
+                </div>
+                <div>
+                    <label class="pgm-label" for="pgm-create-user">Username suffix</label>
+                    <input id="pgm-create-user" class="pgm-input" autocomplete="off" required pattern="[A-Za-z0-9_]{1,32}">
+                </div>
+                <div>
+                    <label class="pgm-label" for="pgm-create-password">Password</label>
+                    <input id="pgm-create-password" type="text" class="pgm-input" autocomplete="new-password" required>
+                </div>
+                <div class="full pgm-actions">
+                    <button type="button" class="btn btn-secondary" id="pgm-generate">Generate Password</button>
+                    <button type="submit" class="btn btn-success">Create Database</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section id="pgm-panel-delete" class="pgm-panel">
+        <div class="pgm-card">
+            <label class="pgm-label" for="pgm-delete-domain">Domain</label>
+            <select id="pgm-delete-domain" class="pgm-select"></select>
+        </div>
+        <div class="pgm-card" style="margin-top:14px;">
+            <div class="pgm-table-wrap">
+                <table class="pgm-table">
+                    <thead><tr><th>Database</th><th>User</th><th>Domain</th><th>Delete</th></tr></thead>
+                    <tbody id="pgm-delete-rows"></tbody>
+                </table>
+            </div>
+            <div id="pgm-delete-empty" class="pgm-empty">No PostgreSQL databases found for this domain.</div>
+        </div>
+    </section>
 </div>
+
 <script>
 (function() {
+    var csrf = '{{ csrf_token }}';
+    var urls = {
+        control: '{% url "postgresManager:api_control" %}',
+        initAdmin: '{% url "postgresManager:api_init_admin" %}',
+        websites: '{% url "postgresManager:api_websites" %}',
+        databases: '{% url "postgresManager:api_databases" %}',
+        create: '{% url "postgresManager:api_create_database" %}',
+        changePassword: '{% url "postgresManager:api_change_password" %}',
+        deleteDatabase: '{% url "postgresManager:api_delete_database" %}'
+    };
+    var adminerUrl = '{{ adminer_url|escapejs }}';
+    var websites = [];
+    var records = [];
     var msgEl = document.getElementById('pgm-message');
+
     function showMsg(text, isError) {
-        if (!msgEl) return;
-        msgEl.classList.remove('d-none', 'alert-success', 'alert-danger');
-        msgEl.classList.add(isError ? 'alert-danger' : 'alert-success');
-        msgEl.textContent = text;
+        msgEl.className = 'alert pgm-msg show ' + (isError ? 'alert-danger' : 'alert-success');
+        msgEl.textContent = text || (isError ? 'Request failed.' : 'Done.');
     }
-    function post(url, payload) {
+    function request(url, payload) {
         return fetch(url, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
             body: JSON.stringify(payload || {})
-        }).then(function(r) { return r.json().then(function(d) { d._ok = r.ok; return d; }); });
+        }).then(function(resp) {
+            return resp.json().then(function(data) {
+                if (!resp.ok || data.success === false) throw new Error(data.error || 'Request failed.');
+                return data;
+            });
+        });
     }
+    function randomPassword() {
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789_-.';
+        var pass = '';
+        for (var i = 0; i < 20; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+        return pass;
+    }
+    function fillSelect(select, includeAll) {
+        select.innerHTML = includeAll ? '<option value="">All domains</option>' : '<option value="">Select domain</option>';
+        websites.forEach(function(domain) {
+            var opt = document.createElement('option');
+            opt.value = domain;
+            opt.textContent = domain;
+            select.appendChild(opt);
+        });
+    }
+    function getDomainFilter(id) {
+        return document.getElementById(id).value || '';
+    }
+    function loadDatabases(domain) {
+        var url = urls.databases + (domain ? '?domain=' + encodeURIComponent(domain) : '');
+        return fetch(url, {headers: {'X-CSRFToken': csrf}})
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.error || 'Could not load databases.');
+                records = data.databases || [];
+                renderTables();
+            }).catch(function(error) {
+                showMsg(error.message, true);
+            });
+    }
+    function passwordCell(record) {
+        var wrap = document.createElement('div');
+        wrap.className = 'pgm-password';
+        var span = document.createElement('span');
+        span.className = 'pgm-code';
+        span.textContent = '••••••••••••';
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'btn btn-secondary btn-sm';
+        toggle.textContent = 'Show';
+        toggle.addEventListener('click', function() {
+            var hidden = span.textContent.indexOf('•') !== -1;
+            span.textContent = hidden ? record.password : '••••••••••••';
+            toggle.textContent = hidden ? 'Hide' : 'Show';
+        });
+        wrap.appendChild(span);
+        wrap.appendChild(toggle);
+        return wrap;
+    }
+    function adminerButton(record) {
+        var form = document.createElement('form');
+        form.action = adminerUrl;
+        form.method = 'post';
+        form.target = '_blank';
+        form.style.display = 'inline';
+        [['auth[driver]','pgsql'],['auth[server]','127.0.0.1'],['auth[username]',record.username],['auth[password]',record.password],['auth[db]',record.database]].forEach(function(item) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = item[0];
+            input.value = item[1];
+            form.appendChild(input);
+        });
+        var btn = document.createElement('button');
+        btn.type = 'submit';
+        btn.className = 'btn btn-primary btn-sm';
+        btn.textContent = 'Adminer';
+        form.appendChild(btn);
+        return form;
+    }
+    function changeButton(record) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-secondary btn-sm';
+        btn.textContent = 'Change Password';
+        btn.addEventListener('click', function() {
+            var pass = prompt('New password for ' + record.username, randomPassword());
+            if (!pass) return;
+            request(urls.changePassword, {database: record.database, username: record.username, password: pass})
+                .then(function(data) {
+                    showMsg(data.message, false);
+                    return loadDatabases(getDomainFilter('pgm-all-domain'));
+                }).catch(function(error) { showMsg(error.message, true); });
+        });
+        return btn;
+    }
+    function deleteButton(record) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-danger btn-sm';
+        btn.textContent = 'Delete';
+        btn.addEventListener('click', function() {
+            if (!confirm('Delete database ' + record.database + '? This cannot be undone.')) return;
+            request(urls.deleteDatabase, {database: record.database, username: record.username})
+                .then(function(data) {
+                    showMsg(data.message, false);
+                    return loadDatabases(getDomainFilter('pgm-delete-domain'));
+                }).catch(function(error) { showMsg(error.message, true); });
+        });
+        return btn;
+    }
+    function actionGroup(record, includeDelete) {
+        var wrap = document.createElement('div');
+        wrap.className = 'pgm-actions';
+        wrap.appendChild(adminerButton(record));
+        wrap.appendChild(changeButton(record));
+        if (includeDelete) wrap.appendChild(deleteButton(record));
+        return wrap;
+    }
+    function appendCell(row, content) {
+        var td = document.createElement('td');
+        if (content instanceof Node) td.appendChild(content);
+        else td.textContent = content;
+        row.appendChild(td);
+    }
+    function renderTables() {
+        var body = document.getElementById('pgm-db-rows');
+        var delBody = document.getElementById('pgm-delete-rows');
+        body.innerHTML = '';
+        delBody.innerHTML = '';
+        records.forEach(function(record) {
+            var row = document.createElement('tr');
+            appendCell(row, record.domain);
+            appendCell(row, record.database);
+            appendCell(row, record.username);
+            appendCell(row, passwordCell(record));
+            appendCell(row, actionGroup(record, true));
+            body.appendChild(row);
+
+            var delRow = document.createElement('tr');
+            appendCell(delRow, record.database);
+            appendCell(delRow, record.username);
+            appendCell(delRow, record.domain);
+            appendCell(delRow, deleteButton(record));
+            delBody.appendChild(delRow);
+        });
+        document.getElementById('pgm-empty').style.display = records.length ? 'none' : 'block';
+        document.getElementById('pgm-delete-empty').style.display = records.length ? 'none' : 'block';
+    }
+    document.querySelectorAll('.pgm-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.pgm-tab').forEach(function(item) { item.classList.remove('active'); });
+            document.querySelectorAll('.pgm-panel').forEach(function(item) { item.classList.remove('active'); });
+            tab.classList.add('active');
+            document.getElementById('pgm-panel-' + tab.getAttribute('data-panel')).classList.add('active');
+        });
+    });
     document.querySelectorAll('.pgm-action').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var action = btn.getAttribute('data-action');
             if (!confirm('Confirm PostgreSQL ' + action + '?')) return;
             btn.disabled = true;
-            post('{% url "postgresManager:api_control" %}', {action: action}).then(function(d) {
-                showMsg(d.message || d.error || 'Done', !d.success);
-                if (d.success) setTimeout(function(){ location.reload(); }, 1200);
-            }).catch(function(e) {
-                showMsg(e.message || 'Request failed', true);
+            request(urls.control, {action: action}).then(function(data) {
+                showMsg(data.message, false);
+                setTimeout(function(){ location.reload(); }, 1000);
+            }).catch(function(error) {
+                showMsg(error.message, true);
             }).finally(function() { btn.disabled = false; });
         });
     });
     var initBtn = document.getElementById('pgm-init-admin');
     if (initBtn) {
         initBtn.addEventListener('click', function() {
-            initBtn.disabled = true;
-            post('{% url "postgresManager:api_init_admin" %}', {}).then(function(d) {
-                showMsg(d.message || d.error || 'Done', !d.success);
-                if (d.success) setTimeout(function(){ location.reload(); }, 1200);
-            }).catch(function(e) {
-                showMsg(e.message || 'Request failed', true);
-            }).finally(function() { initBtn.disabled = false; });
+            request(urls.initAdmin, {}).then(function(data) {
+                showMsg(data.message, false);
+                setTimeout(function(){ location.reload(); }, 1000);
+            }).catch(function(error) { showMsg(error.message, true); });
         });
     }
+    document.getElementById('pgm-refresh').addEventListener('click', function() {
+        loadDatabases(getDomainFilter('pgm-all-domain'));
+    });
+    document.getElementById('pgm-all-domain').addEventListener('change', function() {
+        loadDatabases(getDomainFilter('pgm-all-domain'));
+    });
+    document.getElementById('pgm-delete-domain').addEventListener('change', function() {
+        loadDatabases(getDomainFilter('pgm-delete-domain'));
+    });
+    document.getElementById('pgm-generate').addEventListener('click', function() {
+        document.getElementById('pgm-create-password').value = randomPassword();
+    });
+    document.getElementById('pgm-create-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        request(urls.create, {
+            domain: document.getElementById('pgm-create-domain').value,
+            database: document.getElementById('pgm-create-db').value,
+            username: document.getElementById('pgm-create-user').value,
+            password: document.getElementById('pgm-create-password').value
+        }).then(function(data) {
+            showMsg('Created ' + data.database.database + ' / ' + data.database.username, false);
+            event.target.reset();
+            document.querySelector('[data-panel="all"]').click();
+            return loadDatabases('');
+        }).catch(function(error) { showMsg(error.message, true); });
+    });
+
+    fetch(urls.websites, {headers: {'X-CSRFToken': csrf}})
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (!data.success) throw new Error(data.error || 'Could not load websites.');
+            websites = data.websites || [];
+            fillSelect(document.getElementById('pgm-all-domain'), true);
+            fillSelect(document.getElementById('pgm-create-domain'), false);
+            fillSelect(document.getElementById('pgm-delete-domain'), true);
+            return loadDatabases('');
+        }).catch(function(error) {
+            showMsg(error.message, true);
+        });
 })();
 </script>
 {% endblock %}
