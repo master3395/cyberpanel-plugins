@@ -41,6 +41,10 @@ DATABASES_FILE = os.path.join(STATE_DIR, 'databases.json')
 ADMIN_ROLE = 'cyberpanel_pgadmin'
 ADMIN_DB = 'cyberpanel_postgres'
 ADMINER_DIR = '/usr/local/CyberCP/public/postgres-adminer'
+HBA_CANDIDATES = (
+    '/var/lib/pgsql/data/pg_hba.conf',
+    '/etc/postgresql/*/main/pg_hba.conf',
+)
 
 
 def run_cmd(args, timeout=20, user=None):
@@ -146,7 +150,65 @@ def _generate_password(length=32):
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
+def _first_glob_existing(candidates):
+    import glob
+    for pattern in candidates:
+        for item in glob.glob(pattern):
+            if os.path.exists(item):
+                return item
+    return ''
+
+
+def ensure_local_password_auth():
+    hba = _first_glob_existing(HBA_CANDIDATES)
+    if not hba:
+        return False, 'pg_hba.conf not found.'
+    try:
+        with open(hba, 'r') as f:
+            data = f.read()
+        block = (
+            "# cyberpanel-postgres-manager begin\n"
+            "host    %s             %s             127.0.0.1/32            md5\n"
+            "host    %s             %s             ::1/128                 md5\n"
+            "host    all              %s             127.0.0.1/32            md5\n"
+            "host    all              %s             ::1/128                 md5\n"
+            "# cyberpanel-postgres-manager end\n\n"
+        ) % (ADMIN_DB, ADMIN_ROLE, ADMIN_DB, ADMIN_ROLE, ADMIN_ROLE, ADMIN_ROLE)
+        begin = '# cyberpanel-postgres-manager begin'
+        end = '# cyberpanel-postgres-manager end'
+        if begin in data and end in data:
+            start = data.find(begin)
+            finish = data.find(end, start) + len(end)
+            if finish < len(data) and data[finish:finish + 1] == '\n':
+                finish += 1
+            data = data[:start] + block + data[finish:]
+        else:
+            marker = '# TYPE  DATABASE'
+            idx = data.find(marker)
+            if idx >= 0:
+                line_end = data.find('\n', idx)
+                data = data[:line_end + 1] + block + data[line_end + 1:]
+            else:
+                data += '\n' + block
+        data = data.replace(
+            'host    all             all             127.0.0.1/32            ident',
+            'host    all             all             127.0.0.1/32            md5',
+        )
+        data = data.replace(
+            'host    all             all             ::1/128                 ident',
+            'host    all             all             ::1/128                 md5',
+        )
+        with open(hba, 'w') as f:
+            f.write(data)
+        service = detect_service()
+        run_cmd(['systemctl', 'reload', service], timeout=20)
+        return True, 'Local PostgreSQL password authentication is ready.'
+    except (IOError, OSError) as exc:
+        return False, str(exc)
+
+
 def ensure_admin_credentials():
+    ensure_local_password_auth()
     if not os.path.isdir(STATE_DIR):
         os.makedirs(STATE_DIR, 0o700)
     password = get_admin_password() or _generate_password()
@@ -262,6 +324,23 @@ def _psql(sql, database='postgres', timeout=30):
     )
 
 
+def _scalar(sql, database='postgres'):
+    ok, out = run_cmd(
+        [psql_bin(), '-d', database, '-Atqc', sql],
+        timeout=20,
+        user='postgres',
+    )
+    return ok and out.strip() == '1'
+
+
+def _database_exists(database):
+    return _scalar("SELECT 1 FROM pg_database WHERE datname = %s" % quote_literal(database))
+
+
+def _role_exists(username):
+    return _scalar("SELECT 1 FROM pg_roles WHERE rolname = %s" % quote_literal(username))
+
+
 def list_websites_for_user(user_id):
     from plogical.acl import ACLManager
     current_acl = ACLManager.loadedACL(user_id)
@@ -279,6 +358,7 @@ def _ensure_domain_allowed(user_id, domain):
 
 
 def list_databases(user_id, domain=None):
+    ensure_local_password_auth()
     allowed = set(list_websites_for_user(user_id))
     records = []
     for record in _load_records():
@@ -286,6 +366,7 @@ def list_databases(user_id, domain=None):
             continue
         if domain and record.get('domain') != domain:
             continue
+        repair_database_record(record)
         public_record = dict(record)
         records.append(public_record)
     records.sort(key=lambda item: (item.get('domain', ''), item.get('database', '')))
@@ -297,6 +378,7 @@ def create_database(user_id, domain, db_suffix, user_suffix, password):
         raise ValueError('Password is required.')
     _ensure_domain_allowed(user_id, domain)
     ensure_admin_credentials()
+    ensure_local_password_auth()
     db_name, db_user = build_db_identifiers(domain, db_suffix, user_suffix)
     records = _load_records()
     for record in records:
@@ -345,6 +427,7 @@ def change_database_password(user_id, database, username, password):
     for record in records:
         if record.get('database') == database and record.get('username') == username:
             _ensure_domain_allowed(user_id, record.get('domain'))
+            repair_database_record(record)
             ok, out = _psql(
                 "ALTER ROLE %s WITH PASSWORD %s;" % (quote_ident(username), quote_literal(password)),
                 timeout=30,
@@ -355,6 +438,65 @@ def change_database_password(user_id, database, username, password):
             _save_records(records)
             return record
     raise ValueError('Database record not found.')
+
+
+def repair_database_record(record):
+    database = record.get('database') or ''
+    username = record.get('username') or ''
+    password = record.get('password') or ''
+    if not database or not username or not password:
+        return False
+    quote_ident(database)
+    quote_ident(username)
+    changed = False
+    if not _role_exists(username):
+        ok, out = _psql(
+            "CREATE ROLE %s WITH LOGIN PASSWORD %s;" % (quote_ident(username), quote_literal(password)),
+            timeout=30,
+        )
+        if not ok:
+            raise RuntimeError(out or 'PostgreSQL role repair failed.')
+        changed = True
+    else:
+        ok, out = _psql(
+            "ALTER ROLE %s WITH LOGIN PASSWORD %s;" % (quote_ident(username), quote_literal(password)),
+            timeout=30,
+        )
+        if not ok:
+            raise RuntimeError(out or 'PostgreSQL role password repair failed.')
+    if not _database_exists(database):
+        ok, out = _psql(
+            "CREATE DATABASE %s OWNER %s;" % (quote_ident(database), quote_ident(username)),
+            timeout=45,
+        )
+        if not ok:
+            raise RuntimeError(out or 'PostgreSQL database repair failed.')
+        changed = True
+    ok, out = _psql(
+        "ALTER DATABASE %s OWNER TO %s; GRANT ALL PRIVILEGES ON DATABASE %s TO %s;" % (
+            quote_ident(database),
+            quote_ident(username),
+            quote_ident(database),
+            quote_ident(username),
+        ),
+        timeout=30,
+    )
+    if not ok:
+        raise RuntimeError(out or 'PostgreSQL database ownership repair failed.')
+    ok, out = _psql(
+        "GRANT ALL ON SCHEMA public TO %s; "
+        "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO %s; "
+        "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO %s;" % (
+            quote_ident(username),
+            quote_ident(username),
+            quote_ident(username),
+        ),
+        database=database,
+        timeout=30,
+    )
+    if not ok:
+        raise RuntimeError(out or 'PostgreSQL schema grant repair failed.')
+    return changed
 
 
 def delete_database(user_id, database, username):
