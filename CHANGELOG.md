@@ -5,6 +5,11 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-06-27] - PostgreSQL Manager 1.0.0
+
+### Added
+- **postgresManager**: Free plugin by KraoESPfan1n. Installs PostgreSQL, configures a dedicated local admin role, installs PHP PostgreSQL support for CyberPanel LSAPI, and exposes Adminer at `/postgres-adminer/` with automatic login from the plugin page.
+
 ## [2026-03-27] - Firewall UI parity (CyberPanel v2.5.5-dev)
 
 ### Note (core panel, not this repo’s plugin code)
