@@ -174,7 +174,7 @@ ensure_admin_role() {
     pass="$(cat "$PASSWORD_FILE")"
     local escaped
     escaped="${pass//\'/\'\'}"
-    runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${ADMIN_ROLE}') THEN CREATE ROLE ${ADMIN_ROLE} WITH LOGIN CREATEDB CREATEROLE PASSWORD '${escaped}'; ELSE ALTER ROLE ${ADMIN_ROLE} WITH LOGIN CREATEDB CREATEROLE PASSWORD '${escaped}'; END IF; END \$\$;"
+    runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${ADMIN_ROLE}') THEN CREATE ROLE ${ADMIN_ROLE} WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '${escaped}'; ELSE ALTER ROLE ${ADMIN_ROLE} WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '${escaped}'; END IF; END \$\$;"
     if ! runuser -u postgres -- psql -Atqc "SELECT 1 FROM pg_database WHERE datname='${ADMIN_DB}'" | grep -q 1; then
         runuser -u postgres -- createdb -O "$ADMIN_ROLE" "$ADMIN_DB"
     fi
