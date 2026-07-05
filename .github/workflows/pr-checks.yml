@@ -1,0 +1,77 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate plugins
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate plugin manifests
+        run: |
+          python - <<'PY'
+          import pathlib
+          import sys
+          import xml.etree.ElementTree as ET
+
+          required = {'name', 'type', 'description', 'version', 'author'}
+          failures = []
+
+          for meta in sorted(pathlib.Path('.').glob('*/meta.xml')):
+              try:
+                  root = ET.parse(meta).getroot()
+              except ET.ParseError as exc:
+                  failures.append(f'{meta}: invalid XML: {exc}')
+                  continue
+              present = {child.tag for child in root}
+              missing = sorted(required - present)
+              if missing:
+                  failures.append(f'{meta}: missing {", ".join(missing)}')
+
+          if failures:
+              print('\n'.join(failures))
+              sys.exit(1)
+          print('Plugin manifests OK')
+          PY
+
+      - name: Python syntax check
+        run: |
+          python - <<'PY'
+          import pathlib
+          import py_compile
+          import sys
+
+          failures = []
+          for path in pathlib.Path('.').rglob('*.py'):
+              if any(part in {'__pycache__', '.git'} for part in path.parts):
+                  continue
+              try:
+                  py_compile.compile(str(path), doraise=True)
+              except py_compile.PyCompileError as exc:
+                  failures.append(f'{path}: {exc.msg}')
+
+          if failures:
+              print('\n'.join(failures))
+              sys.exit(1)
+          print('Python syntax OK')
+          PY
+
+      - name: Shell syntax check
+        run: |
+          find . -path ./.git -prune -o -type f -name '*.sh' -print0 |
+            xargs -0 -r -n1 bash -n
