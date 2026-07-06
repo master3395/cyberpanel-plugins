@@ -220,8 +220,8 @@ def ensure_admin_credentials():
     sql = (
         "DO $$ BEGIN "
         "IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '%s') THEN "
-        "CREATE ROLE %s WITH LOGIN CREATEDB CREATEROLE PASSWORD '%s'; "
-        "ELSE ALTER ROLE %s WITH LOGIN CREATEDB CREATEROLE PASSWORD '%s'; "
+        "CREATE ROLE %s WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '%s'; "
+        "ELSE ALTER ROLE %s WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '%s'; "
         "END IF; END $$;"
     ) % (ADMIN_ROLE, ADMIN_ROLE, password.replace("'", "''"), ADMIN_ROLE, password.replace("'", "''"))
     ok, out = run_cmd([psql_bin(), '-v', 'ON_ERROR_STOP=1', '-c', sql], timeout=20, user='postgres')
