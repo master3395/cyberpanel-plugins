@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 PLUGIN_NAME="testPlugin"
 PLUGIN_DIR="/home/cyberpanel/plugins"
 CYBERPANEL_DIR="/usr/local/CyberCP"
-GITHUB_REPO="https://github.com/cyberpanel/testPlugin.git"
+GITHUB_REPO="https://github.com/master3395/cyberpanel-plugins.git"
 TEMP_DIR="/tmp/cyberpanel_plugin_install"
 
 # OS Detection Variables
