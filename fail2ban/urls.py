@@ -27,6 +27,7 @@ urlpatterns = [
     re_path(r'^api/restart/$', api_views.api_restart, name='api_restart'),
     re_path(r'^api/restart-litespeed/$', api_views.api_restart_litespeed, name='api_restart_litespeed'),
     re_path(r'^api/logs/$', api_views.api_logs, name='api_logs'),
+    re_path(r'^api/logs/clear/$', api_views.api_logs_clear, name='api_logs_clear'),
     re_path(r'^api/settings/$', api_views.api_settings, name='api_settings'),
     re_path(r'^api/statistics/$', api_statistics.api_statistics, name='api_statistics'),
     re_path(r'^api/toggle-plugin/$', api_views.api_toggle_plugin, name='api_toggle_plugin'),

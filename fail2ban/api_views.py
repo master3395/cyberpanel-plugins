@@ -489,13 +489,39 @@ def api_restart(request):
 @fail2ban_api
 @require_http_methods(["GET"])
 def api_logs(request):
-    """Get fail2ban logs"""
+    """Get fail2ban logs (newest among last N file lines). Optional ?lines= (1..5000, default 500)."""
     try:
+        try:
+            n = int(request.GET.get('lines', 500))
+        except (TypeError, ValueError):
+            n = 500
+        n = max(1, min(n, 5000))
         manager = Fail2banManager()
-        logs = manager.get_logs()
+        logs = manager.get_logs(lines=n)
         return JsonResponse({
             'success': True,
-            'data': logs
+            'data': logs,
+            'meta': {'fetched': len(logs) if isinstance(logs, list) else 0, 'lines': n},
+        })
+    except Exception as e:
+        return json_server_error(request, e)
+
+
+@fail2ban_api
+@require_http_methods(["POST"])
+def api_logs_clear(request):
+    """Truncate /var/log/fail2ban.log after admin confirmation in the UI."""
+    try:
+        manager = Fail2banManager()
+        result = manager.clear_logs()
+        if not result.get('success'):
+            return JsonResponse({
+                'success': False,
+                'error': result.get('error') or 'Could not clear fail2ban.log',
+            }, status=400)
+        return JsonResponse({
+            'success': True,
+            'message': result.get('message') or 'Log cleared',
         })
     except Exception as e:
         return json_server_error(request, e)

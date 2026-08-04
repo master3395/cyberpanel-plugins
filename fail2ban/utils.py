@@ -9,6 +9,9 @@ from .models import SecurityEvent, BannedIP
 JAIL_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_.-]+$')
 JAIL_NAME_MAX_LEN = 128
 SAFE_FAIL2BAN_CLIENT = '/usr/local/bin/cyberpanel-safe-fail2ban-client'
+SAFE_FAIL2BAN_LOGS = '/usr/local/bin/cyberpanel-safe-fail2ban-logs'
+SAFE_FAIL2BAN_LOGS_CLEAR = '/usr/local/bin/cyberpanel-safe-fail2ban-logs-clear'
+FAIL2BAN_LOG_FILE = '/var/log/fail2ban.log'
 
 # Short-lived cache so Banned IPs pagination does not re-query fail2ban every page.
 _F2B_BANNED_CACHE = {'at': 0.0, 'rows': None}
@@ -1056,28 +1059,67 @@ class Fail2banManager:
             return {'success': False, 'error': str(e)}
     
     def get_logs(self, lines=100):
-        """Get fail2ban logs"""
+        """Get recent lines from /var/log/fail2ban.log (via allowlisted sudo helper)."""
         try:
             try:
                 n = int(lines)
             except (TypeError, ValueError):
                 n = 100
             n = max(1, min(n, 5000))
+
+            logs = []
+            # Panel workers run as cyberpanel and cannot read root-only fail2ban.log.
+            if os.path.isfile(SAFE_FAIL2BAN_LOGS):
+                result = self.run_command(['sudo', '-n', SAFE_FAIL2BAN_LOGS, str(n)])
+                if result.get('success'):
+                    for line in (result.get('stdout') or '').split('\n'):
+                        if line.strip():
+                            logs.append(line.strip())
+                    # Empty file is a valid result (e.g. after Clear log); do not fall back to journal.
+                    return logs
+
+            # Direct read when process can open the file (e.g. root CLI).
+            if os.path.isfile(FAIL2BAN_LOG_FILE) and os.access(FAIL2BAN_LOG_FILE, os.R_OK):
+                result = self.run_command(['/usr/bin/tail', '-n', str(n), FAIL2BAN_LOG_FILE])
+                if result.get('success'):
+                    for line in (result.get('stdout') or '').split('\n'):
+                        if line.strip():
+                            logs.append(line.strip())
+                    return logs
+
+            # Last resort: journal (often empty for non-privileged users).
             result = self.run_command(
                 ['journalctl', '-u', 'fail2ban', '-n', str(n), '--no-pager']
             )
-            
-            if not result['success']:
-                return []
-            
-            logs = []
-            for line in result['stdout'].split('\n'):
-                if line.strip():
-                    logs.append(line.strip())
-            
+            if result.get('success') and result.get('stdout'):
+                for line in result['stdout'].split('\n'):
+                    if line.strip():
+                        logs.append(line.strip())
             return logs
-        except Exception as e:
+        except Exception:
             return []
+
+    def clear_logs(self):
+        """Truncate /var/log/fail2ban.log via allowlisted sudo helper."""
+        try:
+            if os.path.isfile(SAFE_FAIL2BAN_LOGS_CLEAR):
+                result = self.run_command(['sudo', '-n', SAFE_FAIL2BAN_LOGS_CLEAR])
+                if result.get('success'):
+                    return {
+                        'success': True,
+                        'message': 'fail2ban.log cleared',
+                    }
+                return {
+                    'success': False,
+                    'error': (result.get('stderr') or result.get('stdout') or 'Clear failed').strip()[:300],
+                }
+            if os.path.isfile(FAIL2BAN_LOG_FILE) and os.access(FAIL2BAN_LOG_FILE, os.W_OK):
+                with open(FAIL2BAN_LOG_FILE, 'w', encoding='utf-8'):
+                    pass
+                return {'success': True, 'message': 'fail2ban.log cleared'}
+            return {'success': False, 'error': 'Clear helper not available'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)[:300]}
     
     def is_valid_ip(self, ip):
         """Validate IP address format"""

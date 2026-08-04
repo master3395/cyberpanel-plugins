@@ -45,6 +45,7 @@
   window.F2B.api=api;
   window.F2B.toast=toast;
   window.F2B.esc=esc;
+  window.F2B.updatePager=updatePager;
   function normalizeTab(id){
     if(!id) return 'overview';
     if(id==='alerts') return 'overview';
@@ -361,6 +362,8 @@
   document.getElementById('btnRefreshWhitelist').addEventListener('click', loadWhitelist);
   document.getElementById('btnRefreshBlacklist').addEventListener('click', loadBlacklist);
   document.getElementById('btnRefreshLogs').addEventListener('click', loadLogs);
+  var btnClearLogs=document.getElementById('btnClearLogs');
+  if(btnClearLogs) btnClearLogs.addEventListener('click', function(){ window.F2BPanels&&window.F2BPanels.clearLogs&&window.F2BPanels.clearLogs(); });
   document.getElementById('btnRefreshStats').addEventListener('click', loadStatistics);
   document.getElementById('btnAddWhitelist').addEventListener('click', addWhitelistOne);
   document.getElementById('btnBulkWhitelist').addEventListener('click', addWhitelistBulk);
@@ -461,6 +464,26 @@
       var n=parseInt((document.getElementById('wlGoto')||{}).value,10)||1;
       wlState.page=Math.max(1, Math.min(pages, n));
       renderWhitelistPage();
+    }
+  });
+
+  var logsPageSize=document.getElementById('logsPageSize');
+  if(logsPageSize) logsPageSize.addEventListener('change', function(){
+    if(!window.F2BPanels||!window.F2BPanels.logsState) return;
+    window.F2BPanels.logsState.pageSize=parseInt(logsPageSize.value,10)||5;
+    window.F2BPanels.logsState.page=1;
+    if(window.F2BPanels.renderLogsPage) window.F2BPanels.renderLogsPage();
+  });
+  wirePager('logs', function(action){
+    if(!window.F2BPanels||!window.F2BPanels.logsState) return;
+    var st=window.F2BPanels.logsState;
+    var pages=Math.max(1, Math.ceil(st.all.length/st.pageSize)||1);
+    if(action==='prev' && st.page>1){ st.page--; window.F2BPanels.renderLogsPage(); }
+    else if(action==='next' && st.page<pages){ st.page++; window.F2BPanels.renderLogsPage(); }
+    else if(action==='goto'){
+      var n=parseInt((document.getElementById('logsGoto')||{}).value,10)||1;
+      st.page=Math.max(1, Math.min(pages, n));
+      window.F2BPanels.renderLogsPage();
     }
   });
 

@@ -2,6 +2,7 @@
   function api(){ return window.F2B && window.F2B.api; }
   function toast(msg){ if(window.F2B && window.F2B.toast) window.F2B.toast(msg); }
   function esc(s){ return (window.F2B && window.F2B.esc) ? window.F2B.esc(s) : String(s||''); }
+  var logsState={page:1,pageSize:5,all:[]};
 
   async function loadOverview(){
     try{
@@ -83,15 +84,123 @@
         }).join('')+'</tbody></table>';
     }catch(e){box.innerHTML='<div class="f2b-empty">Failed to load jails.</div>';}
   }
+  function parseLogLine(line){
+    var raw=String(line||'');
+    var m=raw.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:,\d+)?)\s+(\S+)\s+(?:\[\d+\]:\s*)?([A-Z]+)\s+(.*)$/);
+    if(m){
+      return {ts:m[1], src:m[2], level:m[3], msg:m[4], raw:raw};
+    }
+    // journalctl-style: "Aug 04 21:22:37 host systemd[1]: ..."
+    var j=raw.match(/^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+\S+\s+(\S+):\s*(.*)$/);
+    if(j){
+      return {ts:j[1], src:j[2], level:'', msg:j[3], raw:raw};
+    }
+    return {ts:'', src:'', level:'', msg:raw, raw:raw};
+  }
+  function levelClass(level){
+    var l=String(level||'').toUpperCase();
+    if(l==='ERROR'||l==='CRITICAL'||l==='FATAL') return 'is-error';
+    if(l==='WARN'||l==='WARNING') return 'is-warn';
+    if(l==='INFO'||l==='NOTICE'||l==='DEBUG') return 'is-info';
+    return '';
+  }
   async function loadLogs(){
     var box=document.getElementById('logsList');
+    var metaEl=document.getElementById('logsMeta');
+    var sizeEl=document.getElementById('logsPageSize');
+    if(sizeEl) logsState.pageSize=parseInt(sizeEl.value,10)||5;
+    box.className='f2b-log-viewer f2b-empty';
     box.textContent='Loading…';
     try{
       var call=api(); if(!call) return;
-      var data=await call('/plugins/fail2ban/api/logs/');
+      var data=await call('/plugins/fail2ban/api/logs/?lines=500');
       var lines=data.data||[];
-      box.textContent=lines.length?lines.join('\n'):'No recent fail2ban log lines.';
-    }catch(e){box.textContent='Failed to load logs'+(e&&e.message?': '+e.message:'');}
+      // File order is oldest→newest; reverse so page 1 is newest.
+      logsState.all=lines.slice().reverse();
+      logsState.page=1;
+      renderLogsPage();
+    }catch(e){
+      logsState.all=[];
+      if(metaEl) metaEl.textContent='';
+      box.className='f2b-log-viewer f2b-empty';
+      box.textContent='Failed to load logs'+(e&&e.message?': '+e.message:'');
+      var pager=document.getElementById('logsPager');
+      if(pager) pager.hidden=true;
+    }
+  }
+  function renderLogsPage(){
+    var box=document.getElementById('logsList');
+    var metaEl=document.getElementById('logsMeta');
+    var sizeEl=document.getElementById('logsPageSize');
+    if(sizeEl) logsState.pageSize=parseInt(sizeEl.value,10)||5;
+    var total=logsState.all.length;
+    var pages=Math.max(1, Math.ceil(total/logsState.pageSize)||1);
+    if(logsState.page>pages) logsState.page=pages;
+    if(logsState.page<1) logsState.page=1;
+    var offset=(logsState.page-1)*logsState.pageSize;
+    var slice=logsState.all.slice(offset, offset+logsState.pageSize);
+    if(!total){
+      box.className='f2b-log-viewer f2b-empty';
+      box.textContent='No recent fail2ban log lines.';
+      if(metaEl) metaEl.textContent='No lines in the last 500 from fail2ban.log.';
+    }else{
+      box.className='f2b-log-viewer';
+      box.innerHTML=slice.map(function(line){
+        var p=parseLogLine(line);
+        var lc=levelClass(p.level);
+        var metaBits='';
+        if(p.ts) metaBits+='<span class="f2b-log-ts">'+esc(p.ts)+'</span>';
+        if(p.level) metaBits+='<span class="f2b-log-level '+(lc||'')+'">'+esc(p.level)+'</span>';
+        if(p.src) metaBits+='<span class="f2b-log-src">'+esc(p.src)+'</span>';
+        if(!metaBits){
+          return '<article class="f2b-log-line"><p class="f2b-log-msg">'+esc(p.msg)+'</p></article>';
+        }
+        return '<article class="f2b-log-line">'
+          +'<div class="f2b-log-meta">'+metaBits+'</div>'
+          +'<p class="f2b-log-msg">'+esc(p.msg)+'</p>'
+          +'</article>';
+      }).join('');
+      var from=offset+1;
+      var to=offset+slice.length;
+      if(metaEl){
+        metaEl.textContent='Showing '+from+'-'+to+' of '+total+' (newest first). Fetched last 500 from fail2ban.log.';
+      }
+    }
+    if(window.F2B&&window.F2B.updatePager){
+      window.F2B.updatePager('logs', logsState.page, pages, total);
+    }else{
+      var pager=document.getElementById('logsPager');
+      var label=document.getElementById('logsPageLabel');
+      var prev=document.getElementById('logsPrev');
+      var next=document.getElementById('logsNext');
+      var gotoInput=document.getElementById('logsGoto');
+      if(pager){
+        if(!total){ pager.hidden=true; }
+        else{
+          pager.hidden=false;
+          if(label) label.textContent='Page '+logsState.page+' / '+pages;
+          if(prev) prev.disabled=logsState.page<=1;
+          if(next) next.disabled=logsState.page>=pages;
+          if(gotoInput){ gotoInput.max=pages; gotoInput.value=logsState.page; }
+        }
+      }
+    }
+  }
+  async function clearLogs(){
+    if(!window.confirm('Clear /var/log/fail2ban.log?\n\nThis permanently empties the active fail2ban log file. Rotated archives are not deleted.')){
+      return;
+    }
+    try{
+      var call=api(); if(!call) return;
+      var data=await call('/plugins/fail2ban/api/logs/clear/',{method:'POST',body:'{}'});
+      if(!data||data.success===false){
+        throw new Error((data&&data.error)||'Clear failed');
+      }
+      toast(data.message||'Log cleared');
+      await loadLogs();
+    }catch(e){
+      toast('Could not clear log'+(e&&e.message?': '+e.message:''));
+    }
   }
   async function loadStatistics(){
     try{
@@ -131,6 +240,9 @@
     loadAlerts:loadAlerts,
     loadJails:loadJails,
     loadLogs:loadLogs,
+    clearLogs:clearLogs,
+    renderLogsPage:renderLogsPage,
+    logsState:logsState,
     loadStatistics:loadStatistics,
     loadSettings:loadSettings
   };

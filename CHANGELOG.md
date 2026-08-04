@@ -5,6 +5,16 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-08-05] - Fail2ban 1.4.1 Security Logs polish
+
+### Added
+- **fail2ban** (1.4.0 → **1.4.1**): Security Logs pagination (default 5 per page, go-to-page), dark mobile-friendly log cards, **Clear log** with confirmation (allowlisted sudo truncate of `/var/log/fail2ban.log`).
+- `scripts/sudo/cyberpanel-safe-fail2ban-logs` and `cyberpanel-safe-fail2ban-logs-clear` helpers.
+
+### Fixed
+- Manage modal opaque backgrounds in dark mode (CPUI `cpui.css`).
+- Empty log no longer falls back to unrelated journal lines after clear.
+
 ## [2026-08-05] - CyberPanel 2.5.5 sync (Fail2ban 1.4.0)
 
 ### Added

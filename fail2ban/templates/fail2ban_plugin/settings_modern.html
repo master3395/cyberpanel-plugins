@@ -194,8 +194,30 @@
   <div class="f2b-panel" id="panel-logs">
     <div class="f2b-actions" style="margin:0 0 12px">
       <button type="button" class="f2b-btn f2b-btn-soft" id="btnRefreshLogs">Refresh logs</button>
+      <button type="button" class="f2b-btn f2b-btn-danger" id="btnClearLogs">Clear log</button>
     </div>
-    <pre id="logsList" class="f2b-empty" style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.82rem;max-height:480px;overflow:auto;margin:0;">Loading…</pre>
+    <div class="f2b-toolbar" id="logsToolbar">
+      <div class="f2b-field" style="width:110px">
+        <label for="logsPageSize">Per page</label>
+        <select id="logsPageSize">
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+    <div class="f2b-statusline" id="logsMeta">Newest lines first. Fetches up to 500 recent lines from fail2ban.log.</div>
+    <div id="logsList" class="f2b-log-viewer f2b-empty" aria-live="polite">Loading…</div>
+    <div class="f2b-pager" id="logsPager" hidden>
+      <button type="button" class="f2b-btn f2b-btn-soft" id="logsPrev" disabled>Prev</button>
+      <span class="f2b-pager-label" id="logsPageLabel">Page 1</span>
+      <button type="button" class="f2b-btn f2b-btn-soft" id="logsNext" disabled>Next</button>
+      <label class="f2b-pager-goto" for="logsGoto">Go to</label>
+      <input type="number" id="logsGoto" min="1" value="1" style="width:72px">
+      <button type="button" class="f2b-btn f2b-btn-soft" id="logsGotoBtn">Go</button>
+    </div>
   </div>
 
   <div class="f2b-panel" id="panel-statistics">
@@ -254,8 +276,8 @@
   </div>
 </div>
 
-<script src="{% static 'fail2ban/f2b_app.js' %}?v=1.5.0"></script>
-<script src="{% static 'fail2ban/f2b_panels.js' %}?v=1.0.0"></script>
+<script src="{% static 'fail2ban/f2b_app.js' %}?v=1.5.2"></script>
+<script src="{% static 'fail2ban/f2b_panels.js' %}?v=1.1.2"></script>
 <script src="{% static 'fail2ban/f2b_manage.js' %}?v=1.0.0"></script>
 <script>if(window.F2B&&window.F2B.boot){window.F2B.boot();}</script>
 
