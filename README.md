@@ -22,8 +22,8 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [CSP Manager](cspManager/) | Security | 🟢 Free | master3395 | Content Security Policy management |
 | [Discord Authentication](discordAuth/) | Security | 🟢 Free | master3395 | Discord OAuth2 login for CyberPanel |
 | [Discord Webhooks](docs/plugins/discordWebhooks.md) | Integration | 🟢 Free | master3395 | Send server notifications to Discord |
-| [Email Marketing](emailMarketing/) | Email | 🟢 Free | usmannasir | Email marketing plugin for CyberPanel |
-| [Example Plugin](examplePlugin/) | Utility | 🟢 Free | usmannasir | Example plugin demonstrating CyberPanel plugin structure |
+| [Email Marketing](emailMarketing/) | Email | 🟢 Free | master3395 | Email marketing plugin for CyberPanel |
+| [Example Plugin](examplePlugin/) | Utility | 🟢 Free | master3395 | Example plugin demonstrating CyberPanel plugin structure |
 | [Fail2ban Security Manager](docs/plugins/fail2ban.md) | Security | 🟢 Free | master3395 | Manage and monitor fail2ban settings |
 | [Google Tag Manager](googleTagManager/) | Analytics | 🟢 Free | master3395 | Configure GTM container IDs per domain |
 | [Limited phpMyAdmin](docs/plugins/limitedPhpmyAdmin.md) | Utility | 🟢 Free | master3395 | Single-database MySQL users for phpMyAdmin; FTP/CP labels; disable without delete |
@@ -36,7 +36,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |
 | [SnappyMail Admin Password](snappymailAdmin/) | Email | 🟢 Free | master3395 | Set or change SnappyMail Admin panel username and password from CyberPanel |
-| [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | usmannasir | Basic test plugin for CyberPanel plugin system |
+| [Test Plugin](docs/plugins/testPlugin.md) | Utility | 🟢 Free | master3395 | Basic test plugin for CyberPanel plugin system |
 
 ## Plugin Pricing
 
