@@ -5,10 +5,14 @@
 {% block title %}SnappyMail Admin Password - {% trans "CyberPanel" %}{% endblock %}
 
 {% block content %}
-<style>
-.plugin-pricing-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
-.plugin-pricing-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-</style>
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>SnappyMail Admin</h1>
+    <p>Manage SnappyMail webmail for CyberPanel.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Mail</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-12">
@@ -109,4 +113,6 @@
 })();
 </script>
 {% endif %}
+  </div>
+</div>
 {% endblock %}

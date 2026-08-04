@@ -2,14 +2,14 @@
 <plugin>
     <name>Fail2ban Security Manager</name>
     <type>Security</type>
-    <version>1.0.0</version>
+    <version>1.4.1</version>
     <description>Advanced fail2ban management plugin for CyberPanel with modern UI, real-time monitoring, and comprehensive security features.</description>
     <author>Master3395</author>
     <website>https://newstargeted.com</website>
     <license>MIT</license>
     <category>Security</category>
     <compatibility>
-        <min_version>2.0.0</min_version>
+        <min_version>2.5.5</min_version>
         <max_version>3.0.0</max_version>
     </compatibility>
     <requirements>
@@ -28,7 +28,7 @@
         <feature>Log analysis and reporting</feature>
     </features>
     <url>/plugins/fail2ban/</url>
-    <settings_url>/plugins/fail2ban/settings/</settings_url>
+    <settings_url>/plugins/fail2ban/</settings_url>
     <enable_url>/plugins/fail2ban/api/toggle-plugin/</enable_url>
     <restart_url>/plugins/fail2ban/api/restart/</restart_url>
     <restart_litespeed_url>/plugins/fail2ban/api/restart-litespeed/</restart_litespeed_url>

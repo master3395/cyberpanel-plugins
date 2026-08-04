@@ -143,12 +143,12 @@ def cyberpanel_login_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         try:
             if not request.session.get('userID'):
-                from loginSystem.views import loadLoginPage
-                return redirect(loadLoginPage)
+                from loginSystem.login_return import redirect_to_login
+                return redirect_to_login(request)
             return view_func(request, *args, **kwargs)
         except KeyError:
-            from loginSystem.views import loadLoginPage
-            return redirect(loadLoginPage)
+            from loginSystem.login_return import redirect_to_login
+            return redirect_to_login(request)
     return _wrapped_view
 
 
@@ -332,8 +332,8 @@ def unified_verification_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         try:
             if not request.session.get('userID'):
-                from loginSystem.views import loadLoginPage
-                return redirect(loadLoginPage)
+                from loginSystem.login_return import redirect_to_login
+                return redirect_to_login(request)
 
             # Get user email from session or user object, normalize to lowercase
             user_email = _resolve_user_identity(request)
@@ -1224,16 +1224,25 @@ def monitoring_worker():
 
 
 def start_monitoring_thread():
-    """Start the monitoring thread if not already running"""
+    """Start the monitoring thread if not already running (one per process)."""
     global _monitoring_thread
     with _monitoring_lock:
-        if _monitoring_thread is None or not _monitoring_thread.is_alive():
-            _monitoring_thread = threading.Thread(target=monitoring_worker, daemon=True)
-            _monitoring_thread.start()
-            logging.writeToFile("Auto Ban Plugin: Started monitoring thread")
+        if _monitoring_thread is not None and _monitoring_thread.is_alive():
+            return
+        # Cross-worker lock so only one LSCPD worker owns the monitor.
+        lock_path = '/tmp/cyberpanel-autoban-monitor.lock'
+        try:
+            lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+            import fcntl
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (OSError, IOError):
+            return
+        _monitoring_thread = threading.Thread(target=monitoring_worker, daemon=True)
+        _monitoring_thread.start()
+        logging.writeToFile("Auto Ban Plugin: Started monitoring thread")
 
 
-# Start monitoring on module load if enabled
+# Start monitoring on module load if enabled (avoid double log; worker logs once)
 try:
     config = AutoBanConfig.get_config()
     if config.enabled:

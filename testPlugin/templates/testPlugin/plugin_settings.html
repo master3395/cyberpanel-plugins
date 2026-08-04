@@ -4,102 +4,15 @@
 
 {% block title %}{% trans "Test Plugin Settings - CyberPanel" %}{% endblock %}
 
-{% block header_scripts %}
-<style>
-    .settings-wrapper {
-        background: transparent;
-        padding: 20px;
-    }
-    
-    .settings-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    
-    .settings-header {
-        background: var(--bg-primary, white);
-        border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: var(--shadow-md, 0 2px 8px rgba(0,0,0,0.08));
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .settings-form {
-        background: var(--bg-primary, white);
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: var(--shadow-md, 0 2px 8px rgba(0,0,0,0.08));
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .form-group {
-        margin-bottom: 20px;
-    }
-    
-    .form-label {
-        display: block;
-        font-weight: 600;
-        color: var(--text-primary, #2f3640);
-        margin-bottom: 8px;
-    }
-    
-    .form-control {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid var(--border-primary, #e8e9ff);
-        border-radius: 8px;
-        font-size: 14px;
-        transition: border-color 0.3s ease;
-    }
-    
-    .form-control:focus {
-        outline: none;
-        border-color: #5856d6;
-        box-shadow: 0 0 0 3px rgba(88,86,214,0.1);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #5856d6, #4a90e2);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(88,86,214,0.3);
-    }
-    
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-right: 10px;
-    }
-    
-    .btn-secondary:hover {
-        background: #5a6268;
-        color: white;
-        text-decoration: none;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Test Plugin settings</h1>
+    <p>Plugin settings shell for testing.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Test</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="settings-wrapper">
     <div class="settings-container">
         <!-- Settings Header -->
@@ -261,4 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+  </div>
+</div>
 {% endblock %}

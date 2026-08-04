@@ -5,6 +5,30 @@ All notable changes to this repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-08-05] - Fail2ban 1.4.1 Security Logs polish
+
+### Added
+- **fail2ban** (1.4.0 → **1.4.1**): Security Logs pagination (default 5 per page, go-to-page), dark mobile-friendly log cards, **Clear log** with confirmation (allowlisted sudo truncate of `/var/log/fail2ban.log`).
+- `scripts/sudo/cyberpanel-safe-fail2ban-logs` and `cyberpanel-safe-fail2ban-logs-clear` helpers.
+
+### Fixed
+- Manage modal opaque backgrounds in dark mode (CPUI `cpui.css`).
+- Empty log no longer falls back to unrelated journal lines after clear.
+
+## [2026-08-05] - CyberPanel 2.5.5 sync (Fail2ban 1.4.0)
+
+### Added
+- **fail2ban** (1.3.0 → **1.4.0**): Unified Fail2ban Security Manager UI with URL tabs, server-side banned-IP pagination/search, whitelist search/pagination, firewall trusted-IP sync into fail2ban `ignoreip`, batched firewall ban import, live statistics, and per-row **Manage** modal (unban layers, whitelist/blacklist moves, labels). Shared opaque modal CSS for dark mode (CPUI `cpui.css` 1.0.8).
+- **docs/cpui-assets**: Canonical `cpui.css` / `cpui_head.html` snapshot for CyberPanel `pluginHolder` when mirroring into `v2.5.5-dev`.
+
+### Changed
+- All plugin `meta.xml` files: `<min_version>2.5.5</min_version>` and `<max_version>3.0.0</max_version>` for CyberPanel 2.5.5+ store compatibility.
+- Synced live working plugin trees from production CyberPanel 2.5.5 into this repo (CPUI-styled settings templates and related views across Auto Ban, Contabo Snapshot, CSP, Discord Auth/Webhooks, Email Marketing, GTM, Limited phpMyAdmin, Memcache/Redis/PM2, Panel Access, Port Manager, Premium/PayPal examples, SnappyMail Admin, Example/Test plugins).
+- Patch version bumps for synced plugins (see `meta.xml` per plugin).
+
+### Fixed
+- Fail2ban Manage modal transparent in dark mode: solid card background outside CSS-variable scope; modal markup nested under `.f2b`.
+
 ## [2026-06-27] - PostgreSQL Manager 1.0.0
 
 ### Added

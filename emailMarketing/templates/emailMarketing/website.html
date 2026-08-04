@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{{ domain }} - CyberPanel{% endblock %}
 {% block content %}
-
-    {% load static %}
+{% load static %}
+    {% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Email Marketing website</h1>
+    <p>Website integration for email marketing.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
     {% get_current_language as LANGUAGE_CODE %}
     <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -1128,7 +1135,6 @@
 
 
     </div>
-
-
-
+  </div>
+</div>
 {% endblock %}

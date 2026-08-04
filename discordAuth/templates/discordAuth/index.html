@@ -4,6 +4,14 @@
 {% block title %}Discord Authentication{% endblock %}
 
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Discord Auth</h1>
+    <p>Sign in to CyberPanel with Discord OAuth.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Auth</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="content-wrapper">
     <div class="container-fluid">
         <div class="row">
@@ -78,5 +86,7 @@
             </div>
         </div>
     </div>
+</div>
+  </div>
 </div>
 {% endblock %}

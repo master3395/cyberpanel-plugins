@@ -3,7 +3,11 @@
     <name>Memcache Manager</name>
     <type>Utility</type>
     <description>Manage Memcached/LSMCD server: view status, start/stop/restart, view statistics with charts, flush cache, and view configuration. Free plugin supporting both standard Memcached and LiteSpeed LSMCD.</description>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
     <author>master3395</author>
     <url>/plugins/memcacheManager/</url>
     <settings_url>/plugins/memcacheManager/</settings_url>

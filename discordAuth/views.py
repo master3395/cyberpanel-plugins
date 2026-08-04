@@ -80,8 +80,8 @@ def discord_login(request):
         request.session['discord_oauth_state'] = state
         request.session['discord_oauth_redirect'] = request.GET.get('redirect', '/')
         
-        # Get authorization URL
-        auth_url, state = get_authorization_url(request, state)
+        force_consent = request.GET.get('consent') == '1'
+        auth_url, state = get_authorization_url(request, state, force_consent=force_consent)
         
         if not auth_url:
             return JsonResponse({
@@ -112,6 +112,11 @@ def discord_callback(request):
         stored_state = request.session.get('discord_oauth_state')
         received_state = request.GET.get('state')
         
+        oauth_err = request.GET.get('error')
+        if oauth_err in ('consent_required', 'login_required') and not request.session.get('oauth_silent_retried'):
+            request.session['oauth_silent_retried'] = True
+            return redirect('/plugins/discordAuth/login/?consent=1')
+
         if not stored_state or stored_state != received_state:
             logging.writeToFile("Discord OAuth: Invalid state parameter")
             return redirect('/login?error=invalid_state')
@@ -127,6 +132,9 @@ def discord_callback(request):
             )
             return redirect('/login?error=%s' % safe_code)
         
+        if 'oauth_silent_retried' in request.session:
+            del request.session['oauth_silent_retried']
+
         # Exchange code for token
         token_data = exchange_code_for_token(code, request)
         if not token_data:

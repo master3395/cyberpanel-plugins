@@ -1,44 +1,16 @@
 {% extends "baseTemplate/index.html" %}
 {% load i18n %}
-{% block header_scripts %}
-    <style>
-        .exampleBody {
-            font-weight: bold;
-        }
-        
-        /* Plugin Information Section - Ensure visibility */
-        .plugin-info-section {
-            background: #d1ecf1 !important;
-            border: 1px solid #bee5eb !important;
-            border-radius: 8px !important;
-            padding: 15px 20px !important;
-            margin-bottom: 25px !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            position: relative !important;
-            z-index: 10 !important;
-        }
-        
-        .plugin-info-section ul {
-            list-style: none !important;
-            padding-left: 0 !important;
-            margin-top: 10px !important;
-            margin-bottom: 0 !important;
-        }
-        
-        .plugin-info-section li {
-            margin-bottom: 8px;
-        }
-        
-        .plugin-info-section li:last-child {
-            margin-bottom: 0;
-        }
-    </style>
-{% endblock header_scripts %}
 {% block title %}Example plugin - CyberPanel{% endblock %}
 {% block content %}
-    {% load static %}
+{% load static %}
+    {% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Example Plugin</h1>
+    <p>Sample CyberPanel plugin home page.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Example</span></div>
+  </div>
+  <div class="cpui-section">
     {% get_current_language as LANGUAGE_CODE %}
     <!-- Current language: {{ LANGUAGE_CODE }} -->
     <div class="container" id="examplePluginApp">
@@ -74,6 +46,8 @@
         </div>
 
     </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block footer_scripts %}

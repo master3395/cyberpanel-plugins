@@ -1,3 +1,13 @@
+## 1.4.1 (2026-08-05)
+
+- Security Logs: paginated viewer (default 5/page), dark mobile-friendly cards, Clear log with confirmation.
+- Fix log read via allowlisted sudo helper; opaque Manage modal CSS in CPUI assets.
+
+## 1.4.0 (2026-08-05)
+
+- Unified UI: tabs in URL, banned/whitelist pagination and search, Manage modal, firewall sync, opaque dark-mode modal.
+- Requires CyberPanel 2.5.5+ (meta min_version).
+
 # Changelog - Fail2ban Security Manager
 
 All notable changes to this plugin will be documented in this file.

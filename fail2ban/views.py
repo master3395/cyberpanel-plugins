@@ -9,18 +9,14 @@ from .panel_auth import cyberpanel_login_and_admin, _html_plugin_error
 
 @cyberpanel_login_and_admin
 def fail2ban_plugin(request):
-    """Main plugin page (required by CyberPanel)"""
-    try:
-        manager = Fail2banManager()
-        status = manager.get_status()
+    """Main plugin page: single inline-tab UI (no separate panels)."""
+    return unified_settings(request)
 
-        context = {
-            'title': 'Fail2ban Security Manager',
-            'status': status,
-        }
-        return render(request, 'fail2ban_plugin/dashboard.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Plugin')
+
+@cyberpanel_login_and_admin
+def settings(request):
+    """Alias for pluginHolder settings proxy + clean /settings/ URL."""
+    return unified_settings(request)
 
 
 @cyberpanel_login_and_admin
@@ -37,116 +33,68 @@ def plugin_card(request):
 
 @cyberpanel_login_and_admin
 def jails_standalone(request):
-    """Standalone jails management page"""
-    try:
-        manager = Fail2banManager()
-        jails = manager.get_jails()
-
-        context = {
-            'title': 'Jail Management',
-            'jails': jails,
-        }
-        return render(request, 'fail2ban_plugin/jails_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Jails')
+    """Legacy URL: open the unified page on the jails tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#jails')
 
 
 @cyberpanel_login_and_admin
 def banned_ips_standalone(request):
-    """Standalone banned IPs page"""
-    try:
-        manager = Fail2banManager()
-        banned_ips = manager.get_banned_ips()
-
-        context = {
-            'title': 'Banned IPs',
-            'banned_ips': banned_ips,
-        }
-        return render(request, 'fail2ban_plugin/banned_ips_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Banned IPs')
+    """Legacy URL: open the unified page on the banned tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#banned')
 
 
 @cyberpanel_login_and_admin
 def whitelist_standalone(request):
-    """Standalone whitelist page"""
-    try:
-        manager = Fail2banManager()
-        whitelist = manager.get_whitelist()
-
-        context = {
-            'title': 'IP Whitelist Management',
-            'whitelist': whitelist,
-        }
-        return render(request, 'fail2ban_plugin/whitelist_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Whitelist')
+    """Legacy URL: open the unified page on the whitelist tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#whitelist')
 
 
 @cyberpanel_login_and_admin
 def blacklist_standalone(request):
-    """Standalone blacklist page"""
-    try:
-        manager = Fail2banManager()
-        blacklist = manager.get_blacklist()
-
-        context = {
-            'title': 'IP Blacklist Management',
-            'blacklist': blacklist,
-        }
-        return render(request, 'fail2ban_plugin/blacklist_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Blacklist')
+    """Legacy URL: open the unified page on the blacklist tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#blacklist')
 
 
 @cyberpanel_login_and_admin
 def logs_standalone(request):
-    """Standalone logs page"""
-    try:
-        context = {
-            'title': 'Security Logs',
-        }
-        return render(request, 'fail2ban_plugin/logs_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Logs')
+    """Legacy URL: open the unified page on the logs tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#logs')
 
 
 @cyberpanel_login_and_admin
 def statistics_standalone(request):
-    """Standalone statistics page"""
-    try:
-        context = {
-            'title': 'Security Statistics',
-        }
-        return render(request, 'fail2ban_plugin/statistics_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Statistics')
+    """Legacy URL: open the unified page on the statistics tab."""
+    from django.shortcuts import redirect
+    return redirect('/plugins/fail2ban/#statistics')
 
 
 @cyberpanel_login_and_admin
 def settings_standalone(request):
-    """Standalone settings page"""
-    try:
-        context = {
-            'title': 'Settings',
-        }
-        return render(request, 'fail2ban_plugin/settings_standalone.html', context)
-    except Exception as e:
-        return _html_plugin_error(request, e, 'Settings')
+    """Legacy /settings/ path: same single-page UI."""
+    return unified_settings(request)
 
 
 @cyberpanel_login_and_admin
 def unified_settings(request):
     """Unified settings view with tabs"""
     try:
-        active_tab = request.GET.get('tab', 'overview')
+        active_tab = (request.GET.get('tab') or 'overview').strip().lower()
+        if active_tab in ('banned-ips', 'banned_ips'):
+            active_tab = 'banned'
+        if active_tab == 'alerts':
+            active_tab = 'overview'
 
         if active_tab == 'overview':
             path = request.path_info
             if 'jails' in path:
                 active_tab = 'jails'
             elif 'banned-ips' in path:
-                active_tab = 'banned-ips'
+                active_tab = 'banned'
             elif 'whitelist' in path:
                 active_tab = 'whitelist'
             elif 'blacklist' in path:
@@ -161,22 +109,33 @@ def unified_settings(request):
         manager = Fail2banManager()
         status = manager.get_status()
 
+        try:
+            from .models import Fail2banAutoBanConfig
+            autoban = Fail2banAutoBanConfig.get_config()
+            autoban_enabled = bool(autoban.enabled)
+        except Exception:
+            autoban_enabled = False
+
         context = {
             'title': 'Settings',
             'active_tab': active_tab,
             'status': status,
+            'plugin_name': 'Fail2ban Security Manager',
+            'version': '1.2.0',
+            'plugin_status': 'Active',
+            'autoban_enabled': autoban_enabled,
             'tabs': [
-                {'id': 'overview', 'name': 'Overview', 'icon': '📊'},
-                {'id': 'jails', 'name': 'Manage Jails', 'icon': '🔒'},
-                {'id': 'banned-ips', 'name': 'Banned IPs', 'icon': '🚫'},
-                {'id': 'whitelist', 'name': 'Whitelist', 'icon': '✅'},
-                {'id': 'blacklist', 'name': 'Blacklist', 'icon': '⚫'},
-                {'id': 'logs', 'name': 'Security Logs', 'icon': '📋'},
-                {'id': 'statistics', 'name': 'Statistics', 'icon': '📈'},
-                {'id': 'settings', 'name': 'Settings', 'icon': '⚙️'},
+                {'id': 'overview', 'name': 'Dashboard', 'icon': 'overview'},
+                {'id': 'jails', 'name': 'Manage Jails', 'icon': 'jails'},
+                {'id': 'banned', 'name': 'Banned IPs', 'icon': 'banned'},
+                {'id': 'whitelist', 'name': 'Whitelist', 'icon': 'whitelist'},
+                {'id': 'blacklist', 'name': 'Blacklist', 'icon': 'blacklist'},
+                {'id': 'logs', 'name': 'Security Logs', 'icon': 'logs'},
+                {'id': 'statistics', 'name': 'Statistics', 'icon': 'stats'},
+                {'id': 'settings', 'name': 'Settings', 'icon': 'settings'},
             ]
         }
-        return render(request, 'fail2ban_plugin/clean_settings.html', context)
+        return render(request, 'fail2ban_plugin/settings_modern.html', context)
     except Exception as e:
         return _html_plugin_error(request, e, 'Unified settings')
 
@@ -255,3 +214,6 @@ def statistics_view(request):
         'active_tab': 'statistics'
     }
     return render(request, 'fail2ban_plugin/statistics.html', context)
+
+# Alias for CyberPanel plugin_settings_proxy (/plugins/<name>/settings/)
+settings = unified_settings

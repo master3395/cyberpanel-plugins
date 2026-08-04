@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Allowlisted: tail only /var/log/fail2ban.log (and rotated copies).
+set -euo pipefail
+lines="${1:-100}"
+if ! [[ "$lines" =~ ^[0-9]+$ ]]; then
+  lines=100
+fi
+if (( lines < 1 )); then lines=1; fi
+if (( lines > 5000 )); then lines=5000; fi
+file="/var/log/fail2ban.log"
+if [[ ! -f "$file" ]]; then
+  echo "cyberpanel-safe-fail2ban-logs: $file not found" >&2
+  exit 1
+fi
+exec /usr/bin/tail -n "$lines" "$file"

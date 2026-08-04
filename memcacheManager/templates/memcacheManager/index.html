@@ -3,16 +3,14 @@
 {% load i18n %}
 {% block title %}Memcache Manager - {% trans "CyberPanel" %}{% endblock %}
 {% block content %}
-<style>
-.plugin-pricing-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
-.plugin-pricing-badge.free{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-.stat-card{transition:transform .2s,box-shadow .2s}.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
-.stat-value{font-size:1.8rem;font-weight:700;color:#2c3e50}.stat-label{font-size:.85rem;color:#6c757d;text-transform:uppercase;letter-spacing:.5px}
-.chart-container{position:relative;height:200px}.service-badge{font-size:.7rem;padding:2px 6px;margin-left:8px}.action-btn{min-width:80px}
-.config-item{padding:8px 12px;border-bottom:1px solid #e9ecef}.config-item:last-child{border-bottom:none}
-.config-label{font-weight:600;color:#495057}.config-value{color:#6c757d;font-family:monospace}
-.refresh-spinner{display:none}.refreshing .refresh-spinner{display:inline-block}.refreshing .refresh-icon{display:none}
-</style>
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Memcache Manager</h1>
+    <p>Install and manage Memcached for your sites.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Cache</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="card">
 <div class="card-header">
     <h3 class="card-title"><i class="fas fa-memory"></i> {% trans "Memcache Manager" %}
@@ -203,4 +201,6 @@ document.addEventListener('DOMContentLoaded',function(){if(typeof Chart!=='undef
 {% if status_key == 'running' %}setInterval(refreshStats,30000);{% endif %}
 })();
 </script>
+  </div>
+</div>
 {% endblock %}

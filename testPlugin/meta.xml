@@ -2,10 +2,14 @@
 <plugin>
     <name>Test Plugin</name>
     <type>Utility</type>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
     <description>A comprehensive test plugin for CyberPanel with enable/disable functionality, test button, popup messages, and inline integration</description>
     <author>usmannasir</author>
-    <website>https://github.com/master3395/cyberpanel-plugins/tree/main/testPlugin</website>
+    <website>https://github.com/cyberpanel/testPlugin</website>
     <license>MIT</license>
     <dependencies>
         <python>3.6+</python>

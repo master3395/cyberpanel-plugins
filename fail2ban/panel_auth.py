@@ -6,6 +6,7 @@ from functools import wraps
 from django.shortcuts import redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
 from loginSystem.models import Administrator
 from plogical.acl import ACLManager
 
@@ -38,18 +39,30 @@ def cyberpanel_login_and_admin(view_func):
 
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
+        path = request.path or ''
+        is_api = '/api/' in path
         try:
             uid = request.session['userID']
         except KeyError:
-            from loginSystem.views import loadLoginPage
-
-            return redirect(loadLoginPage)
+            if is_api:
+                return JsonResponse(
+                    {
+                        'success': False,
+                        'error': 'Authentication required',
+                        'error_message': 'This request need session.',
+                        'errorMessage': 'This request need session.',
+                        'login_required': True,
+                    },
+                    status=401,
+                )
+            from loginSystem.login_return import redirect_to_login
+            return redirect_to_login(request)
         try:
             acl = ACLManager.loadedACL(uid)
         except Exception:
             acl = {}
         if acl.get('admin') != 1:
-            if '/api/' in (request.path or ''):
+            if is_api:
                 return JsonResponse(
                     {'success': False, 'error': 'Admin access required'},
                     status=403,
@@ -61,6 +74,14 @@ def cyberpanel_login_and_admin(view_func):
         return view_func(request, *args, **kwargs)
 
     return _wrapped
+
+
+def fail2ban_api(view_func):
+    """
+    JSON API decorator: CSRF-exempt (CyberPanel plugin pattern) + admin session.
+    Session auth remains required; CSRF is redundant for same-origin panel XHR.
+    """
+    return csrf_exempt(cyberpanel_login_and_admin(view_func))
 
 
 def _django_user_for_fail2ban_settings(request):

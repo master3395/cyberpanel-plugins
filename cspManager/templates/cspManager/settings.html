@@ -5,6 +5,14 @@
 {% block title %}CSP Manager Settings - {% trans "CyberPanel" %}{% endblock %}
 
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>CSP settings</h1>
+    <p>Edit Content Security Policy rules.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Security</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-12">
@@ -209,5 +217,7 @@
             </div>
         </div>
     </div>
+</div>
+  </div>
 </div>
 {% endblock %}

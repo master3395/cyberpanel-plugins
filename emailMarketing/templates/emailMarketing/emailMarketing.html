@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{% trans "Email Marketing - CyberPanel" %}{% endblock %}
 {% block content %}
-
 {% load static %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Email Marketing</h1>
+    <p>Lists, SMTP hosts, compose, and send campaigns.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
 {% get_current_language as LANGUAGE_CODE %}
 <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -80,7 +87,6 @@
     {% endif %}
     </div>
 </div>
-
-
-
+  </div>
+</div>
 {% endblock %}

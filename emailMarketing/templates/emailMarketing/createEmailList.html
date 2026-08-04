@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{% trans "Create Email List - CyberPanel" %}{% endblock %}
 {% block content %}
-
 {% load static %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Create email list</h1>
+    <p>Add a new subscriber list.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
 {% get_current_language as LANGUAGE_CODE %}
 <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -70,6 +77,8 @@
 </div>
 
 
+</div>
+  </div>
 </div>
 {% endblock %}
 
