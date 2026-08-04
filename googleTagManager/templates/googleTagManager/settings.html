@@ -7,11 +7,15 @@
     Google Tag Manager Settings - {% trans "CyberPanel" %}
 {% endblock %}
 
-{% block header_scripts %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-{% endblock %}
-
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>GTM settings</h1>
+    <p>Configure Google Tag Manager containers.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Analytics</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-12">
@@ -367,4 +371,6 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 </script>
+  </div>
+</div>
 {% endblock %}

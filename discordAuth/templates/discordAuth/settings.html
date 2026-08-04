@@ -4,6 +4,14 @@
 {% block title %}Discord Authentication Settings{% endblock %}
 
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Discord Auth settings</h1>
+    <p>Configure Discord OAuth client and roles.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Auth</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="content-wrapper">
     <div class="container-fluid">
         <div class="row">
@@ -169,4 +177,6 @@ function getCookie(name) {
     return cookieValue;
 }
 </script>
+  </div>
+</div>
 {% endblock %}

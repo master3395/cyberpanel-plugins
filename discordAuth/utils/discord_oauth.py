@@ -24,7 +24,7 @@ def generate_state():
     return secrets.token_urlsafe(32)
 
 
-def get_authorization_url(request, state=None):
+def get_authorization_url(request, state=None, force_consent=False):
     """
     Get Discord OAuth2 authorization URL
     Args:
@@ -50,7 +50,8 @@ def get_authorization_url(request, state=None):
         'redirect_uri': redirect_uri,
         'response_type': 'code',
         'scope': scope,
-        'state': state
+        'state': state,
+        'prompt': 'consent' if force_consent else 'none'
     }
     
     url = f"{DISCORD_AUTHORIZE_URL}?{urllib.parse.urlencode(params)}"

@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{% trans "Manage SMTP Hosts - CyberPanel" %}{% endblock %}
 {% block content %}
-
 {% load static %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>SMTP hosts</h1>
+    <p>Configure outbound SMTP hosts for campaigns.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
 {% get_current_language as LANGUAGE_CODE %}
 <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -121,6 +128,6 @@
 
 
 </div>
-
-
+  </div>
+</div>
 {% endblock %}

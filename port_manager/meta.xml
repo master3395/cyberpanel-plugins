@@ -3,7 +3,11 @@
     <name>CyberPanel Port Manager</name>
     <type>Utility</type>
     <description>Local and public port discovery with process, Docker, and firewall control.</description>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
+    <compatibility>
+        <min_version>2.5.5</min_version>
+        <max_version>3.0.0</max_version>
+    </compatibility>
     <author>master3395</author>
     <url>/plugins/port_manager/</url>
     <settings_url>/plugins/port_manager/</settings_url>

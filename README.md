@@ -2,7 +2,7 @@
 
 A collection of plugins for CyberPanel web hosting control panel.
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Author:** master3395  
 **Compatible with:** CyberPanel 2.5.5-dev and higher
 
@@ -17,6 +17,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 
 | Plugin | Type | Pricing | Author | Description |
 |--------|------|---------|--------|-------------|
+| [Auto Ban Security Alerts](autoBanSecurityAlerts/) | Security | 🟡 Paid | master3395 | Auto-ban IPs from SSH security alerts with whitelist |
 | [Auto Snapshot for Contabo](contaboAutoSnapshot/) | Backup | 🟡 Paid | master3395 | Automated Contabo VPS snapshots |
 | [CSP Manager](cspManager/) | Security | 🟢 Free | master3395 | Content Security Policy management |
 | [Discord Authentication](discordAuth/) | Security | 🟢 Free | master3395 | Discord OAuth2 login for CyberPanel |
@@ -30,6 +31,7 @@ A collection of plugins for CyberPanel web hosting control panel.
 | [Memcache Manager](memcacheManager/) | Utility | 🟢 Free | master3395 | Manage Memcached/LSMCD: status, stats, flush, config |
 | [Panel Access (Custom Domain)](panelAccess/) | Utility | 🟢 Free | master3395 | Configure custom domain(s) for accessing CyberPanel behind a reverse proxy |
 | [PM2 Manager](docs/plugins/pm2Manager.md) | Development | 🟢 Free | master3395 | Manage PM2 Node.js process manager |
+| [CyberPanel Port Manager](port_manager/) | Utility | 🟢 Free | master3395 | Local/public port discovery with process, Docker, and firewall control |
 | [PostgreSQL Manager](postgresManager/) | Utility | 🟢 Free | KraoESPfan1n | Install and manage PostgreSQL with Adminer web access |
 | [Premium Plugin Example](docs/plugins/premiumPlugin.md) | Utility | 🟡 Paid | master3395 | Example paid plugin with Patreon integration |
 | [Redis Manager](redisManager/) | Utility | 🟢 Free | master3395 | Manage Redis: status, config, flush, load defaults, fix permissions |

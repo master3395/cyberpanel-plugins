@@ -7,11 +7,15 @@
     Google Tag Manager - {% trans "CyberPanel" %}
 {% endblock %}
 
-{% block header_scripts %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-{% endblock %}
-
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Google Tag Manager</h1>
+    <p>Inject GTM containers into your sites.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Analytics</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-12">
@@ -273,4 +277,6 @@ function toggleGTM(domain, currentStatus) {
     });
 }
 </script>
+  </div>
+</div>
 {% endblock %}

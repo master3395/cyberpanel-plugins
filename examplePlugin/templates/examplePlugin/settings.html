@@ -3,52 +3,15 @@
 
 {% block title %}{% trans "Example Plugin Settings - CyberPanel" %}{% endblock %}
 
-{% block header_scripts %}
-<style>
-    /* Plugin Information Section - Ensure visibility */
-    .plugin-info-section {
-        background: #d1ecf1 !important;
-        border: 1px solid #bee5eb !important;
-        border-radius: 8px !important;
-        padding: 15px 20px !important;
-        margin-bottom: 25px !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: relative !important;
-        z-index: 10 !important;
-    }
-    
-    .plugin-info-section ul {
-        list-style: none !important;
-        padding-left: 0 !important;
-        margin-top: 10px !important;
-        margin-bottom: 0 !important;
-    }
-    
-    .plugin-info-section li {
-        margin-bottom: 8px;
-    }
-    
-    .plugin-info-section li:last-child {
-        margin-bottom: 0;
-    }
-    
-    .settings-container {
-        padding: 20px;
-    }
-    
-    .settings-card {
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-top: 20px;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Example settings</h1>
+    <p>Sample settings page for plugin authors.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Example</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="settings-container">
     <h1>{% trans "Example Plugin Settings" %}</h1>
     
@@ -71,5 +34,7 @@
         <p>{{ description|default:"Configure your example plugin settings." }}</p>
         <p><strong>{% trans "Note:" %}</strong> {% trans "This is an example plugin demonstrating the CyberPanel plugin structure." %}</p>
     </div>
+</div>
+  </div>
 </div>
 {% endblock %}

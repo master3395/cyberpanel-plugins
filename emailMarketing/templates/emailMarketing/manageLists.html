@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{% trans "Manage Email Lists - CyberPanel" %}{% endblock %}
 {% block content %}
-
-    {% load static %}
+{% load static %}
+    {% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Manage lists</h1>
+    <p>Create and manage subscriber lists.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
     {% get_current_language as LANGUAGE_CODE %}
     <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -310,6 +317,6 @@
 
 
     </div>
-
-
+  </div>
+</div>
 {% endblock %}

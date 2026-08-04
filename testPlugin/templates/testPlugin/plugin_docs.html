@@ -4,252 +4,18 @@
 
 {% block title %}{% trans "Plugin Development Guide - CyberPanel" %}{% endblock %}
 
-{% block header_scripts %}
-<style>
-    .docs-wrapper {
-        background: transparent;
-        padding: 20px;
-    }
-    
-    .docs-container {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    
-    .docs-header {
-        background: var(--bg-primary, white);
-        border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: var(--shadow-md, 0 2px 8px rgba(0,0,0,0.08));
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .docs-content {
-        background: var(--bg-primary, white);
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: var(--shadow-md, 0 2px 8px rgba(0,0,0,0.08));
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .docs-nav {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
-    
-    .nav-button {
-        background: var(--bg-secondary, #f8f9ff);
-        color: var(--text-primary, #2f3640);
-        border: 1px solid var(--border-primary, #e8e9ff);
-        padding: 12px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .nav-button:hover {
-        background: #5856d6;
-        color: white;
-        text-decoration: none;
-        transform: translateY(-2px);
-    }
-    
-    .nav-button.active {
-        background: #5856d6;
-        color: white;
-    }
-    
-    .docs-section {
-        display: none;
-    }
-    
-    .docs-section.active {
-        display: block;
-    }
-    
-    .section-title {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--text-primary, #2f3640);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #5856d6;
-    }
-    
-    .section-content {
-        line-height: 1.6;
-        color: var(--text-secondary, #64748b);
-    }
-    
-    .section-content h1,
-    .section-content h2,
-    .section-content h3 {
-        color: var(--text-primary, #2f3640);
-        margin-top: 30px;
-        margin-bottom: 15px;
-    }
-    
-    .section-content h1 {
-        font-size: 28px;
-        border-bottom: 2px solid #5856d6;
-        padding-bottom: 10px;
-    }
-    
-    .section-content h2 {
-        font-size: 22px;
-        color: #5856d6;
-    }
-    
-    .section-content h3 {
-        font-size: 18px;
-    }
-    
-    .section-content code {
-        background: var(--bg-secondary, #f8f9ff);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        color: #e83e8c;
-    }
-    
-    .section-content pre {
-        background: var(--bg-secondary, #f8f9ff);
-        padding: 20px;
-        border-radius: 8px;
-        overflow-x: auto;
-        border: 1px solid var(--border-primary, #e8e9ff);
-        margin: 15px 0;
-    }
-    
-    .section-content pre code {
-        background: none;
-        padding: 0;
-        color: var(--text-primary, #2f3640);
-    }
-    
-    .section-content ul,
-    .section-content ol {
-        margin: 15px 0;
-        padding-left: 25px;
-    }
-    
-    .section-content li {
-        margin: 8px 0;
-    }
-    
-    .section-content blockquote {
-        border-left: 4px solid #5856d6;
-        padding-left: 20px;
-        margin: 20px 0;
-        font-style: italic;
-        color: var(--text-secondary, #64748b);
-    }
-    
-    .feature-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin: 20px 0;
-    }
-    
-    .feature-item {
-        background: var(--bg-secondary, #f8f9ff);
-        padding: 20px;
-        border-radius: 8px;
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .feature-item h4 {
-        color: #5856d6;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-    
-    .back-button {
-        background: #6c757d;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 20px;
-    }
-    
-    .back-button:hover {
-        background: #5a6268;
-        color: white;
-        text-decoration: none;
-    }
-    
-    .toc {
-        background: var(--bg-secondary, #f8f9ff);
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 30px;
-        border: 1px solid var(--border-primary, #e8e9ff);
-    }
-    
-    .toc h3 {
-        color: #5856d6;
-        margin-bottom: 15px;
-    }
-    
-    .toc ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .toc li {
-        margin: 8px 0;
-    }
-    
-    .toc a {
-        color: var(--text-secondary, #64748b);
-        text-decoration: none;
-        transition: color 0.3s ease;
-    }
-    
-    .toc a:hover {
-        color: #5856d6;
-    }
-    
-    @media (max-width: 768px) {
-        .docs-wrapper {
-            padding: 15px;
-        }
-        
-        .docs-nav {
-            flex-direction: column;
-        }
-        
-        .nav-button {
-            justify-content: center;
-        }
-        
-        .feature-list {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
+{% load i18n %}
+{% load static %}
+
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Test Plugin docs</h1>
+    <p>Documentation shell for the test plugin.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Test</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="docs-wrapper">
     <div class="docs-container">
         <!-- Docs Header -->
@@ -312,7 +78,7 @@ curl -sSL https://raw.githubusercontent.com/cyberpanel/testPlugin/main/install.s
                 <h2>Manual Installation</h2>
                 <ol>
                     <li><strong>Download the plugin</strong>
-                        <pre><code>git clone https://github.com/master3395/cyberpanel-plugins.git
+                        <pre><code>git clone https://github.com/cyberpanel/testPlugin.git
 cd testPlugin</code></pre>
                     </li>
                     <li><strong>Run the installation script</strong>
@@ -1058,10 +824,10 @@ function updatePluginUI(enabled) {
                     <h3>1. Use CyberPanel's Base Template</h3>
                     <p>Always extend the base template:</p>
                     <pre><code>{% extends "baseTemplate/index.html" %}
-{% load i18n %}
-{% load static %}
-
-{% block title %}{% trans "Your Plugin - CyberPanel" %}{% endblock %}
+{% block title %}{% trans "Your Plugin - CyberPanel" %}
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
 &lt;!-- Your plugin content here --&gt;

@@ -453,7 +453,7 @@ sudo rm -f /home/cyberpanel/plugins/testPlugin
 - **CloudLinux**: Check CloudLinux documentation
 
 ### Plugin Support
-- **GitHub Issues**: https://github.com/master3395/cyberpanel-plugins/issues
+- **GitHub Issues**: https://github.com/cyberpanel/testPlugin/issues
 - **CyberPanel Forums**: https://forums.cyberpanel.net/
 - **Documentation**: https://cyberpanel.net/docs/
 

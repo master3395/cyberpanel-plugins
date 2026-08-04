@@ -2,8 +2,15 @@
 {% load i18n %}
 {% block title %}{% trans "Compose Email Message - CyberPanel" %}{% endblock %}
 {% block content %}
-
 {% load static %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Compose messages</h1>
+    <p>Write campaign messages for your lists.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Email</span></div>
+  </div>
+  <div class="cpui-section">
 {% get_current_language as LANGUAGE_CODE %}
 <!-- Current language: {{ LANGUAGE_CODE }} -->
 
@@ -85,6 +92,6 @@
     </div>
 </div>
 </div>
-
-
+  </div>
+</div>
 {% endblock %}

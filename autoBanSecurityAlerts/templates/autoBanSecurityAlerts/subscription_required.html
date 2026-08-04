@@ -3,33 +3,15 @@
 
 {% block title %}{% trans "Payment Required - Auto Ban Security Alerts" %}{% endblock %}
 
-{% block header_scripts %}
-<style>
-    .subscription-required-container { padding: 40px 20px; max-width: 900px; margin: 0 auto; text-align: center; }
-    .subscription-card { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
-    .premium-icon { font-size: 64px; color: #667eea; margin-bottom: 20px; }
-    .subscription-card h1 { color: #2f3640; margin-bottom: 15px; }
-    .subscription-card p { color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
-    .payment-methods { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 30px 0; }
-    .payment-method-card { flex: 1; min-width: 250px; max-width: 350px; background: #f8f9ff; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; text-align: center; }
-    .payment-method-card.patreon { border-color: #FF424D; }
-    .payment-method-card.paypal { border-color: #0070ba; }
-    .payment-method-card h3 { margin-top: 0; color: #2f3640; font-size: 1.3rem; }
-    .patreon-button, .paypal-button { display: inline-block; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: all 0.3s ease; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-    .patreon-button { background: #FF424D; }
-    .patreon-button:hover { background: #E62E37; color: white; text-decoration: none; }
-    .paypal-button { background: #0070ba; }
-    .paypal-button:hover { background: #003087; color: white; text-decoration: none; }
-    .info-box { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; border-radius: 8px; margin-top: 30px; text-align: left; }
-    .payment-method-selector { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 30px; text-align: left; }
-    @media (max-width: 768px) {
-        .payment-methods { flex-direction: column; }
-        .payment-method-card { max-width: 100%; }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui cpui-paywall" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>Premium access required</h1>
+    <p>Unlock Auto Ban Security Alerts with a subscription or activation key.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Premium</span></div>
+  </div>
+  <div class="cpui-section">
 <div class="subscription-required-container">
     <div class="subscription-card">
         <div class="premium-icon"><i class="fas fa-shield-alt"></i></div>
@@ -195,4 +177,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+  </div>
+</div>
 {% endblock %}

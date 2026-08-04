@@ -2,7 +2,7 @@
 <plugin>
     <name>Auto Ban Security Alerts</name>
     <type>Security</type>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <description>Automatically ban IP addresses from Security Alerts Detected in Recent SSH Logs. Includes IP whitelist management with automatic CyberPanel IP whitelisting.</description>
     <author>master3395</author>
     <website>https://github.com/master3395/cyberpanel-plugins</website>
