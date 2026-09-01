@@ -1,0 +1,2 @@
+#!/usr/local/CyberCP/bin/python
+print('roundcubeWebmail pre_install: no-op')

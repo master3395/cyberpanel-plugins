@@ -1,0 +1,2 @@
+#!/usr/local/CyberCP/bin/python
+print('snappymailWebmail pre_install: no-op')

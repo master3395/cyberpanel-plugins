@@ -1,0 +1,30 @@
+#!/bin/bash
+# SnappyMail Webmail plugin post-install: deploy app, OLS context, enable serving.
+set -euo pipefail
+
+PLUGIN_HOME="/usr/local/CyberCP/snappymailWebmail"
+LOG="/var/log/cyberpanel/snappymailWebmail_post_install.log"
+mkdir -p "$(dirname "$LOG")" /home/cyberpanel/plugins
+
+exec >>"$LOG" 2>&1
+echo "[$(date -Iseconds)] snappymailWebmail post_install start"
+
+if [ ! -d "$PLUGIN_HOME" ]; then
+  echo "ERROR: plugin home missing: $PLUGIN_HOME"
+  exit 1
+fi
+
+/usr/local/CyberCP/bin/python - <<'PY'
+import sys
+sys.path.insert(0, '/usr/local/CyberCP')
+from snappymailWebmail import utils
+ok, message = utils.post_install_tasks()
+print(message)
+sys.exit(0 if ok else 1)
+PY
+
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet lsws 2>/dev/null; then
+  systemctl restart lsws || true
+fi
+
+echo "[$(date -Iseconds)] snappymailWebmail post_install done"

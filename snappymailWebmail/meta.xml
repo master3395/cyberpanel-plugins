@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>SnappyMail Webmail</name>
+    <type>Email</type>
+    <description>Optional standalone SnappyMail webmail for CyberPanel. Deploys SnappyMail under the panel vhRoot, preserves data under /usr/local/lscp/cyberpanel/snappymail/data/, and configures OpenLiteSpeed to serve /snappymail/.</description>
+    <version>1.0.0</version>
+    <compatibility>
+        <min_version>3.0.5</min_version>
+    </compatibility>
+    <author>master3395</author>
+    <url>/plugins/snappymailWebmail/</url>
+    <settings_url>/plugins/snappymailWebmail/settings/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>

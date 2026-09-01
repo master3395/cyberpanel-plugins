@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>Roundcube Webmail</name>
+    <type>Email</type>
+    <description>Optional standalone Roundcube webmail for CyberPanel. Deploys Roundcube under /usr/local/CyberCP/public/roundcube/ with IMAP localhost:993 and configures OpenLiteSpeed to serve /roundcube/.</description>
+    <version>1.0.0</version>
+    <compatibility>
+        <min_version>3.0.5</min_version>
+    </compatibility>
+    <author>master3395</author>
+    <url>/plugins/roundcubeWebmail/</url>
+    <settings_url>/plugins/roundcubeWebmail/settings/</settings_url>
+    <paid>false</paid>
+</cyberpanelPluginConfig>

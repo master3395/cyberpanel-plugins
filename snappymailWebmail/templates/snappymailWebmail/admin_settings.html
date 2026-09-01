@@ -1,0 +1,100 @@
+{% extends "baseTemplate/index.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}SnappyMail Webmail - {% trans "CyberPanel" %}{% endblock %}
+
+{% block content %}
+{% include "pluginHolder/cpui_head.html" %}
+<div class="cpui" id="cpuiApp">
+  <div class="cpui-hero">
+    <h1>SnappyMail Webmail</h1>
+    <p>Optional standalone SnappyMail webmail served at <code>/snappymail/</code>.</p>
+    <div class="cpui-meta"><span class="cpui-chip">Mail</span></div>
+  </div>
+  <div class="cpui-section">
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-envelope"></i> {% trans "Admin Settings" %}
+            {% if not is_paid %}<span class="plugin-pricing-badge free">{% trans "Free" %}</span>{% endif %}
+          </h3>
+        </div>
+        <div class="card-body">
+          <div id="webmail-message" class="alert d-none"></div>
+
+          <table class="table table-sm table-bordered mb-4">
+            <tbody>
+              <tr><th>{% trans "Installed" %}</th><td>{% if status.installed %}<span class="text-success">{% trans "Yes" %}</span>{% else %}<span class="text-danger">{% trans "No" %}</span>{% endif %}</td></tr>
+              <tr><th>{% trans "Serving enabled" %}</th><td id="status-enabled">{% if status.enabled %}<span class="text-success">{% trans "Yes" %}</span>{% else %}<span class="text-warning">{% trans "No" %}</span>{% endif %}</td></tr>
+              <tr><th>{% trans "HTTP check" %}</th><td id="status-http">{% if status.http_ok %}<span class="text-success">{{ status.http_detail }}</span>{% else %}<span class="text-muted">{{ status.http_detail }}</span>{% endif %}</td></tr>
+              <tr><th>{% trans "Version" %}</th><td>{{ status.installed_version|default:"-" }}</td></tr>
+              <tr><th>{% trans "Public path" %}</th><td><code>{{ status.public_path }}</code></td></tr>
+              <tr><th>{% trans "Data path" %}</th><td><code>{{ status.data_path }}</code></td></tr>
+              <tr><th>{% trans "Standalone login URL" %}</th><td><a href="{{ status.login_url }}" target="_blank" rel="noopener noreferrer">{{ status.login_url }}</a></td></tr>
+            </tbody>
+          </table>
+
+          <div class="form-group">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="enabled-toggle" {% if status.settings_enabled %}checked{% endif %}>
+              <label class="custom-control-label" for="enabled-toggle">{% trans "Enable SnappyMail webmail at /snappymail/" %}</label>
+            </div>
+            <small class="form-text text-muted">{% trans "Disable to stop serving webmail without deleting mail data or SnappyMail configuration." %}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var toggle = document.getElementById('enabled-toggle');
+  var msgEl = document.getElementById('webmail-message');
+  var base = (window.location.pathname || '').replace(/\/?$/, '') + '/';
+  var apiUrl = base + 'api/toggle/';
+  function showMsg(text, isError) {
+    if (!msgEl) return;
+    msgEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+    msgEl.classList.add(isError ? 'alert-danger' : 'alert-success');
+    msgEl.textContent = text;
+  }
+  if (toggle) {
+    toggle.addEventListener('change', function() {
+      toggle.disabled = true;
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ enabled: toggle.checked })
+      }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(r) {
+          toggle.disabled = false;
+          showMsg(r.data.message || r.data.error || (r.ok ? 'Done' : 'Error'), !r.ok);
+          if (r.ok && r.data.status) {
+            var enabledCell = document.getElementById('status-enabled');
+            var httpCell = document.getElementById('status-http');
+            if (enabledCell) {
+              enabledCell.innerHTML = r.data.status.enabled
+                ? '<span class="text-success">{% trans "Yes" %}</span>'
+                : '<span class="text-warning">{% trans "No" %}</span>';
+            }
+            if (httpCell) {
+              httpCell.innerHTML = r.data.status.http_ok
+                ? '<span class="text-success">' + r.data.status.http_detail + '</span>'
+                : '<span class="text-muted">' + r.data.status.http_detail + '</span>';
+            }
+          }
+        }).catch(function(e) {
+          toggle.disabled = false;
+          toggle.checked = !toggle.checked;
+          showMsg(e.message || 'Request failed', true);
+        });
+    });
+  }
+})();
+</script>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+#!/bin/bash
+# Roundcube Webmail plugin pre-remove: stop serving, preserve files and DB.
+set -euo pipefail
+
+PLUGIN_HOME="/usr/local/CyberCP/roundcubeWebmail"
+LOG="/var/log/cyberpanel/roundcubeWebmail_pre_remove.log"
+mkdir -p "$(dirname "$LOG")"
+
+exec >>"$LOG" 2>&1
+echo "[$(date -Iseconds)] roundcubeWebmail pre_remove start"
+
+if [ -d "$PLUGIN_HOME" ]; then
+  /usr/local/CyberCP/bin/python - <<'PY'
+import sys
+sys.path.insert(0, '/usr/local/CyberCP')
+from roundcubeWebmail import utils
+ok, message = utils.pre_remove_tasks()
+print(message)
+sys.exit(0 if ok else 1)
+PY
+fi
+
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet lsws 2>/dev/null; then
+  systemctl restart lsws || true
+fi
+
+echo "[$(date -Iseconds)] roundcubeWebmail pre_remove done"
